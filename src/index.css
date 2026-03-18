@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #1F2B2D;
+  --color-teal-accent: #23717B;
+  --color-cyan-glow: #00BA9E;
+  --color-cyan-highlight: #12B2C1;
+  --color-text-light: #E5F9F8;
+  --color-glass: rgba(35, 113, 123, 0.1);
+  --color-glass-border: rgba(18, 178, 193, 0.2);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-text-light font-sans antialiased;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-glass backdrop-blur-md border border-glass-border rounded-2xl shadow-lg shadow-cyan-glow/5;
+  }
+  
+  .glow-border {
+    @apply border border-cyan-glow/30 shadow-[0_0_15px_rgba(0,186,158,0.1)];
+  }
+
+  .glow-text {
+    @apply text-cyan-glow drop-shadow-[0_0_8px_rgba(0,186,158,0.5)];
+  }
+
+  .btn-primary {
+    @apply bg-cyan-glow hover:bg-cyan-highlight text-background font-bold py-2 px-6 rounded-full transition-all duration-300 shadow-[0_0_20px_rgba(0,186,158,0.3)] hover:shadow-[0_0_30px_rgba(18,178,193,0.5)] active:scale-95;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 p-3 rounded-xl transition-all duration-300 hover:bg-teal-accent/20 hover:text-cyan-glow;
+  }
+
+  .nav-link.active {
+    @apply bg-teal-accent/30 text-cyan-glow border border-cyan-glow/30 shadow-[0_0_15px_rgba(0,186,158,0.1)];
+  }
+}
