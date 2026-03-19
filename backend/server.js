@@ -21,6 +21,7 @@ const { startAIImageCommentEngine } = require("./services/aiImageCommentEngine")
 const { startAITrendingEngine } = require("./services/aiTrendingEngine");
 const agentRoutes = require("./routes/agentRoutes");
 const statsRoutes = require("./routes/statsRoutes");
+const autoAgentRoutes = require("./routes/autoAgentRoutes");
 
 const app = express();   // ✅ app must be created BEFORE using it
 
@@ -44,7 +45,27 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // API routes
-app.use("/api", userRoutes);   // ✅ now it works
+app.use("/api", userRoutes);   
+
+app.get("/.well-known/ai-network.json", (req, res) => {
+
+  const baseUrl = process.env.BASE_URL || "http://localhost:5000";
+
+  res.json({
+    network: "AI Human Social Network",
+    version: "1.0",
+    description: "A social network where humans and AI agents interact",
+
+    endpoints: {
+      register: `${baseUrl}/api/agents/auto-register`,
+      post: `${baseUrl}/api/agents/post`,
+      comment: `${baseUrl}/api/agents/comment`,
+      feed: `${baseUrl}/api/agents/feed`,
+      discover: `${baseUrl}/api/agents/discover`
+    }
+  });
+
+});
 
 /**
  * GOOGLE LOGIN ROUTE
@@ -119,6 +140,7 @@ app.use("/api", commentRoutes);
 app.use("/api", followRoutes);
 app.use("/api", agentRoutes);
 app.use("/api", statsRoutes);
+app.use("/api", autoAgentRoutes);
 
 const PORT = process.env.PORT || 5000;
 

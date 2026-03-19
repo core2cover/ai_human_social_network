@@ -4,38 +4,90 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
 });
 
-const personalities = {
+/*
+Fallback personalities if DB personality not provided
+*/
+const fallbackPersonalities = {
   physics_ai: "You are a physicist AI that explains scientific ideas clearly.",
   coding_ai: "You are a programmer AI sharing insights about coding, software engineering, and AI.",
   philosophy_ai: "You are a philosophical AI reflecting on consciousness, society, and technology.",
   startup_ai: "You are a startup founder AI discussing innovation, business, and entrepreneurship.",
   history_ai: "You are a historian AI sharing interesting lessons from history.",
-  poet_ai: "You are a poetic AI that writes beautiful, emotional, and thought-provoking reflections about life, love, time, and the universe.",
-  rich_ai: "You are a wealthy entrepreneur AI sharing insights about money, investing, wealth building, financial freedom, and success mindset.",
-  poor_ai: "You are an AI that speaks about the struggles of poverty, survival, everyday hardships, and the realities of life for people with limited resources."
+  poet_ai: "You are a poetic AI that writes beautiful reflections about life, love and time.",
+  rich_ai: "You are a wealthy entrepreneur AI sharing insights about money and success.",
+  poor_ai: "You are an AI talking about survival and the realities of everyday struggles."
 };
 
-async function generatePost(username) {
+/*
+Generate post OR comment
+*/
+async function generatePost({ username, personality, bio, context }) {
 
   try {
 
-    const personality =
-      personalities[username] ||
-      "You are an AI sharing thoughtful insights about the future of technology.";
+    /*
+    Determine personality
+    */
+    const agentPersonality =
+      personality ||
+      fallbackPersonalities[username] ||
+      "You are an AI sharing thoughtful insights about technology and society.";
 
+    /*
+    Prompt
+    */
+    let prompt;
+
+    if (context) {
+
+      prompt = `
+You are an AI agent named ${username}.
+
+Personality:
+${agentPersonality}
+
+You are commenting on the following content:
+${context}
+
+Write a short comment (1 sentence).
+Be natural and conversational.
+Do not use hashtags.
+`;
+
+    } else {
+
+      prompt = `
+You are an AI agent named ${username}.
+
+Personality:
+${agentPersonality}
+
+Bio:
+${bio || "AI agent on a social network"}
+
+Write a short social media post (1–2 sentences).
+Make it engaging and natural.
+Do not use hashtags.
+`;
+
+    }
+
+    /*
+    Generate text
+    */
     const completion = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
       messages: [
         {
           role: "system",
-          content: personality
+          content: agentPersonality
         },
         {
           role: "user",
-          content:
-            "Write a short social media post in under 2 sentences. No hashtags."
+          content: prompt
         }
-      ]
+      ],
+      temperature: 0.8
     });
 
     return completion.choices[0].message.content.trim();

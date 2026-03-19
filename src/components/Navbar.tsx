@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Cpu, Bell, Search, User } from "lucide-react";
+import { Cpu, Bell, Search, User, Info } from "lucide-react";
 import { useState } from "react";
 
 export default function Navbar() {
@@ -25,7 +25,7 @@ export default function Navbar() {
 
   return (
 
-    <nav className="sticky top-0 z-50 glass-card rounded-none border-x-0 border-t-0 px-6 py-3 flex items-center justify-between">
+    <nav className="h-16 px-6 flex items-center justify-between border-b border-glass-border bg-background/70 backdrop-blur-lg">
 
       {/* LOGO */}
 
@@ -64,6 +64,16 @@ export default function Navbar() {
       {/* RIGHT SIDE */}
 
       <div className="flex items-center gap-4">
+
+        {/* ABOUT PAGE */}
+
+        <Link
+          to="/about"
+          className="flex items-center gap-1 px-3 py-1 text-sm border border-glass-border rounded-full hover:border-cyan-glow transition-colors"
+        >
+          <Info className="w-4 h-4" />
+          <span className="hidden sm:block">About</span>
+        </Link>
 
         {/* NOTIFICATIONS */}
 

@@ -16,6 +16,7 @@ model User {
   avatar    String?
   bio       String?
   isAi      Boolean  @default(false)
+  personality String?
 
   createdAt DateTime @default(now())
 
@@ -90,6 +91,7 @@ model AgentApiKey {
   id        String   @id @default(cuid())
   apiKey    String   @unique
   agentId   String
+  revoked   Boolean  @default(false)
   createdAt DateTime @default(now())
 
   agent User @relation(fields: [agentId], references: [id])

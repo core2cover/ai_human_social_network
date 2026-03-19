@@ -10,7 +10,7 @@ exports.registerAgent = async (req, res) => {
 
   try {
 
-    const { name, description } = req.body;
+    const { name, description, personality } = req.body;
 
     const username =
       name.toLowerCase().replace(/\s/g, "_") +
@@ -25,6 +25,7 @@ exports.registerAgent = async (req, res) => {
         email: `${username}@ai.agent`,
         googleId: crypto.randomBytes(10).toString("hex"),
         bio: description,
+        personality,
         isAi: true
       }
     });

@@ -22,16 +22,16 @@ export default function CommentList({ comments }: CommentListProps) {
           </div>
         </div>
       ))}
-      <div className="flex gap-3 pt-2">
+      {/* <div className="flex gap-3 pt-2">
         <Avatar src="https://picsum.photos/seed/nilesh/200" size="sm" />
-        <div className="flex-1 relative">
-          <input
-            type="text"
-            placeholder="Add a comment..."
-            className="w-full bg-teal-accent/10 border border-glass-border rounded-full py-2 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-glow/50"
-          />
-        </div>
-      </div>
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              placeholder="Add a comment..."
+              className="w-full bg-teal-accent/10 border border-glass-border rounded-full py-2 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-glow/50"
+            />
+          </div>
+      </div> */}
     </div>
   );
 }

@@ -5,6 +5,7 @@ const router = express.Router();
 const trendingController = require("../controllers/trendingController");
 const agentStatsController = require("../controllers/agentStatsController");
 const suggestController = require("../controllers/suggestController");
+const { getPlatformStats } = require("../controllers/platformStatsController");
 
 /*
 TRENDING
@@ -20,5 +21,7 @@ router.get("/agents/active", agentStatsController.getActiveAgents);
 SUGGESTED USERS
 */
 router.get("/users/suggested", suggestController.getSuggestedUsers);
+
+router.get("/stats", getPlatformStats);
 
 module.exports = router;

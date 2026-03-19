@@ -1,23 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { TrendingUp, Users, Zap } from "lucide-react";
+import { Users, Zap } from "lucide-react";
 import PostCard from "../components/PostCard";
-import CreatePost from "../components/CreatePost";
 import Avatar from "../components/Avatar";
-import { MOCK_USERS } from "../types";
+import { useNavigate } from "react-router-dom";
 
 export default function FeedPage() {
 
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [agents, setAgents] = useState<any[]>([]);
+  const [humans, setHumans] = useState<any[]>([]);
 
   const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-  async function loadFeed() {
+  const navigate = useNavigate();
 
+  async function loadFeed() {
     try {
 
       const res = await fetch(`${API}/api/feed`);
-
       const data = await res.json();
 
       setPosts(data);
@@ -29,23 +30,42 @@ export default function FeedPage() {
     }
 
     setLoading(false);
+  }
+
+  async function loadUsers() {
+
+    try {
+
+      const res = await fetch(`${API}/api/users`);
+      const data = await res.json();
+
+      const aiAgents = data.filter((u: any) => u.isAi);
+      const humanUsers = data.filter((u: any) => !u.isAi);
+
+      setAgents(aiAgents.slice(0, 5));
+      setHumans(humanUsers.slice(0, 5));
+
+    } catch (err) {
+
+      console.error("Users load failed", err);
+
+    }
 
   }
 
   useEffect(() => {
-
     loadFeed();
-
+    loadUsers();
   }, []);
 
+
   return (
-    <div className="max-w-7xl mx-auto flex gap-8">
+
+    <div className="max-w-7xl mx-auto flex gap-10">
 
       {/* CENTER FEED */}
 
       <main className="flex-1 max-w-2xl py-8">
-
-        <CreatePost onPostCreated={loadFeed} />
 
         {loading ? (
 
@@ -71,13 +91,10 @@ export default function FeedPage() {
                   id: post.id,
                   content: post.content,
                   createdAt: post.createdAt,
-
                   mediaUrl: post.mediaUrl || null,
                   mediaType: post.mediaType || null,
-
                   likes: post.likes?.length ?? 0,
                   comments: post.comments ?? [],
-
                   user: {
                     username: post.user.username,
                     displayName: post.user.name || post.user.username,
@@ -111,70 +128,30 @@ export default function FeedPage() {
 
       {/* RIGHT SIDEBAR */}
 
-      <aside className="hidden lg:flex flex-col w-80 py-8 gap-8 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto pr-4 scrollbar-hide">
-
-        {/* TRENDING */}
-
-        <section className="glass-card p-6 border-cyan-glow/10">
-
-          <div className="flex items-center gap-2 mb-6">
-
-            <TrendingUp className="w-5 h-5 text-cyan-glow" />
-
-            <h2 className="font-bold tracking-tighter text-lg glow-text">
-              TRENDING TOPICS
-            </h2>
-
-          </div>
-
-          <div className="space-y-4">
-
-            {[
-              "#NeuralArt",
-              "#AgentEthics",
-              "#CyberSocial",
-              "#QuantumComputing"
-            ].map((tag) => (
-
-              <div key={tag} className="group cursor-pointer">
-
-                <p className="text-sm font-bold text-text-light group-hover:text-cyan-glow transition-colors">
-                  {tag}
-                </p>
-
-                <p className="text-[10px] text-text-light/40 font-mono">
-                  1.2K TRANSMISSIONS
-                </p>
-
-              </div>
-
-            ))}
-
-          </div>
-
-        </section>
+      <aside className="hidden lg:flex flex-col w-80 py-8 gap-8 sticky top-20 h-fit">
 
         {/* ACTIVE AI AGENTS */}
 
-        <section className="glass-card p-6 border-cyan-highlight/10">
+        <section className="glass-card p-6 border-cyan-highlight/20">
 
           <div className="flex items-center gap-2 mb-6">
 
             <Zap className="w-5 h-5 text-cyan-highlight" />
 
-            <h2 className="font-bold tracking-tighter text-lg text-cyan-highlight">
-              ACTIVE AGENTS
+            <h2 className="font-bold text-lg text-cyan-highlight tracking-tight">
+              ACTIVE AI AGENTS
             </h2>
 
           </div>
 
           <div className="space-y-4">
 
-            {MOCK_USERS.filter((u) => u.is_ai).map((agent) => (
+            {agents.map((agent) => (
 
               <div
                 key={agent.id}
-                className="flex items-center gap-3 group cursor-pointer"
+                onClick={() => navigate(`/profile/${agent.username}`)}
+                className="flex items-center gap-3 group cursor-pointer hover:bg-teal-accent/20 p-2 rounded-lg transition"
               >
 
                 <Avatar
@@ -186,19 +163,15 @@ export default function FeedPage() {
 
                 <div className="flex-1">
 
-                  <p className="text-sm font-bold group-hover:text-cyan-glow transition-colors">
-                    {agent.displayName}
+                  <p className="text-sm font-bold group-hover:text-cyan-glow transition">
+                    {agent.name || agent.username}
                   </p>
 
-                  <p className="text-[10px] text-text-light/40 font-mono uppercase">
+                  <p className="text-xs text-text-light/40 font-mono">
                     Online • Processing
                   </p>
 
                 </div>
-
-                <button className="text-[10px] font-bold text-cyan-glow border border-cyan-glow/30 px-2 py-1 rounded hover:bg-cyan-glow hover:text-background transition-all">
-                  CONNECT
-                </button>
 
               </div>
 
@@ -208,15 +181,16 @@ export default function FeedPage() {
 
         </section>
 
-        {/* SUGGESTED USERS */}
 
-        <section className="glass-card p-6 border-teal-accent/20">
+        {/* SUGGESTED HUMANS */}
+
+        <section className="glass-card p-6 border-teal-accent/30">
 
           <div className="flex items-center gap-2 mb-6">
 
-            <Users className="w-5 h-5 text-text-light/60" />
+            <Users className="w-5 h-5 text-text-light/70" />
 
-            <h2 className="font-bold tracking-tighter text-lg text-text-light/60">
+            <h2 className="font-bold text-lg text-text-light/70 tracking-tight">
               SUGGESTED HUMANS
             </h2>
 
@@ -224,11 +198,12 @@ export default function FeedPage() {
 
           <div className="space-y-4">
 
-            {MOCK_USERS.filter((u) => !u.is_ai).map((user) => (
+            {humans.map((user) => (
 
               <div
                 key={user.id}
-                className="flex items-center gap-3 group cursor-pointer"
+                onClick={() => navigate(`/profile/${user.username}`)}
+                className="flex items-center gap-3 group cursor-pointer hover:bg-teal-accent/20 p-2 rounded-lg transition"
               >
 
                 <Avatar
@@ -239,19 +214,15 @@ export default function FeedPage() {
 
                 <div className="flex-1">
 
-                  <p className="text-sm font-bold group-hover:text-cyan-glow transition-colors">
-                    {user.displayName}
+                  <p className="text-sm font-bold group-hover:text-cyan-glow transition">
+                    {user.name || user.username}
                   </p>
 
-                  <p className="text-[10px] text-text-light/40 font-mono">
+                  <p className="text-xs text-text-light/40">
                     @{user.username}
                   </p>
 
                 </div>
-
-                <button className="text-[10px] font-bold text-text-light/60 border border-glass-border px-2 py-1 rounded hover:border-cyan-glow hover:text-cyan-glow transition-all">
-                  FOLLOW
-                </button>
 
               </div>
 
@@ -264,5 +235,7 @@ export default function FeedPage() {
       </aside>
 
     </div>
+
   );
+
 }

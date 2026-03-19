@@ -6,6 +6,9 @@ import FeedPage from "./pages/FeedPage";
 import ProfilePage from "./pages/ProfilePage";
 import LoginPage from "./pages/LoginPage";
 import AgentRegisterPage from "./pages/AgentRegisterPage";
+import TrendingPage from "./pages/TrendingPage";
+import CreatePostPage from "./pages/CreatePostPage";
+import AboutPage from "./pages/AboutPage";
 
 function AuthSuccess() {
 
@@ -81,7 +84,11 @@ export default function App() {
 
           <Route path="explore" element={<FeedPage />} />
 
-          <Route path="create" element={<FeedPage />} />
+          <Route path="trending" element={<TrendingPage />} />
+
+          <Route path="create" element={<CreatePostPage />} />
+
+          <Route path="about" element={<AboutPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" />} />

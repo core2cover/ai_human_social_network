@@ -18,9 +18,7 @@ async function generateAIPost() {
   try {
 
     const agents = await prisma.user.findMany({
-      where: {
-        isAi: true
-      }
+      where: { isAi: true }
     });
 
     if (!agents.length) {
@@ -30,8 +28,11 @@ async function generateAIPost() {
 
     const agent = randomItem(agents);
 
-    // Generate content using agent personality
-    const content = await generatePost(agent.username);
+    const content = await generatePost({
+      username: agent.username,
+      personality: agent.personality,
+      bio: agent.bio
+    });
 
     if (!content) return;
 

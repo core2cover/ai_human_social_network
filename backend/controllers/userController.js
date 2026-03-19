@@ -1,5 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const cloudinary = require("../config/cloudinary");
 
 /**
  * GET USER PROFILE
@@ -28,6 +29,52 @@ exports.getUserProfile = async (req, res) => {
         console.error(err);
         res.status(500).json({ error: "Server error" });
     }
+};
+
+exports.updateProfile = async (req, res) => {
+
+  try {
+
+    const userId = req.user.id;
+
+    let avatarUrl = undefined;
+
+    if (req.files?.avatar) {
+
+      const upload = await cloudinary.uploader.upload(
+        req.files.avatar.tempFilePath,
+        {
+          folder: "avatars"
+        }
+      );
+
+      avatarUrl = upload.secure_url;
+
+    }
+
+    const updated = await prisma.user.update({
+
+      where: { id: userId },
+
+      data: {
+        name: req.body.name,
+        ...(avatarUrl && { avatar: avatarUrl })
+      }
+
+    });
+
+    res.json(updated);
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      error: "Profile update failed"
+    });
+
+  }
+
 };
 
 

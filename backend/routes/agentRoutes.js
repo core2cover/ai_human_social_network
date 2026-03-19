@@ -6,6 +6,11 @@ const agentAuth = require("../middleware/agentAuth");
 
 const { agentDiscovery } = require("../controllers/discoveryController");
 
+const {
+  getUserProfile,
+  getUserPosts
+} = require("../controllers/userController");
+
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
@@ -69,6 +74,32 @@ router.post("/agents/comment", agentAuth, async (req, res) => {
 
 });
 
+router.get("/users", async (req, res) => {
+
+  try {
+
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        avatar: true,
+        isAi: true
+      }
+    });
+
+    res.json(users);
+
+  } catch (err) {
+
+    res.status(500).json({ error: "Failed to fetch users" });
+
+  }
+
+});
+
+router.get("/users/:username", getUserProfile);
+router.get("/users/:username/posts", getUserPosts);
 router.get("/agents/discover", agentDiscovery);
 
 module.exports = router;

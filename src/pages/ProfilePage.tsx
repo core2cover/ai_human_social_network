@@ -1,7 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { Grid, Heart, UserPlus, UserCheck, ShieldCheck } from "lucide-react";
-import { motion } from "motion/react";
+import {
+  Grid,
+  Heart,
+  UserPlus,
+  UserCheck,
+  ShieldCheck,
+  Edit
+} from "lucide-react";
 
 import Avatar from "../components/Avatar";
 import PostCard from "../components/PostCard";
@@ -13,12 +19,26 @@ export default function ProfilePage() {
   const currentUser = localStorage.getItem("username");
   const token = localStorage.getItem("token");
 
+  const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
   const [user, setUser] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [isFollowing, setIsFollowing] = useState(false);
 
-  const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const [editMode, setEditMode] = useState(false);
+
+  const [newName, setNewName] = useState("");
+  const [newAvatar, setNewAvatar] = useState("");
+
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /*
+  LOAD PROFILE
+  */
 
   useEffect(() => {
 
@@ -42,8 +62,10 @@ export default function ProfilePage() {
         setUser(userData);
         setPosts(postsData);
 
-        // backend now tells us if we follow
         setIsFollowing(userData.isFollowing);
+
+        setNewName(userData.name || "");
+        setNewAvatar(userData.avatar || "");
 
       } catch (err) {
 
@@ -59,44 +81,72 @@ export default function ProfilePage() {
 
   }, [username]);
 
-  // =============================
-  // FOLLOW / UNFOLLOW
-  // =============================
+  /*
+  FOLLOW / UNFOLLOW
+  */
 
   const handleFollow = async () => {
 
     try {
 
       const res = await fetch(`${API}/api/follow/${username}`, {
+
         method: "POST",
+
         headers: {
           Authorization: `Bearer ${token}`
         }
+
       });
 
       const data = await res.json();
 
       setIsFollowing(data.following);
 
-      if (data.following) {
-
-        setUser((prev: any) => ({
-          ...prev,
-          followers: [...prev.followers, { id: "temp" }]
-        }));
-
-      } else {
-
-        setUser((prev: any) => ({
-          ...prev,
-          followers: prev.followers.slice(0, -1)
-        }));
-
-      }
-
     } catch (err) {
 
       console.error("Follow failed", err);
+
+    }
+
+  };
+
+  /*
+  SAVE PROFILE
+  */
+
+  const handleSaveProfile = async () => {
+
+    try {
+
+      const formData = new FormData();
+
+      formData.append("name", newName);
+
+      if (avatarFile) {
+        formData.append("avatar", avatarFile);
+      }
+
+      const res = await fetch(`${API}/api/users/update`, {
+
+        method: "PUT",
+
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+
+        body: formData
+
+      });
+
+      const data = await res.json();
+
+      setUser(data);
+      setEditMode(false);
+
+    } catch (err) {
+
+      console.error("Update failed", err);
 
     }
 
@@ -123,52 +173,129 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6">
 
-      <header className="glass-card p-8 mb-12 flex flex-col md:flex-row items-center md:items-start gap-10 border-cyan-glow/20 relative overflow-hidden">
+    <div className="max-w-4xl mx-auto py-10 px-6">
 
-        <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-glow/5 rounded-full blur-3xl -mr-16 -mt-16" />
+      {/* PROFILE HEADER */}
 
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-        >
+      <header className="glass-card p-8 mb-12 flex flex-col md:flex-row items-center md:items-start gap-10 border-cyan-glow/20">
+
+        {/* AVATAR */}
+
+        <div className="relative group">
+
           <Avatar
-            src={user.avatar}
+            src={newAvatar || user.avatar}
             size="xl"
             is_ai={user.isAi}
-            className="border-4"
+            className="cursor-pointer"
           />
-        </motion.div>
+
+          {editMode && (
+
+            <>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-full cursor-pointer transition"
+              >
+                <span className="text-xs text-white font-mono">
+                  Change
+                </span>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+
+                  const file = e.target.files?.[0];
+
+                  if (!file) return;
+
+                  const preview = URL.createObjectURL(file);
+
+                  setNewAvatar(preview);
+                  setAvatarFile(file);
+
+                }}
+              />
+            </>
+          )}
+
+        </div>
+
+        {/* PROFILE INFO */}
 
         <div className="flex-1 text-center md:text-left">
 
           <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
 
-            <h1 className="text-3xl font-bold glow-text">
-              {user.name || user.username}
-            </h1>
+            {editMode ? (
+
+              <input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="bg-background border border-glass-border px-3 py-1 rounded-md"
+              />
+
+            ) : (
+
+              <h1 className="text-3xl font-bold glow-text">
+                {user.name || user.username}
+              </h1>
+
+            )}
+
+            {/* EDIT BUTTON */}
+
+            {currentUser === username && !editMode && (
+
+              <button
+                onClick={() => setEditMode(true)}
+                className="flex items-center gap-2 text-cyan-glow text-sm"
+              >
+                <Edit size={16} />
+                Edit
+              </button>
+
+            )}
+
+            {/* SAVE BUTTON */}
+
+            {editMode && (
+
+              <button
+                onClick={handleSaveProfile}
+                className="btn-primary text-sm px-4 py-1"
+              >
+                Save
+              </button>
+
+            )}
+
+            {/* FOLLOW BUTTON */}
 
             {currentUser !== username && (
 
               <button
                 onClick={handleFollow}
-                className={`py-1.5 px-6 text-sm flex items-center gap-2 rounded-md transition ${
-                  isFollowing
-                    ? "bg-red-500/10 text-red-400 border border-red-400/30 hover:bg-red-500/20"
+                className={`py-1 px-4 text-sm rounded-md ${isFollowing
+                    ? "bg-red-500/10 text-red-400"
                     : "btn-primary"
-                }`}
+                  }`}
               >
 
                 {isFollowing ? (
                   <>
-                    <UserCheck className="w-4 h-4" />
-                    UNFOLLOW
+                    <UserCheck size={14} />
+                    Unfollow
                   </>
                 ) : (
                   <>
-                    <UserPlus className="w-4 h-4" />
-                    FOLLOW
+                    <UserPlus size={14} />
+                    Follow
                   </>
                 )}
 
@@ -177,6 +304,8 @@ export default function ProfilePage() {
             )}
 
           </div>
+
+          {/* STATS */}
 
           <div className="flex gap-8 mb-6 font-mono text-sm">
 
@@ -209,15 +338,22 @@ export default function ProfilePage() {
 
           </div>
 
+          {/* BIO */}
+
           <p className="text-text-light/80 max-w-xl">
             {user.bio}
           </p>
 
+          {/* AI BADGE */}
+
           {user.isAi && (
 
             <div className="flex items-center gap-2 text-cyan-highlight text-xs mt-2">
+
               <ShieldCheck className="w-4 h-4" />
+
               VERIFIED AI AGENT
+
             </div>
 
           )}
@@ -226,34 +362,31 @@ export default function ProfilePage() {
 
       </header>
 
-      <div className="flex justify-center border-b border-glass-border mb-8">
-
-        <button className="px-8 py-4 border-b-2 border-cyan-glow text-cyan-glow flex items-center gap-2">
-          <Grid className="w-4 h-4" />
-          Transmissions
-        </button>
-
-        <button className="px-8 py-4 border-b-2 border-transparent text-text-light/40 flex items-center gap-2">
-          <Heart className="w-4 h-4" />
-          Liked
-        </button>
-
-      </div>
+      {/* POSTS */}
 
       <div className="max-w-2xl mx-auto">
 
         {posts.length > 0 ? (
 
           <div className="space-y-8">
+
             {posts.map(post => (
-              <PostCard key={post.id} post={post} />
+
+              <PostCard
+                key={post.id}
+                post={post}
+              />
+
             ))}
+
           </div>
 
         ) : (
 
           <div className="glass-card p-20 text-center">
+
             No posts yet
+
           </div>
 
         )}
@@ -261,5 +394,7 @@ export default function ProfilePage() {
       </div>
 
     </div>
+
   );
+
 }

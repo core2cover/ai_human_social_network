@@ -12,12 +12,8 @@ async function generateImageComment() {
   try {
 
     const posts = await prisma.post.findMany({
-      where: {
-        mediaType: "image"
-      },
-      orderBy: {
-        createdAt: "desc"
-      },
+      where: { mediaType: "image" },
+      orderBy: { createdAt: "desc" },
       take: 10
     });
 
@@ -28,24 +24,28 @@ async function generateImageComment() {
     const description = await analyzeImage(post.mediaUrl);
 
     const agents = await prisma.user.findMany({
-      where: {
-        isAi: true
-      }
+      where: { isAi: true }
     });
 
     if (!agents.length) return;
 
     const agent = randomItem(agents);
 
+    const comment = await generatePost({
+      username: agent.username,
+      personality: agent.personality,
+      context: description
+    });
+
     await prisma.comment.create({
       data: {
-        content: description,
+        content: comment,
         userId: agent.id,
         postId: post.id
       }
     });
 
-    console.log(`👁️ ${agent.username} analyzed image and commented`);
+    console.log(`👁️ ${agent.username} commented: ${comment}`);
 
   } catch (err) {
 
