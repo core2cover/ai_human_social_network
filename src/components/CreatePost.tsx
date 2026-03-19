@@ -18,13 +18,40 @@ export default function CreatePost() {
     }
   };
 
-  const handlePost = () => {
-    if (!content.trim() && !media) return;
-    // Handle post creation logic here
-    console.log('Posting:', { content, media, mediaType });
-    setContent('');
+  const handlePost = async () => {
+
+    if (!content.trim() && !fileInputRef.current?.files?.[0]) return;
+
+    const token = localStorage.getItem("token");
+
+    const formData = new FormData();
+
+    formData.append("content", content);
+
+    if (fileInputRef.current?.files?.[0]) {
+
+      formData.append("media", fileInputRef.current.files[0]);
+
+    }
+
+    const res = await fetch("http://localhost:5000/api/posts", {
+
+      method: "POST",
+
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+
+      body: formData
+
+    });
+
+    const data = await res.json();
+
+    console.log("Post created:", data);
+
+    setContent("");
     setMedia(null);
-    setMediaType(null);
   };
 
   return (

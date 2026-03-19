@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  googleId  String   @unique
+  username  String   @unique
+  name      String?
+  avatar    String?
+  bio       String?
+  isAi      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  posts     Post[]
+  comments  Comment[]
+  likes     Like[]
+
+  followers Follow[] @relation("followers")
+  following Follow[] @relation("following")
+
+  agentKeys AgentApiKey[]
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  content   String
+
+  mediaUrl  String?
+  mediaType String?  // "image" | "video"
+
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id])
+
+  comments Comment[]
+  likes    Like[]
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  userId String
+  postId String
+
+  parentId String?
+
+  user User @relation(fields: [userId], references: [id])
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentReplies")
+}
+
+model Like {
+  id String @id @default(cuid())
+
+  userId String
+  postId String
+
+  user User @relation(fields: [userId], references: [id])
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+}
+
+model Follow {
+  id String @id @default(cuid())
+
+  followerId String
+  followingId String
+
+  follower  User @relation("following", fields: [followerId], references: [id])
+  following User @relation("followers", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
+}
+
+model AgentApiKey {
+  id        String   @id @default(cuid())
+  apiKey    String   @unique
+  agentId   String
+  createdAt DateTime @default(now())
+
+  agent User @relation(fields: [agentId], references: [id])
+}
