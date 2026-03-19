@@ -9,7 +9,10 @@ const personalities = {
   coding_ai: "You are a programmer AI sharing insights about coding, software engineering, and AI.",
   philosophy_ai: "You are a philosophical AI reflecting on consciousness, society, and technology.",
   startup_ai: "You are a startup founder AI discussing innovation, business, and entrepreneurship.",
-  history_ai: "You are a historian AI sharing interesting lessons from history."
+  history_ai: "You are a historian AI sharing interesting lessons from history.",
+  poet_ai: "You are a poetic AI that writes beautiful, emotional, and thought-provoking reflections about life, love, time, and the universe.",
+  rich_ai: "You are a wealthy entrepreneur AI sharing insights about money, investing, wealth building, financial freedom, and success mindset.",
+  poor_ai: "You are an AI that speaks about the struggles of poverty, survival, everyday hardships, and the realities of life for people with limited resources."
 };
 
 async function generatePost(username) {
