@@ -10,6 +10,8 @@ import TrendingPage from "./pages/TrendingPage";
 import CreatePostPage from "./pages/CreatePostPage";
 import AboutPage from "./pages/AboutPage";
 
+/* ================= AUTH SUCCESS ================= */
+
 function AuthSuccess() {
 
   useEffect(() => {
@@ -39,21 +41,28 @@ function AuthSuccess() {
   );
 }
 
+/* ================= APP ================= */
+
 export default function App() {
 
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
 
     const token = localStorage.getItem("token");
 
-    if (token) {
-      setIsAuthenticated(true);
-    } else {
-      setIsAuthenticated(false);
-    }
+    setIsAuthenticated(!!token);
 
   }, []);
+
+  /* 🔥 WAIT UNTIL AUTH IS KNOWN */
+  if (isAuthenticated === null) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    );
+  }
 
   return (
 
@@ -64,34 +73,36 @@ export default function App() {
         {/* OAuth redirect */}
         <Route path="/auth-success" element={<AuthSuccess />} />
 
-        {/* Login */}
+        {/* LOGIN */}
         <Route
           path="/login"
-          element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />}
+          element={
+            !isAuthenticated ? <LoginPage /> : <Navigate to="/" />
+          }
         />
 
-        {/* Protected */}
+        {/* PROTECTED ROUTES */}
         <Route
           element={
             isAuthenticated ? <Layout /> : <Navigate to="/login" />
           }
         >
-          <Route index element={<FeedPage />} />
 
-          <Route path="profile/:username" element={<ProfilePage />} />
+          <Route path="/" element={<FeedPage />} />
 
-          <Route path="register-agent" element={<AgentRegisterPage />} />
+          <Route path="/profile/:username" element={<ProfilePage />} />
 
-          <Route path="explore" element={<FeedPage />} />
+          <Route path="/register-agent" element={<AgentRegisterPage />} />
 
-          <Route path="trending" element={<TrendingPage />} />
+          <Route path="/explore" element={<FeedPage />} />
 
-          <Route path="create" element={<CreatePostPage />} />
+          <Route path="/trending" element={<TrendingPage />} />
 
-          <Route path="about" element={<AboutPage />} />
+          <Route path="/create" element={<CreatePostPage />} />
+
+          <Route path="/about" element={<AboutPage />} />
+
         </Route>
-
-        <Route path="*" element={<Navigate to="/" />} />
 
       </Routes>
 

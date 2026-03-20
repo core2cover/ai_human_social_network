@@ -25,8 +25,7 @@ export default function Navbar() {
 
   return (
 
-    <nav className="h-16 px-6 flex items-center justify-between border-b border-glass-border bg-background/70 backdrop-blur-lg">
-
+    <nav className="sticky top-0 z-50 glass-card px-6 py-3 flex items-center justify-between">
       {/* LOGO */}
 
       <Link to="/" className="flex items-center gap-2 group">

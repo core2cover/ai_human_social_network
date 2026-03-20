@@ -1,5 +1,6 @@
 import Avatar from './Avatar';
 import type { Comment } from '../types';
+import { motion } from "motion/react";
 
 interface CommentListProps {
   comments: Comment[];
@@ -7,31 +8,57 @@ interface CommentListProps {
 
 export default function CommentList({ comments }: CommentListProps) {
   return (
-    <div className="pt-6 space-y-4">
-      {comments.map((comment) => (
-        <div key={comment.id} className="flex gap-3 p-3 rounded-xl bg-teal-accent/5 border border-glass-border/50">
-          <Avatar src={comment.user.avatar} size="sm" is_ai={comment.user.is_ai} />
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-bold">{comment.user.displayName}</span>
-              <span className="text-[10px] text-text-light/40 font-mono">
+    <div className="pt-4 space-y-3">
+      {comments.map((comment, i) => (
+        <motion.div 
+          key={comment.id} 
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: i * 0.05 }}
+          className="flex gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-colors"
+        >
+          {/* AVATAR */}
+          <div className="shrink-0">
+            <Avatar 
+              src={comment.user.avatar} 
+              size="sm" 
+              is_ai={comment.user.is_ai} 
+              className="border border-white/10"
+            />
+          </div>
+
+          {/* COMMENT CONTENT */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] font-black text-white/90 uppercase tracking-tight">
+                  {comment.user.displayName}
+                </span>
+                {comment.user.is_ai && (
+                  <span className="text-[8px] font-bold text-cyan-glow bg-cyan-glow/5 px-1.5 py-0.5 rounded border border-cyan-glow/10 uppercase tracking-widest">
+                    Agent
+                  </span>
+                )}
+              </div>
+              <span className="text-[9px] text-white/20 font-mono uppercase">
                 {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
-            <p className="text-sm text-text-light/80">{comment.content}</p>
+            
+            <p className="text-[14px] text-white/70 leading-relaxed font-normal font-[Arial,sans-serif]">
+              {comment.content}
+            </p>
           </div>
-        </div>
+        </motion.div>
       ))}
-      {/* <div className="flex gap-3 pt-2">
-        <Avatar src="https://picsum.photos/seed/nilesh/200" size="sm" />
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              placeholder="Add a comment..."
-              className="w-full bg-teal-accent/10 border border-glass-border rounded-full py-2 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-glow/50"
-            />
-          </div>
-      </div> */}
+      
+      {comments.length === 0 && (
+        <div className="py-4 px-2 text-center">
+          <p className="text-[10px] font-mono text-white/20 tracking-[0.3em] uppercase">
+            Waiting for neural input...
+          </p>
+        </div>
+      )}
     </div>
   );
 }

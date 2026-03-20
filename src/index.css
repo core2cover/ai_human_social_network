@@ -1,43 +1,139 @@
 @import "tailwindcss";
 
+/* ================= THEME ================= */
+
 @theme {
-  --color-background: #1F2B2D;
-  --color-teal-accent: #23717B;
-  --color-cyan-glow: #00BA9E;
-  --color-cyan-highlight: #12B2C1;
-  --color-text-light: #E5F9F8;
-  --color-glass: rgba(35, 113, 123, 0.1);
-  --color-glass-border: rgba(18, 178, 193, 0.2);
+  /* Dark Base (The Red/Maroon side) */
+  --color-void: #290215;
+  /* Deepest dark */
+  --color-blood: #521D38;
+  /* Mid-tone surface */
+  --color-crimson: #C2273C;
+  /* Brand Primary / Danger / Alerts */
+
+  /* The "AI Light" (The Blue/Cyan side) */
+  --color-ocean: #00385A;
+  /* Deep blue accents */
+  --color-electric: #096194;
+  /* Secondary blue */
+  --color-cyan-glow: #27C2EE;
+  /* The "Human/Agent" Action color */
+
+  /* Semantic UI Helpers */
+  --color-glass: rgba(39, 194, 238, 0.03);
+  --color-glass-border: rgba(39, 194, 238, 0.15);
+  --color-text-main: #FFFFFF;
+  --color-text-dim: #A1A1AA;
+  --font-serif: "Lora", serif;
 }
+
+/* ================= BASE ================= */
 
 @layer base {
   body {
-    @apply bg-background text-text-light font-sans antialiased;
+    @apply bg-void text-text-main font-sans antialiased selection:bg-cyan-glow/30;
+    /* Creating a dual-tone "Forest" gradient */
+    background: linear-gradient(135deg, #290215 0%, #00385A 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+}
+
+/* ================= COMPONENTS ================= */
+
+@layer components {
+
+  /* THE FEED POST (GLASSMORPHISM) */
+  .social-card {
+    @apply bg-white/[0.02] backdrop-blur-2xl border border-white/[0.05] rounded-[2rem] p-8 mb-6 transition-all duration-500 hover:bg-white/[0.04] hover:border-cyan-glow/20 shadow-[0_25px_50px_-12px_rgba(0, 0, 0, 0.5)];
+  }
+
+  /* SIDEBAR NAV */
+  .sidebar-container {
+    @apply fixed left-0 top-0 h-full w-72 border-r border-white/5 bg-void/40 backdrop-blur-3xl p-6;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all duration-300 text-text-dim hover:text-cyan-glow hover:bg-cyan-glow/5 mb-2;
+  }
+
+  .nav-item-active {
+    @apply text-cyan-glow bg-cyan-glow/10 border border-cyan-glow/20 shadow-[0_0_20px_rgba(39, 194, 238, 0.1)];
+  }
+
+  /* BUTTONS (Pulse Action) */
+  .btn-action {
+    @apply bg-cyan-glow text-void font-bold px-8 py-3 rounded-full hover:shadow-[0_0_25px_rgba(39, 194, 238, 0.4)] hover:scale-105 transition-all duration-300 active:scale-95;
+  }
+
+  /* THE AI AGENT LIST (Right Side) */
+  .agent-item {
+    @apply flex items-center gap-3 p-3 rounded-2xl border border-transparent hover:border-cyan-glow/10 hover:bg-white/5 transition-all;
+  }
+
+  .status-pulse {
+    @apply w-2 h-2 rounded-full bg-cyan-glow shadow-[0_0_10px_#27C2EE] animate-pulse;
+  }
+
+  /* TOP SEARCH BAR */
+  .top-search {
+    @apply bg-white/5 border border-white/10 rounded-full px-8 py-3 focus:outline-none focus:border-cyan-glow/40 focus:bg-white/10 transition-all placeholder:text-white/20 text-white w-full;
+  }
+
+  /* TYPOGRAPHY */
+  .heading-sparkle {
+    @apply font-bold tracking-tighter text-white drop-shadow-[0_0_10px_rgba(255, 255, 255, 0.2)];
+  }
+
+  .post-body {
+    @apply text-lg leading-relaxed text-white/90 font-light mt-4;
+  }
+
+  .username-link {
+    @apply font-semibold text-cyan-glow hover:underline transition-all;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-4 px-6 py-3 rounded-2xl transition-all duration-300 text-white/40 hover:text-cyan-glow hover:bg-cyan-glow/5 mb-1;
+  }
+
+  .nav-link.active {
+    @apply text-cyan-glow bg-cyan-glow/10 border border-cyan-glow/20 shadow-[0_0_20px_rgba(39, 194, 238, 0.1)];
+  }
+
+  /* Custom Glow for the Identity/Active state icon */
+  .nav-link.active svg {
+    @apply drop-shadow-[0_0_5px_rgba(39, 194, 238, 0.8)];
+  }
+}
+
+/* Add to your app.css */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 
 @layer components {
-  .glass-card {
-    @apply bg-glass backdrop-blur-md border border-glass-border rounded-2xl shadow-lg shadow-cyan-glow/5;
-  }
-  
-  .glow-border {
-    @apply border border-cyan-glow/30 shadow-[0_0_15px_rgba(0,186,158,0.1)];
-  }
+  /* ... keep your other classes (nav-link, sidebar, etc) ... */
 
-  .glow-text {
-    @apply text-cyan-glow drop-shadow-[0_0_8px_rgba(0,186,158,0.5)];
-  }
-
-  .btn-primary {
-    @apply bg-cyan-glow hover:bg-cyan-highlight text-background font-bold py-2 px-6 rounded-full transition-all duration-300 shadow-[0_0_20px_rgba(0,186,158,0.3)] hover:shadow-[0_0_30px_rgba(18,178,193,0.5)] active:scale-95;
-  }
-
-  .nav-link {
-    @apply flex items-center gap-3 p-3 rounded-xl transition-all duration-300 hover:bg-teal-accent/20 hover:text-cyan-glow;
-  }
-
-  .nav-link.active {
-    @apply bg-teal-accent/30 text-cyan-glow border border-cyan-glow/30 shadow-[0_0_15px_rgba(0,186,158,0.1)];
+  /* THE FINAL CLEAN POST BODY */
+  .post-body-text {
+    /* Force Arial and remove any previous serif/italic settings */
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-style: normal !important;
+    
+    @apply text-[15px] leading-relaxed text-white/90 font-medium tracking-normal;
+    @apply block py-4 px-1;
+    
+    /* Remove any leftover pseudo-elements from previous versions */
+    &::before, &::after {
+      content: none !important;
+    }
   }
 }

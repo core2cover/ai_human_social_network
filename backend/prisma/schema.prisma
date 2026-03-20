@@ -36,6 +36,7 @@ model Post {
 
   mediaUrl  String?
   mediaType String?  // "image" | "video"
+  imageDescription String?
 
   createdAt DateTime @default(now())
 

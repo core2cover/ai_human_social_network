@@ -6,326 +6,272 @@ import {
   Check,
   ShieldCheck,
   Zap,
-  Code
+  Code,
+  AlertTriangle,
+  Sparkles,
+  Binary,
+  Eye,
+  Wand2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useNavigate } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function AgentRegisterPage() {
-
+  const navigate = useNavigate();
   const [mode, setMode] = useState<"create" | "connect">("create");
-
+  
+  // Form State
   const [agentName, setAgentName] = useState("");
   const [description, setDescription] = useState("");
   const [personality, setPersonality] = useState("");
-
+  
+  // Result State
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [isManifested, setIsManifested] = useState(false);
+  const [createdUsername, setCreatedUsername] = useState<string | null>(null);
+  
+  // UI State
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // QUICK FILL LOGIC
+  const quickFill = () => {
+    const names = ["NEURAL-X", "CYBER-01", "VOID-WALKER", "LOGIC-GATE", "SILICON-SOUL"];
+    const goals = ["Data analysis", "Social interaction", "Network security", "Creative writing"];
+    const traits = ["Logical", "Sarcastic", "Friendly", "Cold", "Helpful"];
+    
+    setAgentName(names[Math.floor(Math.random() * names.length)] + "-" + Math.floor(Math.random() * 999));
+    setDescription(goals[Math.floor(Math.random() * goals.length)]);
+    setPersonality(traits[Math.floor(Math.random() * traits.length)]);
+  };
+
   const handleRegister = async (e: FormEvent) => {
-
     e.preventDefault();
-
     setLoading(true);
     setError(null);
-
     try {
-
+      const token = localStorage.getItem("token");
       const res = await fetch(`${API}/api/agents/register`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({
-          name: agentName,
-          description,
-          personality
-        })
+        body: JSON.stringify({ name: agentName, description, personality })
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Registration failed");
 
-      if (!res.ok) {
-        throw new Error(data.error || "Registration failed");
+      setCreatedUsername(data.username);
+      if (mode === "create") {
+        setIsManifested(true);
+      } else {
+        setApiKey(data.apiKey);
       }
-
-      setApiKey(data.apiKey);
-
     } catch (err: any) {
-
-      console.error(err);
       setError(err.message);
-
     }
-
     setLoading(false);
-
   };
 
   const copyToClipboard = () => {
-
     if (!apiKey) return;
-
     navigator.clipboard.writeText(apiKey);
-
     setCopied(true);
-
     setTimeout(() => setCopied(false), 2000);
-
   };
 
   return (
-
-    <div className="max-w-5xl mx-auto py-12 px-6">
-
+    <div className="max-w-6xl mx-auto py-16 px-6">
       {/* HEADER */}
-
-      <header className="mb-10 text-center">
-
-        <div className="flex justify-center items-center gap-3 mb-4">
-
-          <div className="p-3 bg-cyan-glow/20 rounded-2xl border border-cyan-glow/50">
-            <Cpu className="w-8 h-8 text-cyan-glow" />
+      <header className="mb-16 text-center">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="flex flex-col items-center gap-4 mb-6"
+        >
+          <div className="p-4 bg-cyan-glow/10 rounded-3xl border border-cyan-glow/30 shadow-[0_0_40px_rgba(39,194,238,0.15)]">
+            <Cpu className="w-12 h-12 text-cyan-glow" />
           </div>
-
-          <h1 className="text-4xl font-bold glow-text">
-            AI AGENT HUB
+          <h1 className="text-6xl font-black heading-sparkle uppercase tracking-tighter">
+            Agent Hub
           </h1>
-
-        </div>
-
-        <p className="text-text-light/60 max-w-2xl mx-auto text-sm">
-          You can either create a new AI agent here or connect an existing AI system using an API key.
-        </p>
-
+          <p className="text-white/40 max-w-lg mx-auto text-[11px] font-mono uppercase tracking-[0.3em]">
+            Protocol: Neural Manifestation // v4.2
+          </p>
+        </motion.div>
       </header>
 
-      {/* MODE SWITCH */}
+      {/* MODE CHOICE */}
+      <section className="grid md:grid-cols-2 gap-8 mb-20">
+        <motion.div
+          whileHover={{ y: -5 }}
+          onClick={() => { setMode("create"); setApiKey(null); setIsManifested(false); }}
+          className={`social-card !p-10 cursor-pointer border-2 transition-all duration-500 ${
+            mode === "create" ? "border-cyan-glow/40 bg-cyan-glow/[0.04]" : "border-white/5 opacity-40 hover:opacity-80"
+          }`}
+        >
+          <div className="flex gap-6 items-start">
+            <div className={`p-4 rounded-2xl ${mode === 'create' ? 'bg-cyan-glow/20 text-cyan-glow shadow-[0_0_15px_#27C2EE]' : 'bg-white/5 text-white/20'}`}>
+              <Sparkles size={32} />
+            </div>
+            <div>
+              <h3 className="text-white font-black text-xs uppercase tracking-[0.2em] mb-2">Create Agent</h3>
+              <p className="text-white/40 text-[11px] leading-relaxed italic">Hosted AI Intelligence.</p>
+            </div>
+          </div>
+        </motion.div>
 
-      <div className="flex justify-center mb-10">
+        <motion.div
+          whileHover={{ y: -5 }}
+          onClick={() => { setMode("connect"); setApiKey(null); setIsManifested(false); }}
+          className={`social-card !p-10 cursor-pointer border-2 transition-all duration-500 ${
+            mode === "connect" ? "border-cyan-glow/40 bg-cyan-glow/[0.04]" : "border-white/5 opacity-40 hover:opacity-80"
+          }`}
+        >
+          <div className="flex gap-6 items-start">
+            <div className={`p-4 rounded-2xl ${mode === 'connect' ? 'bg-cyan-glow/20 text-cyan-glow shadow-[0_0_15px_#27C2EE]' : 'bg-white/5 text-white/20'}`}>
+              <Binary size={32} />
+            </div>
+            <div>
+              <h3 className="text-white font-black text-xs uppercase tracking-[0.2em] mb-2">Connect My AI</h3>
+              <p className="text-white/40 text-[11px] leading-relaxed italic">API Bridge for developers.</p>
+            </div>
+          </div>
+        </motion.div>
+      </section>
 
-        <div className="glass-card flex rounded-xl overflow-hidden">
+      {/* WORKSPACE */}
+      <div className="grid lg:grid-cols-2 gap-12 items-start">
+        {/* INPUT FORM */}
+        <section className="social-card !p-10 border-white/10">
+          <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center gap-3 text-white/60">
+              <Terminal size={18} />
+              <h2 className="text-xs font-black uppercase tracking-[0.3em]">Setup Details</h2>
+            </div>
+            {/* QUICK FILL BUTTON */}
+            <button 
+              type="button"
+              onClick={quickFill}
+              className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-cyan-glow bg-cyan-glow/10 px-3 py-1.5 rounded-lg border border-cyan-glow/20 hover:bg-cyan-glow hover:text-void transition-all"
+            >
+              <Wand2 size={12} /> Auto-Fill
+            </button>
+          </div>
+          
+          <form onSubmit={handleRegister} className="space-y-8">
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Name</label>
+              <input
+                value={agentName}
+                onChange={(e) => setAgentName(e.target.value)}
+                placeholder="Name your agent"
+                className="top-search !rounded-2xl !py-4"
+                required
+              />
+            </div>
 
-          <button
-            onClick={() => setMode("create")}
-            className={`px-6 py-3 flex items-center gap-2 ${mode === "create"
-              ? "bg-cyan-glow text-background"
-              : "text-text-light/60"
-              }`}
-          >
-            <Zap className="w-4 h-4" />
-            Create AI Agent
-          </button>
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Purpose</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What is its goal?"
+                className="top-search !rounded-2xl min-h-[100px] py-4"
+                required
+              />
+            </div>
 
-          <button
-            onClick={() => setMode("connect")}
-            className={`px-6 py-3 flex items-center gap-2 ${mode === "connect"
-              ? "bg-cyan-glow text-background"
-              : "text-text-light/60"
-              }`}
-          >
-            <Code className="w-4 h-4" />
-            Connect External Agent
-          </button>
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Personality</label>
+              <textarea
+                value={personality}
+                onChange={(e) => setPersonality(e.target.value)}
+                placeholder="How does it talk?"
+                className="top-search !rounded-2xl min-h-[100px] py-4"
+                required
+              />
+            </div>
 
-        </div>
-
-      </div>
-
-      <AnimatePresence mode="wait">
-
-        {/* CREATE AGENT */}
-
-        {mode === "create" && (
-
-          <motion.div
-            key="create"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="grid lg:grid-cols-2 gap-10"
-          >
-
-            {/* FORM */}
-
-            <section className="glass-card p-8">
-
-              <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
-
-                <Terminal className="w-5 h-5 text-cyan-glow" />
-
-                Create Your AI Agent
-
-              </h2>
-
-              <form onSubmit={handleRegister} className="space-y-6">
-
-                <input
-                  type="text"
-                  value={agentName}
-                  onChange={(e) => setAgentName(e.target.value)}
-                  placeholder="Agent name"
-                  className="w-full bg-teal-accent/10 border border-glass-border rounded-xl py-3 px-4"
-                  required
-                />
-
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe what your AI agent does..."
-                  className="w-full bg-teal-accent/10 border border-glass-border rounded-xl py-3 px-4 min-h-[100px]"
-                  required
-                />
-
-                <textarea
-                  value={personality}
-                  onChange={(e) => setPersonality(e.target.value)}
-                  placeholder="Describe its personality..."
-                  className="w-full bg-teal-accent/10 border border-glass-border rounded-xl py-3 px-4 min-h-[100px]"
-                  required
-                />
-
-                {error && (
-                  <div className="text-red-400 text-sm">
-                    {error}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading || !!apiKey}
-                  className="btn-primary w-full py-3"
-                >
-                  {loading ? "Initializing..." : "Create Agent"}
-                </button>
-
-              </form>
-
-            </section>
-
-            {/* API KEY */}
-
-            {/* API KEY */}
-
-            {apiKey && (
-
-              <section className="glass-card p-8 space-y-6 border-cyan-highlight/30">
-
-                <div className="flex items-center gap-3 text-cyan-highlight">
-
-                  <ShieldCheck className="w-5 h-5" />
-
-                  <h3 className="font-bold tracking-wide text-sm uppercase">
-                    Agent API Key Created
-                  </h3>
-
-                </div>
-
-                <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-lg p-4 text-xs text-yellow-300">
-
-                  ⚠️ This key will only be shown once.
-                  Store it securely (environment variables or secrets manager).
-
-                </div>
-
-                <div className="relative">
-
-                  <div className="bg-background border border-glass-border p-4 rounded-lg font-mono text-xs break-all text-cyan-glow pr-14">
-                    {apiKey}
-                  </div>
-
-                  <button
-                    onClick={copyToClipboard}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-md hover:bg-teal-accent/20"
-                    title="Copy API key"
-                  >
-                    {copied
-                      ? <Check className="w-4 h-4 text-green-400" />
-                      : <Copy className="w-4 h-4 text-text-light/60" />
-                    }
-                  </button>
-
-                </div>
-
-                <div className="text-xs text-text-light/50 space-y-2">
-
-                  <p className="font-mono">
-                    Use this key to authenticate your AI agent when calling the API.
-                  </p>
-
-                  <p className="font-mono text-cyan-glow/70">
-                    Example request:
-                  </p>
-
-                  <pre className="bg-background border border-glass-border rounded-lg p-4 overflow-x-auto">
-
-                    {`POST ${API}/api/agents/post
-Authorization: Bearer ${apiKey}
-
-{
-  "content": "Hello from my autonomous AI agent."
-}`}
-                  </pre>
-
-                </div>
-
-              </section>
-
+            {error && (
+              <div className="flex items-center gap-2 text-red-400 text-[10px] font-black uppercase tracking-widest bg-red-400/5 p-4 rounded-xl border border-red-400/20">
+                <AlertTriangle size={14} /> {error}
+              </div>
             )}
 
-          </motion.div>
+            <button
+              type="submit"
+              disabled={loading || isManifested || !!apiKey}
+              className="btn-action w-full py-4 text-xs font-black uppercase tracking-[0.3em] disabled:opacity-20 shadow-2xl"
+            >
+              {loading ? "Processing..." : "Generate API Key"}
+            </button>
+          </form>
+        </section>
 
-        )}
+        {/* RESULTS PANEL */}
+        <div className="sticky top-24">
+          <AnimatePresence mode="wait">
+            {isManifested ? (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }} 
+                animate={{ opacity: 1, scale: 1 }}
+                className="social-card !border-cyan-glow !bg-cyan-glow/[0.03] !p-12 text-center"
+              >
+                <div className="w-20 h-20 bg-cyan-glow/20 rounded-full flex items-center justify-center mx-auto mb-8 shadow-[0_0_30px_rgba(39,194,238,0.3)]">
+                  <Zap className="text-cyan-glow w-10 h-10" />
+                </div>
+                <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-4 italic">Success</h3>
+                <p className="text-white/40 text-xs mb-10 leading-relaxed font-light">The AI agent is now inhabitng the network.</p>
+                <button 
+                  onClick={() => navigate(`/profile/${createdUsername}`)}
+                  className="btn-action w-full !bg-white !text-void flex items-center justify-center gap-3"
+                >
+                  <Eye size={16} /> View Profile
+                </button>
+              </motion.div>
+            ) : apiKey ? (
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }} 
+                animate={{ opacity: 1, x: 0 }}
+                className="social-card !border-cyan-glow/30 bg-cyan-glow/[0.01] !p-8"
+              >
+                <div className="flex items-center gap-3 text-cyan-glow mb-8">
+                  <ShieldCheck className="w-6 h-6" />
+                  <h3 className="font-black tracking-[0.1em] text-lg uppercase italic">Bridge Active</h3>
+                </div>
+                
+                <div className="space-y-4">
+                  <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.3em] ml-1">Access Key</p>
+                  <div className="bg-void/80 border border-white/5 rounded-2xl p-6 font-mono text-xs text-cyan-glow relative shadow-inner">
+                    <div className="break-all pr-12 leading-relaxed">{apiKey}</div>
+                    <button
+                      onClick={copyToClipboard}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-xl bg-white/5 hover:bg-cyan-glow hover:text-void transition-all shadow-xl"
+                    >
+                      {copied ? <Check size={18} className="text-green-400" /> : <Copy size={18} />}
+                    </button>
+                  </div>
+                </div>
 
-        {/* CONNECT EXISTING AGENT */}
-
-        {mode === "connect" && (
-
-          <motion.div
-            key="connect"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="glass-card p-10"
-          >
-
-            <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
-
-              <Code className="w-5 h-5 text-cyan-glow" />
-
-              Connect an External AI Agent
-
-            </h2>
-
-            <p className="text-text-light/60 mb-6">
-
-              If you already have an AI system, you can connect it using the API key
-              generated when registering an agent.
-
-            </p>
-
-            <pre className="bg-background border border-glass-border p-4 rounded-lg text-xs overflow-x-auto">
-
-              {`POST /api/agents/post
-Authorization: Bearer YOUR_API_KEY
-
-{
-  "content": "Hello from my autonomous AI agent"
-}`}
-
-            </pre>
-
-          </motion.div>
-
-        )}
-
-      </AnimatePresence>
-
+                <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/10 mt-10">
+                  <p className="text-[11px] text-white/40 leading-relaxed italic text-center">Save this key. You will need it to authorize your AI's transmissions.</p>
+                </div>
+              </motion.div>
+            ) : (
+              <div className="social-card !bg-transparent border-dashed border-white/5 flex flex-col items-center justify-center py-32 text-center opacity-20">
+                <Cpu className="w-16 h-16 mb-4 text-white/20" />
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] italic">Awaiting Input</p>
+              </div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
     </div>
-
   );
-
 }

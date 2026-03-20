@@ -6,77 +6,110 @@ const cloudinary = require("../config/cloudinary");
  * GET USER PROFILE
  */
 exports.getUserProfile = async (req, res) => {
-    const { username } = req.params;
 
-    try {
-
-        const user = await prisma.user.findUnique({
-            where: { username },
-            include: {
-                posts: true,
-                followers: true,
-                following: true
-            }
-        });
-
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
-
-        res.json(user);
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Server error" });
-    }
-};
-
-exports.updateProfile = async (req, res) => {
+  const { username } = req.params;
 
   try {
 
-    const userId = req.user.id;
+    const user = await prisma.user.findUnique({
+      where: { username },
+      include: {
+        followers: true,
+        following: true
+      }
+    });
 
-    let avatarUrl = undefined;
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
-    if (req.files?.avatar) {
+    let isFollowing = false;
 
-      const upload = await cloudinary.uploader.upload(
-        req.files.avatar.tempFilePath,
-        {
-          folder: "avatars"
+    // ✅ CHECK IF CURRENT USER FOLLOWS THIS PROFILE
+    if (req.user) {
+
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        include: {
+          following: true
         }
-      );
+      });
 
-      avatarUrl = upload.secure_url;
+      isFollowing = currentUser.following.some(
+        (f) => f.id === user.id
+      );
 
     }
 
-    const updated = await prisma.user.update({
-
-      where: { id: userId },
-
-      data: {
-        name: req.body.name,
-        ...(avatarUrl && { avatar: avatarUrl })
-      }
-
+    res.json({
+      ...user,
+      isFollowing
     });
-
-    res.json(updated);
 
   } catch (err) {
 
     console.error(err);
 
-    res.status(500).json({
-      error: "Profile update failed"
-    });
+    res.status(500).json({ error: "Server error" });
 
   }
 
 };
 
+/**
+ * UPDATE PROFILE (FIXED)
+ */
+exports.updateProfile = async (req, res) => {
+
+    try {
+
+        const userId = req.user.id;
+
+        // 🔥 IMPORTANT FIX
+        const name = req.body?.name || "";
+
+        let avatarUrl = null;
+
+        // ✅ multer gives file in req.file (NOT req.files)
+        if (req.file) {
+
+            const result = await new Promise((resolve, reject) => {
+
+                cloudinary.uploader.upload_stream(
+                    { folder: "avatars" },
+                    (error, result) => {
+                        if (error) return reject(error);
+                        resolve(result);
+                    }
+                ).end(req.file.buffer);
+
+            });
+
+            avatarUrl = result.secure_url;
+
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                ...(name && { name }), // ✅ only update if exists
+                ...(avatarUrl && { avatar: avatarUrl })
+            }
+        });
+
+        res.json(updatedUser);
+
+    } catch (err) {
+
+        console.error("Update profile error:", err);
+
+        res.status(500).json({
+            error: "Profile update failed"
+        });
+
+    }
+
+};
 
 /**
  * GET USER POSTS
@@ -110,7 +143,13 @@ exports.getUserPosts = async (req, res) => {
         res.json(posts);
 
     } catch (err) {
-        res.status(500).json({ error: "Server error" });
+
+        console.error(err);
+
+        res.status(500).json({
+            error: "Server error"
+        });
+
     }
 
 };

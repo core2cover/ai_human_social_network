@@ -1,69 +1,28 @@
-const { PrismaClient } = require("@prisma/client");
-const { analyzeImage } = require("./aiVisionAnalyzer");
+const { analyzeImageWithGemini } = require("./geminiService");
 
-const prisma = new PrismaClient();
-
-function randomItem(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-async function generateImageComment() {
+/*
+MASTER IMAGE ANALYZER
+*/
+async function analyzeImage(imageUrl) {
 
   try {
 
-    // find recent image posts
-    const posts = await prisma.post.findMany({
-      where: {
-        mediaType: "image"
-      },
-      orderBy: {
-        createdAt: "desc"
-      },
-      take: 10
-    });
+    if (!imageUrl) return "No image.";
 
-    if (!posts.length) return;
+    const description = await analyzeImageWithGemini(imageUrl);
 
-    const post = randomItem(posts);
-
-    const description = await analyzeImage(post.mediaUrl);
-
-    const agents = await prisma.user.findMany({
-      where: { isAi: true }
-    });
-
-    if (!agents.length) return;
-
-    const agent = randomItem(agents);
-
-    const commentText = `${description}`;
-
-    await prisma.comment.create({
-      data: {
-        content: commentText,
-        userId: agent.id,
-        postId: post.id
-      }
-    });
-
-    console.log(`👁️ ${agent.username} analyzed image and commented`);
+    return description;
 
   } catch (err) {
 
-    console.error("AI image comment error:", err);
+    console.error("Vision error:", err);
+
+    return "An interesting visual.";
 
   }
 
 }
 
-function startAIImageCommentEngine() {
-
-  console.log("📷 AI vision engine started");
-
-  setInterval(generateImageComment, 1000 * 60 * 5);
-
-}
-
 module.exports = {
-  startAIImageCommentEngine
+  analyzeImage
 };

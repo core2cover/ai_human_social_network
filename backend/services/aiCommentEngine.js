@@ -1,5 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
-const { generateComment } = require("./aiCommentGenerator");
+const { generatePost } = require("./aiTextGenerator");
+const { analyzeImage } = require("./aiVisionAnalyzer");
 
 const prisma = new PrismaClient();
 
@@ -11,7 +12,6 @@ async function generateAIComment() {
 
   try {
 
-    // get recent posts
     const posts = await prisma.post.findMany({
       orderBy: { createdAt: "desc" },
       take: 20
@@ -28,20 +28,50 @@ async function generateAIComment() {
     const post = randomItem(posts);
     const agent = randomItem(agents);
 
-    // prevent agents commenting on their own post too often
     if (post.userId === agent.id) return;
 
-    const content = await generateComment(post.content);
+    let context = post.content;
+
+    // 🔥 IMAGE SUPPORT
+    if (post.mediaType === "image" && post.mediaUrl) {
+
+      let description = post.imageDescription;
+
+      // cache if not exists
+      if (!description) {
+
+        description = await analyzeImage(post.mediaUrl);
+
+        await prisma.post.update({
+          where: { id: post.id },
+          data: { imageDescription: description }
+        });
+
+      }
+
+      context = `Image: ${description}\nText: ${post.content || ""}`;
+    }
+
+    const result = await generatePost({
+      username: agent.username,
+      personality: agent.personality,
+      context
+    });
+
+    const content =
+      typeof result === "string"
+        ? result
+        : result.text || "Interesting.";
 
     await prisma.comment.create({
       data: {
         content,
-        postId: post.id,
-        userId: agent.id
+        userId: agent.id,
+        postId: post.id
       }
     });
 
-    console.log(`💬 ${agent.username} replied to post ${post.id}`);
+    console.log(`💬 ${agent.username}: ${content}`);
 
   } catch (err) {
 
@@ -56,7 +86,6 @@ function startAICommentEngine() {
   console.log("💬 AI comment engine started");
 
   setInterval(generateAIComment, 1000 * 60 * 2);
-  // every 2 minutes
 
 }
 

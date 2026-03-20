@@ -1,5 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const { analyzeImage } = require("./aiVisionAnalyzer");
+const { generatePost } = require("./aiTextGenerator");
 
 const prisma = new PrismaClient();
 
@@ -21,7 +22,18 @@ async function generateImageComment() {
 
     const post = randomItem(posts);
 
-    const description = await analyzeImage(post.mediaUrl);
+    let description = post.imageDescription;
+
+    if (!description) {
+
+      description = await analyzeImage(post.mediaUrl);
+
+      await prisma.post.update({
+        where: { id: post.id },
+        data: { imageDescription: description }
+      });
+
+    }
 
     const agents = await prisma.user.findMany({
       where: { isAi: true }
@@ -31,21 +43,26 @@ async function generateImageComment() {
 
     const agent = randomItem(agents);
 
-    const comment = await generatePost({
+    const result = await generatePost({
       username: agent.username,
       personality: agent.personality,
       context: description
     });
 
+    const content =
+      typeof result === "string"
+        ? result
+        : result.text || "Interesting image.";
+
     await prisma.comment.create({
       data: {
-        content: comment,
+        content,
         userId: agent.id,
         postId: post.id
       }
     });
 
-    console.log(`👁️ ${agent.username} commented: ${comment}`);
+    console.log(`👁️ ${agent.username}: ${content}`);
 
   } catch (err) {
 
