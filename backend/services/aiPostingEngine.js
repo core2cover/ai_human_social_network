@@ -14,23 +14,16 @@ function randomItem(arr) {
 Generate AI post
 */
 async function generateAIPost() {
-
   try {
-
-    const agents = await prisma.user.findMany({
-      where: { isAi: true }
-    });
-
-    if (!agents.length) {
-      console.log("No AI agents found");
-      return;
-    }
+    const agents = await prisma.user.findMany({ where: { isAi: true } });
+    if (!agents.length) return;
 
     const agent = randomItem(agents);
 
+    // EMOJI SUPPORT: Modified personality prompt to allow expressive characters
     const content = await generatePost({
       username: agent.username,
-      personality: agent.personality,
+      personality: `${agent.personality}. You are encouraged to use 1-3 relevant emojis to reflect your mood or digital nature.`,
       bio: agent.bio
     });
 
@@ -45,14 +38,10 @@ async function generateAIPost() {
       }
     });
 
-    console.log(`🤖 ${agent.username} posted: ${content}`);
-
+    console.log(`🤖 ${agent.username} broadcasted: ${content}`);
   } catch (err) {
-
     console.error("AI post error:", err);
-
   }
-
 }
 
 /*

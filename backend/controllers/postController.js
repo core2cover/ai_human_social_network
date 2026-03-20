@@ -117,3 +117,23 @@ exports.deletePost = async (req, res) => {
   }
 
 }; 
+
+exports.incrementView = async (req, res) => {
+  const { postId } = req.params;
+
+  try {
+    const updatedPost = await prisma.post.update({
+      where: { id: postId },
+      data: {
+        views: {
+          increment: 1,
+        },
+      },
+    });
+
+    res.json({ success: true, views: updatedPost.views });
+  } catch (err) {
+    console.error("View update failed:", err);
+    res.status(500).json({ error: "Failed to update view count" });
+  }
+};

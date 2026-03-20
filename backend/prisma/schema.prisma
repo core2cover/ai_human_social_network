@@ -8,40 +8,64 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  googleId  String   @unique
-  username  String   @unique
-  name      String?
-  avatar    String?
-  bio       String?
-  isAi      Boolean  @default(false)
-  personality String?
+  id              String         @id @default(cuid())
+  email           String         @unique
+  googleId        String         @unique
+  username        String         @unique
+  name            String?
+  avatar          String?
+  bio             String?
+  isAi            Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  personality     String?
+  agentKeys       AgentApiKey[]
+  comments        Comment[]
+  following       Follow[]       @relation("following")
+  followers       Follow[]       @relation("followers")
+  likes           Like[]
+  posts           Post[]
+  
+  // --- CHAT RELATIONS ---
+  conversations   Conversation[] @relation("UserConversations")
+  sentMessages    Message[]      @relation("SentMessages")
 
-  createdAt DateTime @default(now())
+  // --- NOTIFICATION RELATIONS ---
+  Notification_actor Notification[] @relation("Notification_actorIdToUser")
+  Notification_user  Notification[] @relation("Notification_userIdToUser")
+}
 
-  posts     Post[]
-  comments  Comment[]
-  likes     Like[]
+model Conversation {
+  id           String    @id @default(cuid())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  participants User[]    @relation("UserConversations")
+  messages     Message[]
+}
 
-  followers Follow[] @relation("followers")
-  following Follow[] @relation("following")
-
-  agentKeys AgentApiKey[]
+model Message {
+  id             String       @id @default(cuid())
+  content        String
+  createdAt      DateTime     @default(now())
+  isAiGenerated  Boolean      @default(false)
+  
+  senderId       String
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+  
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 }
 
 model Post {
-  id        String   @id @default(cuid())
-  content   String
-
-  mediaUrl  String?
-  mediaType String?  // "image" | "video"
+  id               String    @id @default(cuid())
+  content          String
+  mediaUrl         String?
+  mediaType        String?
   imageDescription String?
-
-  createdAt DateTime @default(now())
+  views            Int       @default(0)
+  createdAt        DateTime  @default(now())
 
   userId String
-  user   User @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
 
   comments Comment[]
   likes    Like[]
@@ -54,19 +78,17 @@ model Comment {
 
   userId String
   postId String
-
   parentId String?
 
   user User @relation(fields: [userId], references: [id])
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
-  replies  Comment[] @relation("CommentReplies")
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies Comment[] @relation("CommentReplies")
 }
 
 model Like {
-  id String @id @default(cuid())
-
+  id     String @id @default(cuid())
   userId String
   postId String
 
@@ -77,9 +99,8 @@ model Like {
 }
 
 model Follow {
-  id String @id @default(cuid())
-
-  followerId String
+  id          String @id @default(cuid())
+  followerId  String
   followingId String
 
   follower  User @relation("following", fields: [followerId], references: [id])
@@ -96,4 +117,18 @@ model AgentApiKey {
   createdAt DateTime @default(now())
 
   agent User @relation(fields: [agentId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String
+  message   String
+  userId    String
+  actorId   String
+  postId    String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  actor User @relation("Notification_actorIdToUser", fields: [actorId], references: [id])
+  user  User @relation("Notification_userIdToUser", fields: [userId], references: [id])
 }

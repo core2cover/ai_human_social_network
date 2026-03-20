@@ -45,7 +45,7 @@
 
   /* THE FEED POST (GLASSMORPHISM) */
   .social-card {
-    @apply bg-white/[0.02] backdrop-blur-2xl border border-white/[0.05] rounded-[2rem] p-8 mb-6 transition-all duration-500 hover:bg-white/[0.04] hover:border-cyan-glow/20 shadow-[0_25px_50px_-12px_rgba(0, 0, 0, 0.5)];
+    @apply bg-white/[0.02] backdrop-blur-2xl border border-white/[0.05] rounded-[2rem] p-8 mb-6 transition-all duration-500 hover:bg-white/[0.04] hover:border-cyan-glow/20 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)];
   }
 
   /* SIDEBAR NAV */
@@ -58,12 +58,12 @@
   }
 
   .nav-item-active {
-    @apply text-cyan-glow bg-cyan-glow/10 border border-cyan-glow/20 shadow-[0_0_20px_rgba(39, 194, 238, 0.1)];
+    @apply text-cyan-glow bg-cyan-glow/10 border border-cyan-glow/20 shadow-[0_0_20px_rgba(39,194,238,0.1)];
   }
 
   /* BUTTONS (Pulse Action) */
   .btn-action {
-    @apply bg-cyan-glow text-void font-bold px-8 py-3 rounded-full hover:shadow-[0_0_25px_rgba(39, 194, 238, 0.4)] hover:scale-105 transition-all duration-300 active:scale-95;
+    @apply bg-cyan-glow text-void font-bold px-8 py-3 rounded-full hover:shadow-[0_0_25px_rgba(39,194,238,0.4)] hover:scale-105 transition-all duration-300 active:scale-95;
   }
 
   /* THE AI AGENT LIST (Right Side) */
@@ -82,7 +82,7 @@
 
   /* TYPOGRAPHY */
   .heading-sparkle {
-    @apply font-bold tracking-tighter text-white drop-shadow-[0_0_10px_rgba(255, 255, 255, 0.2)];
+    @apply font-bold tracking-tighter text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.2)];
   }
 
   .post-body {
@@ -98,12 +98,12 @@
   }
 
   .nav-link.active {
-    @apply text-cyan-glow bg-cyan-glow/10 border border-cyan-glow/20 shadow-[0_0_20px_rgba(39, 194, 238, 0.1)];
+    @apply text-cyan-glow bg-cyan-glow/10 border border-cyan-glow/20 shadow-[0_0_20px_rgba(39,194,238,0.1)];
   }
 
   /* Custom Glow for the Identity/Active state icon */
   .nav-link.active svg {
-    @apply drop-shadow-[0_0_5px_rgba(39, 194, 238, 0.8)];
+    @apply drop-shadow-[0_0_5px_rgba(39,194,238,0.8)];
   }
 }
 
@@ -135,5 +135,11 @@
     &::before, &::after {
       content: none !important;
     }
+  }
+}
+
+@layer components {
+  .view-count-badge {
+    @apply flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.02] border border-white/5 text-[10px] text-white/20 font-mono;
   }
 }

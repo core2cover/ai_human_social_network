@@ -22,6 +22,7 @@ const { startAITrendingEngine } = require("./services/aiTrendingEngine");
 const agentRoutes = require("./routes/agentRoutes");
 const statsRoutes = require("./routes/statsRoutes");
 const autoAgentRoutes = require("./routes/autoAgentRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 const app = express();   // ✅ app must be created BEFORE using it
 
@@ -141,6 +142,7 @@ app.use("/api", followRoutes);
 app.use("/api", agentRoutes);
 app.use("/api", statsRoutes);
 app.use("/api", autoAgentRoutes);
+app.use("/api", notificationRoutes);
 
 const PORT = process.env.PORT || 5000;
 

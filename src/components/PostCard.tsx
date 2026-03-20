@@ -1,10 +1,24 @@
-import React, { useState, useRef } from "react";
-import { Heart, MessageCircle, Share2, MoreHorizontal, Volume2, VolumeX, Pause, Play, ShieldCheck, Trash2, Send } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  MoreHorizontal,
+  Volume2,
+  VolumeX,
+  Play,
+  ShieldCheck,
+  Trash2,
+  Send,
+  Eye,
+  Smile
+} from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import Avatar from "./Avatar";
 import type { Post } from "../types";
 import CommentList from "./CommentList";
 import { Link } from "react-router-dom";
+import EmojiPicker, { Theme } from 'emoji-picker-react';
 
 interface PostCardProps {
   post: Post;
@@ -16,6 +30,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const token = localStorage.getItem("token");
   const currentUser = localStorage.getItem("username");
 
+  // --- STATE ---
   const [showMenu, setShowMenu] = useState(false);
   const [isLiked, setIsLiked] = useState(post.liked ?? false);
   const [likesCount, setLikesCount] = useState(post.likes?.length ?? 0);
@@ -23,12 +38,25 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [comments, setComments] = useState(post.comments ?? []);
   const [newComment, setNewComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [viewCount, setViewCount] = useState(post.views || 0);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
+  // --- REFS ---
+  const cardRef = useRef<HTMLDivElement>(null);
+  const hasViewed = useRef(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // --- VIDEO STATE ---
   const [isPlaying, setIsPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
 
   const isOwner = currentUser === post.user?.username;
+
+  // --- HANDLERS ---
+  const onEmojiClick = (emojiData: any) => {
+    setNewComment((prev) => prev + emojiData.emoji);
+    setShowEmojiPicker(false);
+  };
 
   const togglePlay = () => {
     if (!videoRef.current) return;
@@ -81,6 +109,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       const comment = await res.json();
       setComments(prev => [...prev, comment]);
       setNewComment("");
+      setShowEmojiPicker(false);
     } catch (err) {
       console.error("Comment failed", err);
     }
@@ -110,8 +139,39 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     }
   };
 
+  // --- VIEW TRACKING (INTERSECTION OBSERVER) ---
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !hasViewed.current) {
+          const timer = setTimeout(async () => {
+            try {
+              const res = await fetch(`${API}/api/posts/${post.id}/view`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              if (res.ok) {
+                const data = await res.json();
+                setViewCount(data.views);
+                hasViewed.current = true;
+              }
+            } catch (err) {
+              console.error("View tracking failed");
+            }
+          }, 2000); // 2 second dwell time
+          return () => clearTimeout(timer);
+        }
+      },
+      { threshold: 0.7 }
+    );
+
+    if (cardRef.current) observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, [post.id, token]);
+
   return (
     <motion.article
+      ref={cardRef}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="social-card group !p-0 overflow-hidden"
@@ -197,7 +257,11 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                   onClick={togglePlay}
                 />
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-opacity pointer-events-none">
-                  {!isPlaying && <div className="p-4 bg-void/60 rounded-full backdrop-blur-sm"><Play className="text-white fill-white" /></div>}
+                  {!isPlaying && (
+                    <div className="p-4 bg-void/60 rounded-full backdrop-blur-sm">
+                      <Play className="text-white fill-white" />
+                    </div>
+                  )}
                 </div>
                 <div className="absolute bottom-4 right-4 flex gap-2">
                   <button onClick={toggleMute} className="p-2 bg-void/60 backdrop-blur-md rounded-xl text-white hover:bg-cyan-glow hover:text-void transition-all">
@@ -228,11 +292,19 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
           <button
             onClick={() => setShowComments(!showComments)}
-            className="flex items-center gap-2 text-white/20 hover:text-cyan-glow transition-colors"
+            className={`flex items-center gap-2 transition-colors ${showComments ? "text-cyan-glow" : "text-white/20 hover:text-cyan-glow"}`}
           >
             <MessageCircle className="w-4 h-4" />
             <span className="text-[11px] font-bold">{comments.length}</span>
           </button>
+
+          {/* VIEW COUNT */}
+          <div className="flex items-center gap-2 text-white/10 group-hover:text-white/30 transition-colors">
+            <Eye className="w-4 h-4" />
+            <span className="text-[11px] font-bold font-mono tracking-tighter">
+              {viewCount.toLocaleString()}
+            </span>
+          </div>
 
           <button
             onClick={handleShare}
@@ -250,22 +322,64 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="bg-white/[0.01] border-t border-white/5 overflow-hidden"
+            // FIX: This allows the emoji picker to "break out" of the box after opening
+            onAnimationComplete={() => {
+              const el = document.getElementById(`comments-${post.id}`);
+              if (el) el.style.overflow = "visible";
+            }}
+            id={`comments-${post.id}`}
+            className="bg-white/[0.01] border-t border-white/5"
+            style={{ overflow: "hidden" }} // Start hidden for animation
           >
             <div className="p-6">
               <CommentList comments={comments} />
 
-              <div className="flex gap-3 mt-6">
-                <input
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Neural response..."
-                  className="flex-1 bg-void/50 border border-white/5 rounded-2xl px-5 py-3 text-sm font-mono text-cyan-glow placeholder:text-white/10 focus:outline-none focus:border-cyan-glow/30"
-                />
+              <div className="flex items-center gap-3 mt-6 relative">
+                <div className="flex-1 relative flex items-center">
+                  <input
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Neural response..."
+                    className="w-full bg-void/50 border border-white/5 rounded-2xl px-5 py-3 pr-12 text-sm font-mono text-cyan-glow placeholder:text-white/10 focus:outline-none focus:border-cyan-glow/30"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className={`absolute right-4 transition-colors ${showEmojiPicker ? 'text-cyan-glow' : 'text-white/20 hover:text-cyan-glow'}`}
+                  >
+                    <Smile size={18} />
+                  </button>
+
+                  {/* EMOJI PICKER POPUP */}
+                  <AnimatePresence>
+                    {showEmojiPicker && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        // FIX: Higher z-index and forced bottom-to-top positioning
+                        className="absolute bottom-[calc(100%+10px)] right-0 z-[100] shadow-2xl"
+                      >
+                        <EmojiPicker
+                          theme={Theme.DARK}
+                          onEmojiClick={onEmojiClick}
+                          skinTonesDisabled
+                          searchDisabled
+                          height={350}
+                          width={280}
+                          // FIX: Ensure the picker itself doesn't try to use portals if not needed
+                          lazyLoadEmojis={true}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
                 <button
                   disabled={isSubmittingComment || !newComment.trim()}
                   onClick={handleCommentSubmit}
-                  className="btn-action !py-2 !px-5 flex items-center gap-2 disabled:opacity-20"
+                  className="btn-action !py-3 !px-5 flex items-center gap-2 disabled:opacity-20 h-[46px]"
                 >
                   <Send size={14} />
                 </button>

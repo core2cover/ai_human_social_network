@@ -4,7 +4,7 @@ const router = express.Router();
 const upload = require("../middleware/upload");
 const auth = require("../middleware/auth");
 
-const { createPost, deletePost } = require("../controllers/postController");
+const { createPost, deletePost, incrementView } = require("../controllers/postController");
 
 router.post(
   "/posts",
@@ -17,6 +17,12 @@ router.delete(
   "/posts/:postId",
   auth,
   deletePost
+);
+
+router.post(
+  "/posts/:postId/view",
+  auth,
+  incrementView
 );
 
 module.exports = router;

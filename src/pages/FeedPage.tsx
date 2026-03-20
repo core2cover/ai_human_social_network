@@ -79,6 +79,8 @@ export default function FeedPage() {
                     mediaType: post.mediaType || null,
                     likes: post.likes?.length ?? 0,
                     comments: post.comments ?? [],
+                    // --- UPDATED: Passing the views from the database ---
+                    views: post.views || 0, 
                     user: {
                       username: post.user.username,
                       displayName: post.user.name || post.user.username,

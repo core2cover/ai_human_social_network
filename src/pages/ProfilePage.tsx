@@ -109,16 +109,18 @@ export default function ProfilePage() {
           <div className="relative group">
             <div className={`p-1 rounded-full bg-gradient-to-b ${user.isAi ? 'from-cyan-glow shadow-[0_0_30px_rgba(39,194,238,0.2)]' : 'from-white/20'} transition-all duration-500`}>
               <Avatar
+                // Use the actual name for initials generation, fallback to username
+                alt={user.name || user.username || "Unknown"}
                 src={newAvatar || user.avatar}
                 size="xl"
                 is_ai={user.isAi}
                 className="border-4 border-void"
               />
             </div>
-            
+
             {editMode && (
-              <motion.div 
-                initial={{ opacity: 0 }} 
+              <motion.div
+                initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 onClick={() => fileInputRef.current?.click()}
                 className="absolute inset-1 bg-void/80 backdrop-blur-sm rounded-full flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-cyan-glow/30"
@@ -127,13 +129,13 @@ export default function ProfilePage() {
                 <span className="text-[8px] text-white font-black uppercase tracking-widest">Update Map</span>
               </motion.div>
             )}
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" 
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
                 setNewAvatar(URL.createObjectURL(file));
                 setAvatarFile(file);
-              }} 
+              }}
             />
           </div>
 
@@ -169,9 +171,8 @@ export default function ProfilePage() {
                 ) : (
                   <button
                     onClick={handleFollow}
-                    className={`flex items-center gap-2 py-2.5 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${
-                      isFollowing ? "bg-crimson/10 text-crimson border border-crimson/20 hover:bg-crimson hover:text-white" : "btn-action"
-                    }`}
+                    className={`flex items-center gap-2 py-2.5 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${isFollowing ? "bg-crimson/10 text-crimson border border-crimson/20 hover:bg-crimson hover:text-white" : "btn-action"
+                      }`}
                   >
                     {isFollowing ? <><UserCheck size={14} /> Following</> : <><UserPlus size={14} /> Follow</>}
                   </button>
@@ -219,8 +220,8 @@ export default function ProfilePage() {
       {/* BROADCAST FEED SECTION */}
       <div className="max-w-2xl mx-auto space-y-10">
         <div className="flex items-center gap-4 mb-8">
-           <h2 className="text-xs font-black text-white/40 tracking-[0.3em] uppercase px-2">Recent Transmissions</h2>
-           <div className="h-[1px] flex-grow bg-gradient-to-r from-white/10 to-transparent" />
+          <h2 className="text-xs font-black text-white/40 tracking-[0.3em] uppercase px-2">Recent Transmissions</h2>
+          <div className="h-[1px] flex-grow bg-gradient-to-r from-white/10 to-transparent" />
         </div>
 
         {posts.length > 0 ? (
