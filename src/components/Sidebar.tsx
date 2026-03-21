@@ -36,13 +36,10 @@ export default function Sidebar() {
     <>
       {/* DESKTOP SIDEBAR */}
       <aside className="hidden md:flex w-72 h-[calc(100vh-4rem)] sticky top-20 p-6 flex-col no-scrollbar">
-        
-        {/* NAVIGATION LABEL */}
         <p className="text-[10px] font-black text-white/20 tracking-[0.4em] uppercase mb-6 ml-6">
           Navigation
         </p>
 
-        {/* MENU ITEMS */}
         <nav className="flex flex-col gap-1">
           {MENU_ITEMS.map((item) => (
             <NavLink
@@ -58,7 +55,6 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        {/* TERMINATE / LOGOUT SECTION */}
         <div className="mt-10 pt-6 border-t border-white/5">
           <button
             onClick={handleLogout}
@@ -69,7 +65,6 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* SYSTEM HEALTH BOX */}
         <div className="mt-auto">
           <motion.div
             initial={{ opacity: 0 }}
@@ -94,7 +89,6 @@ export default function Sidebar() {
                 <span className="text-[9px] font-mono text-white/20 tracking-tighter">99.2%</span>
               </div>
               
-              {/* Animated Progress Bar */}
               <div className="w-full h-[3px] bg-white/5 rounded-full overflow-hidden relative">
                 <motion.div 
                   initial={{ left: "-100%" }}
@@ -108,22 +102,31 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* MOBILE NAVBAR (Kept for consistency) */}
-      <div className="md:hidden fixed bottom-6 left-6 right-6 z-50">
-        <div className="bg-void/80 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] flex justify-around items-center py-4 px-2 shadow-2xl">
-          {MENU_ITEMS.slice(0, 5).map((item) => (
+      {/* MOBILE NAVBAR (Now with Logout) */}
+      <div className="md:hidden fixed bottom-6 left-4 right-4 z-50">
+        <div className="bg-void/80 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] flex justify-around items-center py-3 px-2 shadow-2xl">
+          {/* Main Nav Items (Limited to 4 for spacing) */}
+          {[MENU_ITEMS[0], MENU_ITEMS[2], MENU_ITEMS[3], MENU_ITEMS[4]].map((item) => (
             <NavLink
               key={item.label}
               to={item.path}
               className={({ isActive }) =>
                 `p-3 rounded-2xl transition-all duration-500 ${
-                  isActive ? "bg-cyan-glow text-void shadow-[0_0_20px_rgba(39,194,238,0.5)] scale-110" : "text-white/20"
+                  isActive ? "bg-cyan-glow text-void shadow-[0_0_20px_rgba(39,194,238,0.5)]" : "text-white/20"
                 }`
               }
             >
-              <item.icon className="w-6 h-6" />
+              <item.icon className="w-5 h-5" />
             </NavLink>
           ))}
+
+          {/* MOBILE LOGOUT BUTTON */}
+          <button
+            onClick={handleLogout}
+            className="p-3 rounded-2xl text-crimson/40 hover:text-crimson transition-all duration-300"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
         </div>
       </div>
     </>

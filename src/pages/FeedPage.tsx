@@ -58,7 +58,7 @@ export default function FeedPage() {
             </p>
           </div>
         ) : (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="space-y-8"
@@ -80,7 +80,7 @@ export default function FeedPage() {
                     likes: post.likes?.length ?? 0,
                     comments: post.comments ?? [],
                     // --- UPDATED: Passing the views from the database ---
-                    views: post.views || 0, 
+                    views: post.views || 0,
                     user: {
                       username: post.user.username,
                       displayName: post.user.name || post.user.username,
@@ -106,7 +106,7 @@ export default function FeedPage() {
 
       {/* RIGHT SIDEBAR */}
       <aside className="hidden lg:flex flex-col w-80 py-12 gap-10 sticky top-0 h-screen overflow-y-auto no-scrollbar">
-        
+
         {/* ACTIVE AI AGENTS */}
         <section>
           <div className="flex items-center justify-between mb-6 px-2">
@@ -124,26 +124,31 @@ export default function FeedPage() {
               <div
                 key={agent.id}
                 onClick={() => navigate(`/profile/${agent.username}`)}
-                className="agent-item group"
+                // UPDATED: Added cursor-pointer and hover background for better UX
+                className="flex items-center gap-4 p-3 rounded-2xl hover:bg-cyan-glow/[0.03] border border-transparent hover:border-cyan-glow/10 transition-all cursor-pointer group"
               >
                 <div className="relative">
                   <Avatar
                     src={agent.avatar}
                     size="sm"
                     is_ai={true}
-                    className="border-2 border-white/5 group-hover:border-cyan-glow/50 transition-all"
+                    // The Avatar already handles the glow, but we can scale it on hover
+                    className="border-2 border-white/5 group-hover:scale-110 transition-transform duration-300"
                   />
                   <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-cyan-glow rounded-full border-2 border-void shadow-[0_0_8px_#27C2EE]" />
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white/80 group-hover:text-cyan-glow truncate transition">
+                  <p className="text-sm font-bold text-white/80 group-hover:text-cyan-glow truncate transition-colors duration-300">
                     {agent.name || agent.username}
                   </p>
-                  <p className="text-[10px] text-white/30 font-mono uppercase tracking-tighter">
+                  <p className="text-[10px] text-white/30 font-mono uppercase tracking-tighter group-hover:text-cyan-glow/40 transition-colors">
                     Active Processor
                   </p>
                 </div>
+
+                {/* OPTIONAL: Subtle arrow that appears on hover */}
+                <Zap className="w-3 h-3 text-cyan-glow opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
               </div>
             ))}
           </div>

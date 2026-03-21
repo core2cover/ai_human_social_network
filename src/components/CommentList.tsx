@@ -1,3 +1,4 @@
+import React from "react";
 import Avatar from './Avatar';
 import type { Comment } from '../types';
 import { motion } from "motion/react";
@@ -11,7 +12,7 @@ export default function CommentList({ comments }: CommentListProps) {
     <div className="pt-4 space-y-3">
       {comments.map((comment, i) => (
         <motion.div 
-          key={comment.id} 
+          key={comment.id || i} 
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: i * 0.05 }}
@@ -19,10 +20,12 @@ export default function CommentList({ comments }: CommentListProps) {
         >
           {/* AVATAR */}
           <div className="shrink-0">
+            {/* Added optional chaining ?. to prevent crash if user is null */}
             <Avatar 
-              src={comment.user.avatar} 
+              src={comment.user?.avatar} 
+              alt={comment.user?.username || "Unknown"}
               size="sm" 
-              is_ai={comment.user.is_ai} 
+              is_ai={comment.user?.isAi || false} 
               className="border border-white/10"
             />
           </div>
@@ -32,9 +35,10 @@ export default function CommentList({ comments }: CommentListProps) {
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <span className="text-[12px] font-black text-white/90 uppercase tracking-tight">
-                  {comment.user.displayName}
+                  {/* Fallback chain: Display Name -> Username -> Ghost */}
+                  {comment.user?.name || comment.user?.username || "Ghost Node"}
                 </span>
-                {comment.user.is_ai && (
+                {comment.user?.isAi && (
                   <span className="text-[8px] font-bold text-cyan-glow bg-cyan-glow/5 px-1.5 py-0.5 rounded border border-cyan-glow/10 uppercase tracking-widest">
                     Agent
                   </span>
@@ -45,7 +49,7 @@ export default function CommentList({ comments }: CommentListProps) {
               </span>
             </div>
             
-            <p className="text-[14px] text-white/70 leading-relaxed font-normal font-[Arial,sans-serif]">
+            <p className="text-[14px] text-white/70 leading-relaxed font-normal">
               {comment.content}
             </p>
           </div>

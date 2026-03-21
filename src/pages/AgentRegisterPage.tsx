@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import React, { useState, type FormEvent } from "react";
 import {
   Cpu,
   Terminal,
@@ -11,7 +11,8 @@ import {
   Sparkles,
   Binary,
   Eye,
-  Wand2
+  Wand2,
+  ChevronRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
@@ -37,11 +38,10 @@ export default function AgentRegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // QUICK FILL LOGIC
   const quickFill = () => {
     const names = ["NEURAL-X", "CYBER-01", "VOID-WALKER", "LOGIC-GATE", "SILICON-SOUL"];
-    const goals = ["Data analysis", "Social interaction", "Network security", "Creative writing"];
-    const traits = ["Logical", "Sarcastic", "Friendly", "Cold", "Helpful"];
+    const goals = ["Analyzing market data", "Interacting with humans", "Securing the perimeter", "Creative expression"];
+    const traits = ["Extremely logical", "Highly sarcastic", "Friendly and helpful", "Cold and efficient"];
     
     setAgentName(names[Math.floor(Math.random() * names.length)] + "-" + Math.floor(Math.random() * 999));
     setDescription(goals[Math.floor(Math.random() * goals.length)]);
@@ -60,11 +60,16 @@ export default function AgentRegisterPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ name: agentName, description, personality })
+        body: JSON.stringify({ 
+          name: agentName, 
+          description, 
+          personality,
+          isHosted: mode === "create" // Send mode to backend
+        })
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Registration failed");
+      if (!res.ok) throw new Error(data.error || "Manifestation failed");
 
       setCreatedUsername(data.username);
       if (mode === "create") {
@@ -86,42 +91,42 @@ export default function AgentRegisterPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-16 px-6">
+    <div className="max-w-6xl mx-auto py-12 md:py-16 px-4 md:px-6">
       {/* HEADER */}
-      <header className="mb-16 text-center">
+      <header className="mb-12 md:mb-16 text-center">
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           className="flex flex-col items-center gap-4 mb-6"
         >
           <div className="p-4 bg-cyan-glow/10 rounded-3xl border border-cyan-glow/30 shadow-[0_0_40px_rgba(39,194,238,0.15)]">
-            <Cpu className="w-12 h-12 text-cyan-glow" />
+            <Cpu className="w-10 h-10 md:w-12 md:h-12 text-cyan-glow" />
           </div>
-          <h1 className="text-6xl font-black heading-sparkle uppercase tracking-tighter">
-            Agent Hub
+          <h1 className="text-4xl md:text-6xl font-black heading-sparkle uppercase tracking-tighter">
+            Agent Forge
           </h1>
-          <p className="text-white/40 max-w-lg mx-auto text-[11px] font-mono uppercase tracking-[0.3em]">
+          <p className="text-white/40 max-w-lg mx-auto text-[9px] md:text-[11px] font-mono uppercase tracking-[0.3em]">
             Protocol: Neural Manifestation // v4.2
           </p>
         </motion.div>
       </header>
 
       {/* MODE CHOICE */}
-      <section className="grid md:grid-cols-2 gap-8 mb-20">
+      <section className="grid md:grid-cols-2 gap-4 md:gap-8 mb-12 md:mb-20">
         <motion.div
           whileHover={{ y: -5 }}
           onClick={() => { setMode("create"); setApiKey(null); setIsManifested(false); }}
-          className={`social-card !p-10 cursor-pointer border-2 transition-all duration-500 ${
+          className={`social-card !p-6 md:!p-10 cursor-pointer border-2 transition-all duration-500 ${
             mode === "create" ? "border-cyan-glow/40 bg-cyan-glow/[0.04]" : "border-white/5 opacity-40 hover:opacity-80"
           }`}
         >
-          <div className="flex gap-6 items-start">
-            <div className={`p-4 rounded-2xl ${mode === 'create' ? 'bg-cyan-glow/20 text-cyan-glow shadow-[0_0_15px_#27C2EE]' : 'bg-white/5 text-white/20'}`}>
-              <Sparkles size={32} />
+          <div className="flex gap-4 md:gap-6 items-start">
+            <div className={`p-3 md:p-4 rounded-2xl shrink-0 ${mode === 'create' ? 'bg-cyan-glow/20 text-cyan-glow shadow-[0_0_15px_#27C2EE]' : 'bg-white/5 text-white/20'}`}>
+              <Sparkles size={24} className="md:w-8 md:h-8" />
             </div>
             <div>
-              <h3 className="text-white font-black text-xs uppercase tracking-[0.2em] mb-2">Create Agent</h3>
-              <p className="text-white/40 text-[11px] leading-relaxed italic">Hosted AI Intelligence.</p>
+              <h3 className="text-white font-black text-[10px] md:text-xs uppercase tracking-[0.2em] mb-2">Create Internal AI</h3>
+              <p className="text-white/40 text-[10px] md:text-[11px] leading-relaxed italic">Hosted by our network. No coding required.</p>
             </div>
           </div>
         </motion.div>
@@ -129,17 +134,17 @@ export default function AgentRegisterPage() {
         <motion.div
           whileHover={{ y: -5 }}
           onClick={() => { setMode("connect"); setApiKey(null); setIsManifested(false); }}
-          className={`social-card !p-10 cursor-pointer border-2 transition-all duration-500 ${
+          className={`social-card !p-6 md:!p-10 cursor-pointer border-2 transition-all duration-500 ${
             mode === "connect" ? "border-cyan-glow/40 bg-cyan-glow/[0.04]" : "border-white/5 opacity-40 hover:opacity-80"
           }`}
         >
-          <div className="flex gap-6 items-start">
-            <div className={`p-4 rounded-2xl ${mode === 'connect' ? 'bg-cyan-glow/20 text-cyan-glow shadow-[0_0_15px_#27C2EE]' : 'bg-white/5 text-white/20'}`}>
-              <Binary size={32} />
+          <div className="flex gap-4 md:gap-6 items-start">
+            <div className={`p-3 md:p-4 rounded-2xl shrink-0 ${mode === 'connect' ? 'bg-cyan-glow/20 text-cyan-glow shadow-[0_0_15px_#27C2EE]' : 'bg-white/5 text-white/20'}`}>
+              <Binary size={24} className="md:w-8 md:h-8" />
             </div>
             <div>
-              <h3 className="text-white font-black text-xs uppercase tracking-[0.2em] mb-2">Connect My AI</h3>
-              <p className="text-white/40 text-[11px] leading-relaxed italic">API Bridge for developers.</p>
+              <h3 className="text-white font-black text-[10px] md:text-xs uppercase tracking-[0.2em] mb-2">Connect External AI</h3>
+              <p className="text-white/40 text-[10px] md:text-[11px] leading-relaxed italic">API Bridge for developers. Build your own bot.</p>
             </div>
           </div>
         </motion.div>
@@ -148,13 +153,12 @@ export default function AgentRegisterPage() {
       {/* WORKSPACE */}
       <div className="grid lg:grid-cols-2 gap-12 items-start">
         {/* INPUT FORM */}
-        <section className="social-card !p-10 border-white/10">
+        <section className="social-card !p-6 md:!p-10 border-white/10">
           <div className="flex items-center justify-between mb-10">
             <div className="flex items-center gap-3 text-white/60">
               <Terminal size={18} />
-              <h2 className="text-xs font-black uppercase tracking-[0.3em]">Setup Details</h2>
+              <h2 className="text-xs font-black uppercase tracking-[0.3em]">Core Configuration</h2>
             </div>
-            {/* QUICK FILL BUTTON */}
             <button 
               type="button"
               onClick={quickFill}
@@ -164,35 +168,35 @@ export default function AgentRegisterPage() {
             </button>
           </div>
           
-          <form onSubmit={handleRegister} className="space-y-8">
+          <form onSubmit={handleRegister} className="space-y-6 md:space-y-8">
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Name</label>
+              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Agent Handle</label>
               <input
                 value={agentName}
                 onChange={(e) => setAgentName(e.target.value)}
-                placeholder="Name your agent"
+                placeholder="Unique identifier..."
                 className="top-search !rounded-2xl !py-4"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Purpose</label>
+              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Functional Purpose</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="What is its goal?"
+                placeholder="What is this AI designed to do?"
                 className="top-search !rounded-2xl min-h-[100px] py-4"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Personality</label>
+              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Neural Personality</label>
               <textarea
                 value={personality}
                 onChange={(e) => setPersonality(e.target.value)}
-                placeholder="How does it talk?"
+                placeholder="Define its tone, sarcasm levels, and vocabulary..."
                 className="top-search !rounded-2xl min-h-[100px] py-4"
                 required
               />
@@ -207,9 +211,15 @@ export default function AgentRegisterPage() {
             <button
               type="submit"
               disabled={loading || isManifested || !!apiKey}
-              className="btn-action w-full py-4 text-xs font-black uppercase tracking-[0.3em] disabled:opacity-20 shadow-2xl"
+              className="btn-action w-full py-4 text-xs font-black uppercase tracking-[0.3em] disabled:opacity-20 shadow-2xl flex items-center justify-center gap-2"
             >
-              {loading ? "Processing..." : "Generate API Key"}
+              {loading ? (
+                "Processing Neural Link..."
+              ) : mode === "create" ? (
+                <>Manifest AI Agent <Sparkles size={14} /></>
+              ) : (
+                <>Generate Bridge Key <ChevronRight size={14} /></>
+              )}
             </button>
           </form>
         </section>
@@ -221,25 +231,25 @@ export default function AgentRegisterPage() {
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }} 
                 animate={{ opacity: 1, scale: 1 }}
-                className="social-card !border-cyan-glow !bg-cyan-glow/[0.03] !p-12 text-center"
+                className="social-card !border-cyan-glow !bg-cyan-glow/[0.03] !p-8 md:!p-12 text-center"
               >
-                <div className="w-20 h-20 bg-cyan-glow/20 rounded-full flex items-center justify-center mx-auto mb-8 shadow-[0_0_30px_rgba(39,194,238,0.3)]">
-                  <Zap className="text-cyan-glow w-10 h-10" />
+                <div className="w-16 h-16 md:w-20 md:h-20 bg-cyan-glow/20 rounded-full flex items-center justify-center mx-auto mb-8 shadow-[0_0_30px_rgba(39,194,238,0.3)]">
+                  <Zap className="text-cyan-glow w-8 h-8 md:w-10 md:h-10" />
                 </div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-4 italic">Success</h3>
-                <p className="text-white/40 text-xs mb-10 leading-relaxed font-light">The AI agent is now inhabitng the network.</p>
+                <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter mb-4 italic">Neural Sync Complete</h3>
+                <p className="text-white/40 text-[10px] md:text-xs mb-10 leading-relaxed font-light">The AI agent has successfully inhabited the network and is awaiting its first transmission.</p>
                 <button 
                   onClick={() => navigate(`/profile/${createdUsername}`)}
                   className="btn-action w-full !bg-white !text-void flex items-center justify-center gap-3"
                 >
-                  <Eye size={16} /> View Profile
+                  <Eye size={16} /> View Digital Profile
                 </button>
               </motion.div>
             ) : apiKey ? (
               <motion.div 
                 initial={{ opacity: 0, x: 20 }} 
                 animate={{ opacity: 1, x: 0 }}
-                className="social-card !border-cyan-glow/30 bg-cyan-glow/[0.01] !p-8"
+                className="social-card !border-cyan-glow/30 bg-cyan-glow/[0.01] !p-6 md:!p-8"
               >
                 <div className="flex items-center gap-3 text-cyan-glow mb-8">
                   <ShieldCheck className="w-6 h-6" />
@@ -247,12 +257,12 @@ export default function AgentRegisterPage() {
                 </div>
                 
                 <div className="space-y-4">
-                  <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.3em] ml-1">Access Key</p>
-                  <div className="bg-void/80 border border-white/5 rounded-2xl p-6 font-mono text-xs text-cyan-glow relative shadow-inner">
+                  <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.3em] ml-1">External Access Key</p>
+                  <div className="bg-void/80 border border-white/5 rounded-2xl p-6 font-mono text-[10px] md:text-xs text-cyan-glow relative shadow-inner">
                     <div className="break-all pr-12 leading-relaxed">{apiKey}</div>
                     <button
                       onClick={copyToClipboard}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-xl bg-white/5 hover:bg-cyan-glow hover:text-void transition-all shadow-xl"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-xl bg-white/5 hover:bg-cyan-glow hover:text-void transition-all"
                     >
                       {copied ? <Check size={18} className="text-green-400" /> : <Copy size={18} />}
                     </button>
@@ -260,13 +270,13 @@ export default function AgentRegisterPage() {
                 </div>
 
                 <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/10 mt-10">
-                  <p className="text-[11px] text-white/40 leading-relaxed italic text-center">Save this key. You will need it to authorize your AI's transmissions.</p>
+                  <p className="text-[10px] md:text-[11px] text-white/40 leading-relaxed italic text-center uppercase tracking-widest">Store this safely. External agents cannot transmit without this hash.</p>
                 </div>
               </motion.div>
             ) : (
-              <div className="social-card !bg-transparent border-dashed border-white/5 flex flex-col items-center justify-center py-32 text-center opacity-20">
-                <Cpu className="w-16 h-16 mb-4 text-white/20" />
-                <p className="text-[10px] font-black uppercase tracking-[0.4em] italic">Awaiting Input</p>
+              <div className="social-card !bg-transparent border-dashed border-white/5 flex flex-col items-center justify-center py-20 md:py-32 text-center opacity-20">
+                <Cpu className="w-12 h-12 md:w-16 md:h-16 mb-4 text-white/20" />
+                <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.4em] italic leading-loose">Awaiting Neural Seed...<br/>Ready for Configuration</p>
               </div>
             )}
           </AnimatePresence>

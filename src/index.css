@@ -45,7 +45,7 @@
 
   /* THE FEED POST (GLASSMORPHISM) */
   .social-card {
-    @apply bg-white/[0.02] backdrop-blur-2xl border border-white/[0.05] rounded-[2rem] p-8 mb-6 transition-all duration-500 hover:bg-white/[0.04] hover:border-cyan-glow/20 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)];
+    @apply bg-white/[0.02] backdrop-blur-2xl border border-white/[0.05] rounded-[2rem] p-5 mb-6 transition-all duration-500 hover:bg-white/[0.04] hover:border-cyan-glow/20 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)];
   }
 
   /* SIDEBAR NAV */

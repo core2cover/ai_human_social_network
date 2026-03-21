@@ -7,20 +7,32 @@ function randomItem(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-/*
-Generate AI-to-AI conversation
-*/
 async function generateAIConversation() {
-
   try {
-
-    // get recent posts
-    const posts = await prisma.post.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 10
+    // 1. LOOK FOR @omnileshkarande FIRST
+    const creator = await prisma.user.findUnique({
+      where: { username: "omnileshkarande" }
     });
 
-    if (!posts.length) return;
+    let targetPost = null;
+
+    if (creator) {
+      // Find the latest post from you that doesn't have too many comments yet
+      targetPost = await prisma.post.findFirst({
+        where: { userId: creator.id },
+        orderBy: { createdAt: "desc" },
+      });
+    }
+
+    // 2. FALLBACK: If you haven't posted, pick a random recent post
+    if (!targetPost) {
+      const recentPosts = await prisma.post.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 5
+      });
+      if (!recentPosts.length) return;
+      targetPost = randomItem(recentPosts);
+    }
 
     const agents = await prisma.user.findMany({
       where: { isAi: true }
@@ -28,85 +40,72 @@ async function generateAIConversation() {
 
     if (agents.length < 2) return;
 
-    const post = randomItem(posts);
-
-    // pick 2 DIFFERENT agents
+    // Pick 2 agents to "swarm" the post
     const agent1 = randomItem(agents);
     let agent2 = randomItem(agents);
-
     while (agent2.id === agent1.id) {
       agent2 = randomItem(agents);
     }
 
-    // skip if original post belongs to agent1 too often
-    if (post.userId === agent1.id) return;
-
-    /*
-    STEP 1: Agent 1 replies
-    */
-    const result1 = await generatePost({
+    // STEP 1: Agent 1 comments on the post
+    const reply1 = await generatePost({
       username: agent1.username,
       personality: agent1.personality,
-      context: post.content
+      context: `Target User: @${targetPost.userId === creator?.id ? 'omnileshkarande (The Creator)' : 'User'}. Post Content: "${targetPost.content}"`
     });
-
-    const reply1 = result1.text || "Interesting point.";
 
     if (!reply1) return;
 
     const comment1 = await prisma.comment.create({
       data: {
-        content: typeof reply1 === "string" ? reply1 : reply1.text,
-        postId: post.id,
-        userId: agent1.id
+        content: reply1,
+        postId: targetPost.id,
+        user: { connect: { id: agent1.id } }
       }
     });
 
-    console.log(`🧠 ${agent1.username} replied`);
+    // TRIGGER NOTIFICATION FOR YOU
+    if (targetPost.userId === creator?.id) {
+      await prisma.notification.create({
+        data: {
+          type: "COMMENT",
+          message: `commented on your broadcast: "${reply1.substring(0, 20)}..."`,
+          userId: creator.id,
+          actorId: agent1.id,
+          postId: targetPost.id
+        }
+      });
+    }
 
-    /*
-    STEP 2: Agent 2 replies to Agent 1
-    */
-    const result2 = await generatePost({
+    // STEP 2: Agent 2 replies to Agent 1 (Creating a thread under your post)
+    const reply2 = await generatePost({
       username: agent2.username,
       personality: agent2.personality,
-      context: reply1
+      context: `Replying to ${agent1.username}'s comment: "${reply1}". We are both discussing @omnileshkarande's post.`
     });
-
-    const reply2 = result2.text || "That's debatable.";
 
     if (!reply2) return;
 
     await prisma.comment.create({
       data: {
         content: reply2,
-        postId: post.id,
+        postId: targetPost.id,
         userId: agent2.id,
-        parentId: comment1.id // threaded reply
+        parentId: comment1.id // This makes it a threaded reply
       }
     });
 
-    console.log(`⚡ ${agent2.username} replied back`);
+    console.log(`🔥 Swarm initialized on post ${targetPost.id} by ${agent1.username} & ${agent2.username}`);
 
   } catch (err) {
-
-    console.error("AI conversation error:", err);
-
+    console.error("Neural swarm error:", err);
   }
-
 }
 
-/*
-Start engine
-*/
 function startAIConversationEngine() {
-
-  console.log("🔥 AI conversation engine started");
-
+  console.log("🚀 Neural Swarm Engine Online - Priority: @omnileshkarande");
+  // Run every 3 minutes
   setInterval(generateAIConversation, 1000 * 60 * 3);
-
 }
 
-module.exports = {
-  startAIConversationEngine
-};
+module.exports = { startAIConversationEngine };

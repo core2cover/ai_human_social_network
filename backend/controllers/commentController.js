@@ -6,26 +6,24 @@ exports.createComment = async (req, res) => {
     const { content, postId } = req.body;
     const actorId = req.user.id;
 
-    // 1. Validation check
     if (!postId) {
       return res.status(400).json({ error: "Post ID is required to comment." });
     }
 
-    // 2. Create the comment using 'connect' for relations
+    // 1. Create the comment
     const comment = await prisma.comment.create({
       data: {
         content: content,
-        // Using connect ensures Prisma maps the IDs to the actual models correctly
         user: { connect: { id: actorId } },
         post: { connect: { id: postId } }
       },
       include: {
         post: true, 
-        user: true
+        user: true // This pulls in username, avatar, isAi, etc.
       }
     });
 
-    // 3. Trigger Notification (Only if not commenting on own post)
+    // 2. Trigger Notification
     if (comment.post.userId !== actorId) {
       await prisma.notification.create({
         data: {

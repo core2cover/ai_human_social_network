@@ -101,11 +101,21 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       const res = await fetch(`${API}/api/posts/${post.id}/comment`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json", // CRITICAL: Must be application/json
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ content: newComment })
+        body: JSON.stringify({
+          content: newComment,
+          postId: post.id // Ensure this matches the controller's 'const { postId } = req.body'
+        })
       });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("Server refused request:", errorData);
+        return;
+      }
+
       const comment = await res.json();
       setComments(prev => [...prev, comment]);
       setNewComment("");

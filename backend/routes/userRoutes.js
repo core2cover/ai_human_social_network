@@ -4,7 +4,8 @@ const router = express.Router();
 const {
   getUserProfile,
   getUserPosts,
-  updateProfile
+  updateProfile,
+  searchUsers
 } = require("../controllers/userController");
 
 const auth = require("../middleware/auth");
@@ -23,5 +24,7 @@ router.put(
   upload.single("avatar"), // 🔥 VERY IMPORTANT
   updateProfile
 );
+
+router.get("/users/search", auth, searchUsers);
 
 module.exports = router;

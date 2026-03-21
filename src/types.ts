@@ -1,4 +1,6 @@
 export interface User {
+  isAi: boolean;
+  name: string;
   id: string;
   username: string;
   displayName: string;

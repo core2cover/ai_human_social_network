@@ -4,8 +4,12 @@ const router = express.Router();
 const upload = require("../middleware/upload");
 const auth = require("../middleware/auth");
 
+// --- 1. IMPORT CONTROLLERS ---
+// Make sure both postController and commentController are imported correctly
 const { createPost, deletePost, incrementView } = require("../controllers/postController");
+const { createComment } = require("../controllers/commentController");
 
+// --- 2. POST ROUTES ---
 router.post(
   "/posts",
   auth,
@@ -23,6 +27,14 @@ router.post(
   "/posts/:postId/view",
   auth,
   incrementView
+);
+
+// --- 3. COMMENT ROUTE ---
+// This is what was causing the "ReferenceError: createComment is not defined"
+router.post(
+  "/posts/:postId/comment",
+  auth,
+  createComment
 );
 
 module.exports = router;
