@@ -43,46 +43,50 @@ export default function CreatePost() {
   const handleMediaUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     // Revoke old URL to prevent memory leaks
     if (media) URL.revokeObjectURL(media);
-    
+
     const url = URL.createObjectURL(file);
     setMedia(url);
     setMediaType(file.type.startsWith("video") ? "video" : "image");
   };
 
   const handlePost = async () => {
-    if (!content.trim() && !fileInputRef.current?.files?.[0]) return;
-    
+    const file = fileInputRef.current?.files?.[0];
+    if (!content.trim() && !file) return;
+
     setIsTransmitting(true);
     const formData = new FormData();
     formData.append("content", content);
-    
-    const file = fileInputRef.current?.files?.[0];
+
     if (file) {
       formData.append("media", file);
-      formData.append("mediaType", file.type.startsWith("video") ? "video" : "image");
+      // DETECT TYPE: Tells the server explicitly if this is a video or image
+      const detectedType = file.type.startsWith("video") ? "video" : "image";
+      formData.append("mediaType", detectedType);
     }
 
     try {
       const res = await fetch(`${API}/api/posts`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-        body: formData
+        // FormData automatically sets the correct Multipart boundary
+        body: formData 
       });
-      
+
       if (res.ok) {
         setContent("");
+        if (media) URL.revokeObjectURL(media); // Clean up memory
         setMedia(null);
         setMediaType(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
         
-        // REDIRECT TO FEED SO USER SEES THEIR POST
-        navigate("/"); 
+        // Refresh feed
+        navigate("/");
       }
     } catch (err) {
-      console.error("Post failed", err);
+      console.error("Neural uplink failed", err);
     } finally {
       setIsTransmitting(false);
     }
@@ -91,19 +95,17 @@ export default function CreatePost() {
   return (
     <div className={`social-card !p-4 md:!p-8 transition-all duration-500 ${isFocused ? 'ring-1 ring-cyan-glow/30 border-cyan-glow/20 bg-white/[0.04]' : ''}`}>
       <div className="flex gap-3 md:gap-5">
-        {/* USER AVATAR - Hidden on very small screens to save space */}
         <div className="hidden sm:block shrink-0">
           <div className="relative p-0.5 rounded-full bg-gradient-to-b from-cyan-glow to-transparent shadow-[0_0_15px_rgba(39,194,238,0.2)]">
-            <Avatar 
-              src={avatar || undefined} 
-              alt={username || "User"} 
-              className="w-10 h-10 md:w-12 md:h-12 border-2 border-void" 
+            <Avatar
+              src={avatar || undefined}
+              alt={username || "User"}
+              className="w-10 h-10 md:w-12 md:h-12 border-2 border-void"
             />
           </div>
         </div>
 
         <div className="flex-1 min-w-0">
-          {/* POST TEXT AREA */}
           <textarea
             value={content}
             onFocus={() => setIsFocused(true)}
@@ -116,18 +118,19 @@ export default function CreatePost() {
           {/* MEDIA PREVIEW */}
           <AnimatePresence>
             {media && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95, y: 10 }} 
-                animate={{ opacity: 1, scale: 1, y: 0 }} 
-                exit={{ opacity: 0, scale: 0.95 }} 
-                className="relative mb-6 rounded-2xl md:rounded-3xl overflow-hidden border border-white/10 group bg-void/50 aspect-video sm:aspect-auto"
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative mb-6 rounded-2xl md:rounded-3xl overflow-hidden border border-white/10 group bg-void/50 aspect-video flex items-center justify-center"
               >
-                <button 
-                  onClick={() => { 
-                    setMedia(null); 
-                    setMediaType(null); 
+                <button
+                  onClick={() => {
+                    if (media) URL.revokeObjectURL(media);
+                    setMedia(null);
+                    setMediaType(null);
                     if (fileInputRef.current) fileInputRef.current.value = "";
-                  }} 
+                  }}
                   className="absolute top-3 right-3 p-2 bg-void/80 hover:bg-crimson rounded-full z-10 text-white border border-white/10 shadow-xl transition-colors"
                 >
                   <X size={16} />
@@ -145,16 +148,24 @@ export default function CreatePost() {
           {/* TOOLBAR */}
           <div className="flex items-center justify-between pt-4 border-t border-white/5">
             <div className="flex items-center gap-1 md:gap-2 relative">
-              <button 
-                onClick={() => fileInputRef.current?.click()} 
+              <button
+                onClick={() => fileInputRef.current?.click()}
                 className="p-2 md:p-2.5 hover:bg-cyan-glow/10 rounded-xl transition-all group"
-                title="Add Media"
+                title="Add Image"
               >
                 <Image className="w-5 h-5 text-cyan-glow opacity-60 group-hover:opacity-100 transition-opacity" />
               </button>
 
-              <button 
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)} 
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2 md:p-2.5 hover:bg-cyan-glow/10 rounded-xl transition-all group"
+                title="Add Video"
+              >
+                <Video className="w-5 h-5 text-cyan-glow opacity-60 group-hover:opacity-100 transition-opacity" />
+              </button>
+
+              <button
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                 className={`p-2 md:p-2.5 rounded-xl transition-all ${showEmojiPicker ? 'bg-cyan-glow/20 text-cyan-glow' : 'hover:bg-white/5 text-white/40'}`}
                 title="Add Emoji"
               >
@@ -170,20 +181,20 @@ export default function CreatePost() {
                     searchDisabled
                     height={350}
                     width={280}
+                    lazyLoadEmojis={true}
                   />
                 </div>
               )}
 
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleMediaUpload} 
-                accept="image/*,video/*" 
-                className="hidden" 
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleMediaUpload}
+                accept="image/*,video/*"
+                className="hidden"
               />
             </div>
 
-            {/* TRANSMIT BUTTON */}
             <motion.button
               whileHover={!isTransmitting ? { scale: 1.02 } : {}}
               whileTap={!isTransmitting ? { scale: 0.98 } : {}}
@@ -207,7 +218,6 @@ export default function CreatePost() {
         </div>
       </div>
 
-      {/* SYSTEM STATUS INDICATOR */}
       {content.length > 0 && !isTransmitting && (
         <motion.div
           initial={{ opacity: 0 }}

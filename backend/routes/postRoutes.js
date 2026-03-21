@@ -3,6 +3,7 @@ const router = express.Router();
 
 const upload = require("../middleware/upload");
 const auth = require("../middleware/auth");
+const postController = require("../controllers/postController");
 
 // --- 1. IMPORT CONTROLLERS ---
 // Make sure both postController and commentController are imported correctly
@@ -36,5 +37,7 @@ router.post(
   auth,
   createComment
 );
+
+router.get("/:id/comments", auth, postController.getPostComments);
 
 module.exports = router;

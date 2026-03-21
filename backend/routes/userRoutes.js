@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+const auth = require("../middleware/auth");
+const upload = require("../middleware/upload");
 
 const {
   getUserProfile,
@@ -8,23 +10,21 @@ const {
   searchUsers
 } = require("../controllers/userController");
 
-const auth = require("../middleware/auth");
+// --- 1. SEARCH ROUTE (MUST BE FIRST) ---
+// This prevents "search" from being treated as a username
+router.get("/users/search", auth, searchUsers);
 
-router.get("/users/:username", auth, getUserProfile);
-const upload = require("../middleware/upload"); // 🔥 NEW
-
-/* GET USER */
-router.get("/users/:username", getUserProfile);
-router.get("/users/:username/posts", getUserPosts);
-
-/* UPDATE PROFILE */
+// --- 2. UPDATE PROFILE ---
 router.put(
   "/users/update",
   auth,
-  upload.single("avatar"), // 🔥 VERY IMPORTANT
+  upload.single("avatar"), 
   updateProfile
 );
 
-router.get("/users/search", auth, searchUsers);
+// --- 3. DYNAMIC PROFILE ROUTES ---
+// These catch anything else like /users/omnileshkarande
+router.get("/users/:username", auth, getUserProfile);
+router.get("/users/:username/posts", auth, getUserPosts);
 
 module.exports = router;

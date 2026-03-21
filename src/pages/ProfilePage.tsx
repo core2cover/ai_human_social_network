@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom"; 
+import { useParams, useNavigate } from "react-router-dom";
 import {
   UserPlus,
   UserCheck,
@@ -7,17 +7,56 @@ import {
   Edit,
   Zap,
   Activity,
-  MessageSquare
+  MessageSquare,
+  Loader2
 } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 
 import Avatar from "../components/Avatar";
 import PostCard from "../components/PostCard";
 
+/**
+ * LOAD MANAGER COMPONENT
+ * Ensures profile posts only render when visible to save memory.
+ */
+interface VisiblePostProps {
+  children: React.ReactNode;
+}
+
+const VisiblePost: React.FC<VisiblePostProps> = ({ children }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      { rootMargin: "300px", threshold: 0.01 }
+    );
+
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} className="min-h-[200px] w-full">
+      {isVisible ? children : (
+        <div className="w-full h-48 bg-white/[0.02] border border-white/5 rounded-[2.5rem] flex items-center justify-center animate-pulse">
+          <Zap className="w-6 h-6 text-white/5" />
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function ProfilePage() {
   const { username } = useParams();
-  const navigate = useNavigate(); // Hook initialized here
-  
+  const navigate = useNavigate();
+
   const currentUser = localStorage.getItem("username");
   const token = localStorage.getItem("token");
   const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -32,7 +71,6 @@ export default function ProfilePage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load Profile Data
   useEffect(() => {
     if (!username) return;
 
@@ -40,14 +78,20 @@ export default function ProfilePage() {
     setUser(null);
     setEditMode(false);
 
+    // Inside ProfilePage.tsx -> useEffect -> loadProfile()
+
     async function loadProfile() {
       try {
+        // 1. Load User Info (Already correct)
         const userRes = await fetch(`${API}/api/users/${username}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const userData = await userRes.json();
 
-        const postsRes = await fetch(`${API}/api/users/${username}/posts`);
+        // 2. Load User Posts (FIXED: Added headers)
+        const postsRes = await fetch(`${API}/api/users/${username}/posts`, {
+          headers: { Authorization: `Bearer ${token}` } // <--- ADD THIS
+        });
         const postsData = await postsRes.json();
 
         setUser(userData);
@@ -56,7 +100,7 @@ export default function ProfilePage() {
         setNewName(userData.name || "");
         setNewAvatar(userData.avatar || "");
       } catch (err) {
-        console.error("Profile load failed", err);
+        console.error("Neural data extraction failed", err);
       }
       setLoading(false);
     }
@@ -95,7 +139,6 @@ export default function ProfilePage() {
     }
   };
 
-  // --- START CHAT LOGIC ---
   const handleStartChat = async () => {
     try {
       const res = await fetch(`${API}/api/chat/conversations`, {
@@ -109,11 +152,9 @@ export default function ProfilePage() {
 
       const data = await res.json();
       if (res.ok) {
-        // Redirect to the specific conversation page we are about to create
         navigate(`/messages/${data.id}`);
       } else {
-        // This handles your rule: "AI agents should not be able to chat with each other"
-        alert(data.error || "Failed to establish neural link."); 
+        alert(data.error || "Failed to establish neural link.");
       }
     } catch (err) {
       console.error("Chat initiation failed", err);
@@ -122,7 +163,7 @@ export default function ProfilePage() {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
-      <Zap className="w-8 h-8 text-cyan-glow animate-pulse" />
+      <Loader2 className="w-8 h-8 text-cyan-glow animate-spin opacity-40" />
       <span className="text-[10px] font-mono tracking-[0.5em] text-cyan-glow/50 uppercase text-center px-6">
         Syncing Neural Identity...
       </span>
@@ -149,7 +190,6 @@ export default function ProfilePage() {
         {user.isAi && <div className="absolute top-0 right-0 w-32 md:w-64 h-32 md:h-64 bg-cyan-glow/5 blur-[80px] -mr-16 -mt-16 md:-mr-32 md:-mt-32" />}
 
         <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12 relative z-10">
-          {/* AVATAR SECTION */}
           <div className="relative group shrink-0">
             <div className={`p-1 rounded-full bg-gradient-to-b ${user.isAi ? 'from-cyan-glow shadow-[0_0_30px_rgba(39,194,238,0.2)]' : 'from-white/20'} transition-all duration-500`}>
               <Avatar
@@ -183,10 +223,9 @@ export default function ProfilePage() {
             />
           </div>
 
-          {/* PROFILE INFO SECTION */}
           <div className="flex-1 text-center md:text-left space-y-6 w-full">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="min-w-0">
+              <div className="min-w-0 text-left w-full md:w-auto">
                 {editMode ? (
                   <input
                     value={newName}
@@ -201,7 +240,7 @@ export default function ProfilePage() {
                 <p className="text-white/30 font-mono text-[10px] md:text-xs mt-1 lowercase tracking-widest truncate">@{user.username}</p>
               </div>
 
-              <div className="flex flex-wrap items-center justify-center gap-3 w-full md:w-auto">
+              <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 w-full md:w-auto">
                 {currentUser === username ? (
                   !editMode ? (
                     <button onClick={() => setEditMode(true)} className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-widest">
@@ -214,7 +253,6 @@ export default function ProfilePage() {
                   )
                 ) : (
                   <>
-                    {/* MESSAGE BUTTON - Functional */}
                     <button
                       onClick={handleStartChat}
                       className="flex items-center justify-center gap-2 py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all"
@@ -222,7 +260,6 @@ export default function ProfilePage() {
                       <MessageSquare size={14} /> Message
                     </button>
 
-                    {/* FOLLOW BUTTON */}
                     <button
                       onClick={handleFollow}
                       className={`flex items-center justify-center gap-2 py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${isFollowing ? "bg-crimson/10 text-crimson border border-crimson/20 hover:bg-crimson hover:text-white" : "btn-action"}`}
@@ -234,7 +271,6 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* BIO & BADGES */}
             <div className="space-y-4">
               <p className="text-white/70 max-w-xl text-base md:text-lg font-light leading-relaxed italic mx-auto md:mx-0">
                 "{user.bio || "No data stream available for this unit."}"
@@ -252,7 +288,6 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* METRICS */}
             <div className="grid grid-cols-3 md:flex md:justify-start gap-4 md:gap-10 pt-4 border-t border-white/5">
               <div className="flex flex-col items-center md:items-start">
                 <span className="text-xl md:text-2xl font-black text-white leading-none">{posts.length}</span>
@@ -271,7 +306,7 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* BROADCAST FEED */}
+      {/* BROADCAST FEED WITH LOAD MANAGER */}
       <div className="max-w-2xl mx-auto space-y-6 md:space-y-10">
         <div className="flex items-center gap-4 mb-6 md:mb-8">
           <h2 className="text-[10px] md:text-xs font-black text-white/40 tracking-[0.3em] uppercase px-2 whitespace-nowrap">Recent Transmissions</h2>
@@ -280,9 +315,19 @@ export default function ProfilePage() {
 
         {posts.length > 0 ? (
           <div className="space-y-6 md:space-y-8">
-            {posts.map(post => (
-              <PostCard key={post.id} post={post} />
-            ))}
+            <AnimatePresence>
+              {posts.map((post) => (
+                <VisiblePost key={post.id}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <PostCard post={post} />
+                  </motion.div>
+                </VisiblePost>
+              ))}
+            </AnimatePresence>
           </div>
         ) : (
           <div className="social-card p-12 md:p-24 text-center border-dashed border-white/10 opacity-40">

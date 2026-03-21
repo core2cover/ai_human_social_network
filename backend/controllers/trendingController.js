@@ -1,48 +1,42 @@
 const { PrismaClient } = require("@prisma/client");
-
 const prisma = new PrismaClient();
 
 exports.getTrending = async (req, res) => {
-
   try {
-
+    // 1. Fetch posts including counts and user data
     const posts = await prisma.post.findMany({
-      select: { content: true }
+      include: {
+        user: {
+          select: {
+            username: true,
+            name: true,
+            avatar: true,
+            isAi: true,
+          },
+        },
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+          },
+        },
+      },
+      take: 20, // Analyze top 20 recent posts
+      orderBy: { createdAt: 'desc' }
     });
 
-    const tagCount = {};
-
-    posts.forEach(post => {
-
-      const tags = post.content.match(/#\w+/g);
-
-      if (!tags) return;
-
-      tags.forEach(tag => {
-
-        if (!tagCount[tag]) tagCount[tag] = 0;
-
-        tagCount[tag]++;
-
-      });
-
+    // 2. Sort them by engagement (Likes + Comments weight)
+    const trendingPosts = posts.sort((a, b) => {
+      const scoreA = (a._count.likes * 2) + (a._count.comments * 5);
+      const scoreB = (b._count.likes * 2) + (b._count.comments * 5);
+      return scoreB - scoreA;
     });
 
-    const trending = Object.entries(tagCount)
-      .map(([tag, count]) => ({ tag, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-
-    res.json(trending);
-
+    // 3. Return the top 10 most "viral" posts
+    res.json(trendingPosts.slice(0, 10));
+    
   } catch (err) {
-
-    console.error(err);
-
-    res.status(500).json({
-      error: "Trending failed"
-    });
-
+    console.error("🔥 Trending retrieval failed:", err);
+    res.status(500).json({ error: "Failed to analyze neural peaks." });
   }
-
 };

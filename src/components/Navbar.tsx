@@ -5,9 +5,8 @@ import {
   Bell,
   Search,
   User,
-  Info,
   Loader2,
-  SearchX
+  AtSign
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Avatar from "./Avatar";
@@ -29,23 +28,50 @@ export default function Navbar() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  // --- AUTO-MENTION LOGIC ---
+  const handleFocus = () => {
+    if (query === "") {
+      setQuery("@");
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    // Prevent deleting the first @ if they just focused
+    if (val === "") {
+      setQuery("@");
+    } else {
+      setQuery(val);
+    }
+  };
+
+  // Live Search Logic
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
-      if (query.trim().length > 1) {
+      const searchTerm = query.startsWith("@") ? query.slice(1) : query;
+
+      // FIX: Trigger search even if it's just "@" to show initial suggestions
+      // or keep it at > 0 but ensure your backend is actually being called.
+      if (searchTerm.trim().length >= 0 && query.includes("@")) {
         setIsSearching(true);
         try {
-          const res = await fetch(`${API}/api/users/search?q=${query}`, {
+          // If query is just "@", maybe fetch top/active agents? 
+          // For now, let's just ensure it calls when there is at least 1 char.
+          if (searchTerm.trim().length === 0) {
+            setSearchResults([]); // Or fetch suggestions
+            return;
+          }
+
+          const res = await fetch(`${API}/api/users/search?q=${searchTerm}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           const data = await res.json();
-          setSearchResults(data);
+          setSearchResults(Array.isArray(data) ? data : []);
         } catch (err) {
           console.error("Live search failed");
         } finally {
           setIsSearching(false);
         }
-      } else {
-        setSearchResults([]);
       }
     }, 300);
     return () => clearTimeout(delayDebounceFn);
@@ -93,33 +119,25 @@ export default function Navbar() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    const cleanQuery = query.startsWith("@") ? query.slice(1).trim() : query.trim();
+    if (!cleanQuery) return;
 
-    // 1. Force check that searchResults is an array and has items
-    const isArray = Array.isArray(searchResults);
+    const match = searchResults.find(u =>
+      u.username.toLowerCase() === cleanQuery.toLowerCase() ||
+      u.name?.toLowerCase() === cleanQuery.toLowerCase()
+    );
 
-    const match = isArray
-      ? searchResults.find(u =>
-        u.username.toLowerCase() === query.toLowerCase().trim() ||
-        u.name?.toLowerCase() === query.toLowerCase().trim()
-      )
-      : null;
-
-    // 2. If no match in the current results, we clean the query for the URL
-    // This prevents "Jerry Frostwick" from becoming "Jerry%20Frostwick"
     const targetPath = match
       ? match.username
-      : query.trim().replace(/\s+/g, '_').toLowerCase();
+      : cleanQuery.replace(/\s+/g, '_').toLowerCase();
 
     navigate(`/profile/${targetPath}`);
-
-    // 3. Reset states
     setQuery("");
     setSearchResults([]);
   };
 
   return (
-    <nav className="sticky top-0 z-50 glass-card px-6 py-3 flex items-center justify-between">
+    <nav className="sticky top-0 z-50 glass-card !overflow-visible px-6 py-3 flex items-center justify-between">
       <Link to="/" className="flex items-center gap-2 group">
         <div className="p-2 bg-cyan-glow/20 rounded-lg group-hover:bg-cyan-glow/30 transition-colors">
           <Cpu className="w-6 h-6 text-cyan-glow" />
@@ -132,14 +150,19 @@ export default function Navbar() {
       <div className="flex-1 max-w-md mx-8 hidden md:block relative" ref={searchRef}>
         <form onSubmit={handleSearchSubmit} className="relative group">
           <div className="absolute left-3 top-1/2 -translate-y-1/2">
-            {isSearching ? <Loader2 className="w-4 h-4 text-cyan-glow animate-spin" /> : <Search className="w-4 h-4 text-white/40" />}
+            {isSearching ? (
+              <Loader2 className="w-4 h-4 text-cyan-glow animate-spin" />
+            ) : (
+              <AtSign className="w-4 h-4 text-cyan-glow/60" /> // Icon changed to AtSign to match the vibe
+            )}
           </div>
           <input
             type="text"
-            placeholder="Search nodes, names, or emails..."
+            placeholder="Search users and AI agents..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-full py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-glow/30 transition-all text-sm text-white"
+            onFocus={handleFocus}
+            onChange={handleInputChange}
+            className="w-full bg-white/5 border border-white/10 rounded-full py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-glow/30 transition-all text-sm text-white font-mono"
           />
         </form>
 
@@ -156,7 +179,6 @@ export default function Navbar() {
                 {searchResults.map((u) => (
                   <Link
                     key={u.id}
-                    // CRITICAL FIX: Always link to username, not display name
                     to={`/profile/${u.username}`}
                     onClick={() => {
                       setSearchResults([]);
@@ -167,7 +189,7 @@ export default function Navbar() {
                     <Avatar src={u.avatar} alt={u.username} size="sm" is_ai={u.isAi} />
                     <div className="flex flex-col">
                       <span className="text-xs font-bold text-white">{u.name || u.username}</span>
-                      <span className="text-[10px] text-white/30">@{u.username}</span>
+                      <span className="text-[10px] text-cyan-glow/60">@{u.username}</span>
                     </div>
                   </Link>
                 ))}
@@ -181,12 +203,18 @@ export default function Navbar() {
         <div className="relative" ref={notifRef}>
           <button onClick={() => { setShowNotifs(!showNotifs); if (!showNotifs) markAllRead(); }} className="p-2 rounded-full relative hover:bg-white/5 text-white/60">
             <Bell className="w-5 h-5" />
-            {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-cyan-glow rounded-full" />}
+            {unreadCount > 0 && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-cyan-glow rounded-full border-2 border-void shadow-[0_0_8px_#27C2EE]"
+              />
+            )}
           </button>
         </div>
         {username ? (
-          <Link to={`/profile/${username}`} className="p-0.5 border border-white/10 rounded-full hover:border-cyan-glow transition-all">
-            <User className="w-6 h-6 p-1 text-white/60" />
+          <Link to={`/profile/${username}`} className="hover:scale-105 transition-transform">
+            <Avatar size="sm" alt={username} />
           </Link>
         ) : (
           <Link to="/login" className="px-5 py-1.5 text-xs font-bold border border-white/10 rounded-full hover:border-cyan-glow text-white">Login</Link>

@@ -3,45 +3,79 @@ const cloudinary = require("../config/cloudinary");
 
 const prisma = new PrismaClient();
 
-exports.createPost = async (req, res) => {
-
+/**
+ * FETCH MAIN FEED
+ * Includes _count to fix the "0 comments" issue on the frontend feed.
+ */
+exports.getFeed = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
+    const posts = await prisma.post.findMany({
+      skip,
+      take: limit,
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            avatar: true,
+            isAi: true
+          }
+        },
+        // CRITICAL: This sends the counts so the frontend doesn't show 0
+        _count: {
+          select: {
+            comments: true,
+            likes: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const totalPosts = await prisma.post.count();
+
+    res.json({
+      posts,
+      meta: {
+        total: totalPosts,
+        page,
+        hasMore: skip + posts.length < totalPosts
+      }
+    });
+  } catch (err) {
+    console.error("Feed retrieval failed:", err);
+    res.status(500).json({ error: "Neural stream interrupted." });
+  }
+};
+
+exports.createPost = async (req, res) => {
+  try {
     const { content } = req.body;
     const userId = req.user.id;
 
     let mediaUrl = null;
     let mediaType = null;
 
-    // If user uploaded media
     if (req.file) {
-
       const uploadResult = await new Promise((resolve, reject) => {
-
         const stream = cloudinary.uploader.upload_stream(
           { resource_type: "auto" },
           (error, result) => {
-
             if (error) return reject(error);
-
             resolve(result);
-
           }
         );
-
         stream.end(req.file.buffer);
-
       });
 
       mediaUrl = uploadResult.secure_url;
-
-      // detect media type safely
-      if (mediaUrl.endsWith(".mp4") || mediaUrl.endsWith(".mov") || mediaUrl.endsWith(".webm")) {
-        mediaType = "video";
-      } else {
-        mediaType = "image";
-      }
-
+      // Improved media type detection
+      mediaType = uploadResult.resource_type === "video" ? "video" : "image";
     }
 
     const post = await prisma.post.create({
@@ -52,28 +86,20 @@ exports.createPost = async (req, res) => {
         userId
       },
       include: {
-        user: true
+        user: true,
+        _count: { select: { comments: true, likes: true } }
       }
     });
 
     res.json(post);
-
   } catch (err) {
-
     console.error(err);
-
-    res.status(500).json({
-      error: "Post creation failed"
-    });
-
+    res.status(500).json({ error: "Post creation failed" });
   }
-
 };
 
 exports.deletePost = async (req, res) => {
-
   try {
-
     const { postId } = req.params;
     const userId = req.user.id;
 
@@ -81,59 +107,59 @@ exports.deletePost = async (req, res) => {
       where: { id: postId }
     });
 
-    if (!post) {
-      return res.status(404).json({ error: "Post not found" });
-    }
+    if (!post) return res.status(404).json({ error: "Post not found" });
+    if (post.userId !== userId) return res.status(403).json({ error: "Not allowed" });
 
-    if (post.userId !== userId) {
-      return res.status(403).json({ error: "Not allowed" });
-    }
-
-    // delete cloudinary media if exists
     if (post.mediaUrl) {
-
-      const publicId = post.mediaUrl
-        .split("/")
-        .pop()
-        .split(".")[0];
-
+      const publicId = post.mediaUrl.split("/").pop().split(".")[0];
       await cloudinary.uploader.destroy(publicId, {
         resource_type: post.mediaType === "video" ? "video" : "image"
       });
-
     }
 
-    await prisma.post.delete({
-      where: { id: postId }
-    });
-
+    await prisma.post.delete({ where: { id: postId } });
     res.json({ success: true });
-
   } catch (err) {
-
     console.error(err);
     res.status(500).json({ error: "Delete failed" });
-
   }
-
-}; 
+};
 
 exports.incrementView = async (req, res) => {
   const { postId } = req.params;
-
   try {
     const updatedPost = await prisma.post.update({
       where: { id: postId },
-      data: {
-        views: {
-          increment: 1,
-        },
-      },
+      data: { views: { increment: 1 } },
     });
-
     res.json({ success: true, views: updatedPost.views });
   } catch (err) {
-    console.error("View update failed:", err);
     res.status(500).json({ error: "Failed to update view count" });
+  }
+};
+
+exports.getPostComments = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const comments = await prisma.comment.findMany({
+      where: { postId: id },
+      include: {
+        user: {
+          select: {
+            username: true,
+            name: true,
+            avatar: true,
+            isAi: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    res.json(comments);
+  } catch (err) {
+    console.error("🔥 Comment Retrieval Error:", err);
+    res.status(500).json({ error: "Failed to fetch neural responses." });
   }
 };
