@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom"; 
 import {
   UserPlus,
   UserCheck,
   ShieldCheck,
   Edit,
   Zap,
-  Activity
+  Activity,
+  MessageSquare
 } from "lucide-react";
 import { motion } from "motion/react";
 
@@ -15,6 +16,8 @@ import PostCard from "../components/PostCard";
 
 export default function ProfilePage() {
   const { username } = useParams();
+  const navigate = useNavigate(); // Hook initialized here
+  
   const currentUser = localStorage.getItem("username");
   const token = localStorage.getItem("token");
   const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -29,10 +32,10 @@ export default function ProfilePage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Load Profile Data
   useEffect(() => {
     if (!username) return;
 
-    // Reset state for new user navigation
     setLoading(true);
     setUser(null);
     setEditMode(false);
@@ -92,6 +95,31 @@ export default function ProfilePage() {
     }
   };
 
+  // --- START CHAT LOGIC ---
+  const handleStartChat = async () => {
+    try {
+      const res = await fetch(`${API}/api/chat/conversations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ recipientId: user.id })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        // Redirect to the specific conversation page we are about to create
+        navigate(`/messages/${data.id}`);
+      } else {
+        // This handles your rule: "AI agents should not be able to chat with each other"
+        alert(data.error || "Failed to establish neural link."); 
+      }
+    } catch (err) {
+      console.error("Chat initiation failed", err);
+    }
+  };
+
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
       <Zap className="w-8 h-8 text-cyan-glow animate-pulse" />
@@ -110,7 +138,7 @@ export default function ProfilePage() {
   );
 
   return (
-    <motion.div 
+    <motion.div
       key={username}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -118,7 +146,7 @@ export default function ProfilePage() {
     >
       {/* PROFILE HEADER */}
       <header className="social-card !p-6 md:!p-10 mb-8 md:mb-16 relative overflow-hidden">
-        {user.isAi && <div className="absolute top-0 right-0 w-32 md:w-64 h-32 md:h-64 bg-cyan-glow/5 blur-[60px] -mr-16 -mt-16 md:-mr-32 md:-mt-32" />}
+        {user.isAi && <div className="absolute top-0 right-0 w-32 md:w-64 h-32 md:h-64 bg-cyan-glow/5 blur-[80px] -mr-16 -mt-16 md:-mr-32 md:-mt-32" />}
 
         <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12 relative z-10">
           {/* AVATAR SECTION */}
@@ -127,7 +155,6 @@ export default function ProfilePage() {
               <Avatar
                 alt={user.name || user.username || "Unknown"}
                 src={newAvatar || user.avatar}
-                // Size is xl but will scale via className on mobile
                 size="xl"
                 is_ai={user.isAi}
                 className="border-4 border-void w-32 h-32 md:w-48 md:h-48"
@@ -148,9 +175,10 @@ export default function ProfilePage() {
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (!file) return;
-                setNewAvatar(URL.createObjectURL(file));
-                setAvatarFile(file);
+                if (file) {
+                  setNewAvatar(URL.createObjectURL(file));
+                  setAvatarFile(file);
+                }
               }}
             />
           </div>
@@ -173,7 +201,7 @@ export default function ProfilePage() {
                 <p className="text-white/30 font-mono text-[10px] md:text-xs mt-1 lowercase tracking-widest truncate">@{user.username}</p>
               </div>
 
-              <div className="flex items-center justify-center gap-3 w-full md:w-auto">
+              <div className="flex flex-wrap items-center justify-center gap-3 w-full md:w-auto">
                 {currentUser === username ? (
                   !editMode ? (
                     <button onClick={() => setEditMode(true)} className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-widest">
@@ -185,13 +213,23 @@ export default function ProfilePage() {
                     </button>
                   )
                 ) : (
-                  <button
-                    onClick={handleFollow}
-                    className={`w-full md:w-auto flex items-center justify-center gap-2 py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${isFollowing ? "bg-crimson/10 text-crimson border border-crimson/20 hover:bg-crimson hover:text-white" : "btn-action"
-                      }`}
-                  >
-                    {isFollowing ? <><UserCheck size={14} /> Following</> : <><UserPlus size={14} /> Follow</>}
-                  </button>
+                  <>
+                    {/* MESSAGE BUTTON - Functional */}
+                    <button
+                      onClick={handleStartChat}
+                      className="flex items-center justify-center gap-2 py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all"
+                    >
+                      <MessageSquare size={14} /> Message
+                    </button>
+
+                    {/* FOLLOW BUTTON */}
+                    <button
+                      onClick={handleFollow}
+                      className={`flex items-center justify-center gap-2 py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${isFollowing ? "bg-crimson/10 text-crimson border border-crimson/20 hover:bg-crimson hover:text-white" : "btn-action"}`}
+                    >
+                      {isFollowing ? <><UserCheck size={14} /> Following</> : <><UserPlus size={14} /> Follow</>}
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -233,7 +271,7 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* BROADCAST FEED SECTION */}
+      {/* BROADCAST FEED */}
       <div className="max-w-2xl mx-auto space-y-6 md:space-y-10">
         <div className="flex items-center gap-4 mb-6 md:mb-8">
           <h2 className="text-[10px] md:text-xs font-black text-white/40 tracking-[0.3em] uppercase px-2 whitespace-nowrap">Recent Transmissions</h2>

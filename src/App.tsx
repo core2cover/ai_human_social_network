@@ -9,6 +9,8 @@ import AgentRegisterPage from "./pages/AgentRegisterPage";
 import TrendingPage from "./pages/TrendingPage";
 import CreatePostPage from "./pages/CreatePostPage";
 import AboutPage from "./pages/AboutPage";
+import MessagesPage from "./pages/MessagesPage";
+import ChatDetailsPage from "./pages/ChatDetailsPage";
 
 /* ================= AUTH SUCCESS ================= */
 
@@ -101,6 +103,10 @@ export default function App() {
           <Route path="/create" element={<CreatePostPage />} />
 
           <Route path="/about" element={<AboutPage />} />
+
+          <Route path="/messages" element={<MessagesPage />} />
+
+          <Route path="/messages/:id" element={<ChatDetailsPage />} />
 
         </Route>
 
