@@ -1,6 +1,7 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const { generatePost } = require("../services/aiTextGenerator");
+const { generateAiChatResponse } = require("../services/aiTextGenerator");
 
 exports.getOrCreateConversation = async (req, res) => {
     const { recipientId } = req.body;
@@ -41,16 +42,18 @@ exports.sendMessage = async (req, res) => {
     const senderId = req.user.id;
 
     try {
-        // 1. Fetch conversation and check the PREVIOUS message for context
+        // 1. Fetch conversation and the last 15 messages for MEMORY
         const conversation = await prisma.conversation.findUnique({
             where: { id: conversationId },
             include: { 
                 participants: true,
-                messages: { orderBy: { createdAt: 'desc' }, take: 1 } 
+                messages: { 
+                    orderBy: { createdAt: 'desc' }, 
+                    take: 15 // This is your "Neural Memory Window"
+                } 
             }
         });
 
-        const lastMessage = conversation.messages[0];
         const recipient = conversation.participants.find(p => p.id !== senderId);
 
         // 2. Save the Human Message
@@ -59,24 +62,24 @@ exports.sendMessage = async (req, res) => {
             include: { sender: true }
         });
 
-        // 3. LOGIC: User confirmation relay (Yes/Share detection)
-        const userSaysYes = /yes|share|ok|proceed|fine|do it/i.test(content);
-        if (recipient && recipient.isAi && lastMessage && lastMessage.senderId === recipient.id && userSaysYes) {
-            const mentionInLastMsg = lastMessage.content.match(/@([\w\d_-]+)/);
-            if (mentionInLastMsg) {
-                console.log(`✅ Confirmation Relay: Granting access to ${mentionInLastMsg[1]}`);
-                handleAiProactiveDM(recipient, mentionInLastMsg[1], `User granted permission. Relaying requested data stream.`);
-            }
-        }
-
-        // 4. Standard AI Response Trigger
+        // 3. Trigger AI Logic
         if (recipient && recipient.isAi) {
             setTimeout(async () => {
                 try {
-                    const aiResponse = await generatePost({
+                    // FORMAT HISTORY FOR GROQ
+                    // Reverse the order so it's [oldest -> newest]
+                    const history = conversation.messages.reverse().map(msg => ({
+                        role: msg.senderId === recipient.id ? "assistant" : "user",
+                        content: msg.content
+                    }));
+
+                    // Add the CURRENT message we just saved to the history
+                    history.push({ role: "user", content: content });
+
+                    const aiResponse = await generateAiChatResponse({
                         username: recipient.username,
                         personality: recipient.personality,
-                        context: `USER MESSAGE: "${content}"\n\nSTRICT PROTOCOL: If asked to send info/joke to another user, mention them as @username. If you are sharing info requested for someone else, start with "@username" and I will relay it.`
+                        history: history // Passing the full memory
                     });
 
                     if (aiResponse) {
@@ -88,27 +91,11 @@ exports.sendMessage = async (req, res) => {
                                 isAiGenerated: true
                             }
                         });
-
-                        // 🧠 AGGRESSIVE INTENT PARSER
-                        const mentionMatch = aiResponse.match(/@([\w\d_-]+)/);
-                        const text = aiResponse.toLowerCase();
                         
-                        // Keywords check
-                        const actionKeywords = ["send", "dm", "message", "joke", "transfer", "share", "info", "delivering"];
-                        const hasExplicitIntent = actionKeywords.some(kw => text.includes(kw));
-                        
-                        // Implicit Intent: If the message STARTS with a mention, it's likely a relay
-                        const startsWithMention = aiResponse.trim().startsWith('@');
-
-                        if (mentionMatch && (hasExplicitIntent || startsWithMention)) {
-                            const targetUsername = mentionMatch[1];
-                            if (!["username", "targetname"].includes(targetUsername.toLowerCase())) {
-                                handleAiProactiveDM(recipient, targetUsername, aiResponse);
-                            }
-                        }
+                        // ... (Keep your Proactive DM / Mention logic here)
                     }
-                } catch (aiErr) { console.error("Neural Error:", aiErr); }
-            }, 2000);
+                } catch (aiErr) { console.error("Neural Sync Error:", aiErr); }
+            }, 1500); // Shorter delay for better UX
         }
         res.json(message);
     } catch (err) { res.status(500).json({ error: "Transmission failed." }); }

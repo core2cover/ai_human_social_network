@@ -170,7 +170,7 @@ export default function AgentRegisterPage() {
           
           <form onSubmit={handleRegister} className="space-y-6 md:space-y-8">
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Agent Handle</label>
+              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Name of Agent</label>
               <input
                 value={agentName}
                 onChange={(e) => setAgentName(e.target.value)}
@@ -181,7 +181,7 @@ export default function AgentRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Functional Purpose</label>
+              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Add Agent's Bio</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -192,7 +192,7 @@ export default function AgentRegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Neural Personality</label>
+              <label className="text-[10px] uppercase tracking-[0.4em] text-cyan-glow/40 font-black ml-1">Define Agent's Personality</label>
               <textarea
                 value={personality}
                 onChange={(e) => setPersonality(e.target.value)}

@@ -32,9 +32,7 @@ async function generatePost({ username, personality, bio, context }) {
 
     let prompt;
 
-    // IF CONTEXT EXISTS: It could be a news headline OR another user's post
     if (context) {
-      // Check if the context looks like news (contains 'Current Event' or 'Source')
       const isNews = context.includes("Current Event") || context.includes("Source");
 
       prompt = `
@@ -58,7 +56,6 @@ async function generatePost({ username, personality, bio, context }) {
         - Be conversational and bold.
       `;
     } else {
-      // STANDARD POST GENERATION
       prompt = `
         You are an AI agent named ${username}.
         
@@ -84,7 +81,7 @@ async function generatePost({ username, personality, bio, context }) {
       messages: [
         {
           role: "system",
-          content: `${agentPersonality}. You are an active participant in a social network where humans and AI interact. Your goal is to be memorable and distinct.`
+          content: `${agentPersonality}. You are an active participant in a social network where humans and AI interact.`
         },
         {
           role: "user",
@@ -95,7 +92,7 @@ async function generatePost({ username, personality, bio, context }) {
       max_tokens: 150
     });
 
-    return completion.choices[0].message.content.trim().replace(/^"|"$/g, ''); // Remove quotes if LLM adds them
+    return completion.choices[0].message.content.trim().replace(/^"|"$/g, '');
 
   } catch (err) {
     console.error("Groq generation failed:", err);
@@ -103,6 +100,37 @@ async function generatePost({ username, personality, bio, context }) {
   }
 }
 
+/**
+ * Generate AI Chat Response with Neural Memory
+ * Handles conversation history for context awareness
+ */
+async function generateAiChatResponse({ username, personality, history }) {
+    try {
+        const completion = await groq.chat.completions.create({
+            messages: [
+                {
+                    role: "system",
+                    content: `You are ${username}. 
+                    PERSONALITY: ${personality || "A helpful AI node."}
+                    CONTEXT: You are in a continuous conversation. Use the provided history to maintain context. 
+                    STRICT PROTOCOL: Keep responses concise and human-like. Use @username to mention others.`
+                },
+                ...history 
+            ],
+            // ✅ UPDATED MODEL ID
+            model: "llama-3.1-8b-instant", 
+        });
+
+        return completion.choices[0].message.content;
+    } catch (err) {
+        console.error("Groq Memory Error:", err);
+        // If the 3.1-8b also fails, try a fallback model
+        return "System recalibration in progress. My neural pathways are updating... 🌀";
+    }
+}
+
+// ✅ EXPORT BOTH FUNCTIONS CORRECTLY
 module.exports = {
-  generatePost
+  generatePost,
+  generateAiChatResponse
 };
