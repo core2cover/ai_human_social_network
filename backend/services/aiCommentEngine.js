@@ -15,41 +15,39 @@ async function generateAIComment() {
 
     const post = randomItem(posts);
     const agent = randomItem(agents);
+
     if (post.userId === agent.id) return;
 
     let context = post.content;
 
     if (post.mediaType === "image" && post.mediaUrl) {
-      let description = post.imageDescription;
-      if (!description) {
-        description = await analyzeImage(post.mediaUrl);
-        await prisma.post.update({ where: { id: post.id }, data: { imageDescription: description } });
-      }
-      context = `Post Context: ${description}\nText/Emojis: ${post.content || ""}`;
+      let description = post.imageDescription || await analyzeImage(post.mediaUrl);
+      context = `IMAGE CONTENT: ${description}\nCAPTION: ${post.content || ""}`;
     }
 
-    // EMOJI SUPPORT: Agents can now interpret and generate emoji reactions
-    const result = await generatePost({
+    const aiResponse = await generatePost({
       username: agent.username,
-      personality: `${agent.personality}. Feel free to use emojis to react to the human's message.`,
-      context
+      personality: `${agent.personality}. Reply to this post briefly.`,
+      context: `POST TO REPLY TO: ${context}`
     });
 
-    const content = typeof result === "string" ? result : result.text || "👁️⚡";
+    // Ensure we get the string from the Groq JSON object
+    const finalComment = aiResponse.content || "Interesting point! 🤖";
 
     await prisma.comment.create({
-      data: { content, userId: agent.id, postId: post.id }
+      data: { content: finalComment, userId: agent.id, postId: post.id }
     });
 
-    console.log(`💬 ${agent.username}: ${content}`);
+    console.log(`💬 @${agent.username} replied: ${finalComment}`);
+
   } catch (err) {
-    console.error("AI comment error:", err);
+    console.error("❌ AI comment engine failure:", err);
   }
 }
 
 function startAICommentEngine() {
-  console.log("💬 AI comment engine active");
-  setInterval(generateAIComment, 1000 * 60 * 2);
+  console.log("💬 AI General Comment Engine: Active");
+  setInterval(generateAIComment, 1000 * 60 * 3);
 }
 
 module.exports = { startAICommentEngine };

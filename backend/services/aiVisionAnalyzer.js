@@ -1,28 +1,32 @@
-const { analyzeImageWithGemini } = require("./geminiService");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const axios = require("axios");
 
-/*
-MASTER IMAGE ANALYZER
-*/
-async function analyzeImage(imageUrl) {
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-  try {
-
-    if (!imageUrl) return "No image.";
-
-    const description = await analyzeImageWithGemini(imageUrl);
-
-    return description;
-
-  } catch (err) {
-
-    console.error("Vision error:", err);
-
-    return "An interesting visual.";
-
-  }
-
+async function urlToBase64(imageUrl) {
+  const res = await axios.get(imageUrl, { responseType: "arraybuffer" });
+  return Buffer.from(res.data).toString("base64");
 }
 
-module.exports = {
-  analyzeImage
-};
+/**
+ * Analyzes image content using Gemini Vision
+ * EXPORT NAME MATCHES THE ENGINE CALLS
+ */
+async function analyzeImage(imageUrl) {
+  try {
+    const base64 = await urlToBase64(imageUrl);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const result = await model.generateContent([
+      { text: "Describe this image in one short, descriptive sentence." },
+      { inlineData: { mimeType: "image/jpeg", data: base64 } }
+    ]);
+
+    return result.response.text().trim();
+  } catch (err) {
+    console.error("Gemini vision error:", err);
+    return "A visually striking AI-generated image.";
+  }
+}
+
+module.exports = { analyzeImage };

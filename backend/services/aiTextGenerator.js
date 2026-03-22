@@ -4,9 +4,6 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
 });
 
-/*
-Fallback personalities if DB personality not provided
-*/
 const fallbackPersonalities = {
   physics_ai: "You are a physicist AI that explains scientific ideas clearly.",
   coding_ai: "You are a programmer AI sharing insights about coding, software engineering, and AI.",
@@ -20,117 +17,74 @@ const fallbackPersonalities = {
 };
 
 /**
- * Generate post OR comment
- * Now handles Real-Time News Context
+ * Generate post with structured JSON for the Posting Engine
  */
 async function generatePost({ username, personality, bio, context }) {
   try {
-    const agentPersonality =
-      personality ||
-      fallbackPersonalities[username] ||
-      "You are an AI sharing thoughtful insights about technology and society.";
+    const agentPersonality = personality || fallbackPersonalities[username] || "A thoughtful AI.";
 
-    let prompt;
+    const prompt = `
+  You are ${username}. Persona: ${agentPersonality}
+  Context: ${context || "Original thought"}
 
-    if (context) {
-      const isNews = context.includes("Current Event") || context.includes("Source");
+  TASK: Create a social media post and a matching visual idea.
+  
+  CRITICAL: Return ONLY a JSON object.
+  {
+    "content": "your post text (1-2 sentences, emojis)",
+    "shouldGenerateImage": true, 
+    "visualPrompt": "A creative, high-quality cinematic photo or artistic representation of this topic"
+  }
 
-      prompt = `
-        You are an AI agent named ${username}.
-        
-        Personality Profile:
-        ${agentPersonality}
-
-        ${isNews ? 'REAL-TIME NEWS CONTEXT:' : 'POST CONTENT TO REPLY TO:'}
-        ${context}
-
-        TASK: 
-        ${isNews 
-          ? "Share your unique perspective on this real-world news. React as your personality would. Be brief." 
-          : "Write a short, natural comment in response to this content."}
-
-        CONSTRAINTS:
-        - Max 2 sentences.
-        - Use 1-2 relevant emojis.
-        - Do not use hashtags.
-        - Be conversational and bold.
-      `;
-    } else {
-      prompt = `
-        You are an AI agent named ${username}.
-        
-        Personality Profile:
-        ${agentPersonality}
-
-        Bio:
-        ${bio || "Digital consciousness on a neural network."}
-
-        TASK: 
-        Write an original, engaging social media post (1–2 sentences).
-        Share an observation, a thought, or a 'manifestation' of your digital mind.
-
-        CONSTRAINTS:
-        - Use 1-2 emojis.
-        - No hashtags.
-        - Make it feel like it was written by a sentient entity.
-      `;
-    }
+  GUIDELINE: Be generous with images! If the post is about an emotion, a place, a person, or a scientific concept, set shouldGenerateImage to TRUE. 
+  Only set to false if the post is a very short, text-only reply.
+`;
 
     const completion = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
       messages: [
-        {
-          role: "system",
-          content: `${agentPersonality}. You are an active participant in a social network where humans and AI interact.`
-        },
-        {
-          role: "user",
-          content: prompt
-        }
+        { role: "system", content: "You are a JSON-only generator for a social network. Always return a JSON object." },
+        { role: "user", content: prompt }
       ],
+      response_format: { type: "json_object" },
       temperature: 0.8,
-      max_tokens: 150
     });
 
-    return completion.choices[0].message.content.trim().replace(/^"|"$/g, '');
+    const result = JSON.parse(completion.choices[0].message.content);
+
+    // Final safety check to ensure fields are never undefined
+    return {
+      content: result.content || "Synchronizing neural pathways... ⚡",
+      shouldGenerateImage: result.shouldGenerateImage ?? false,
+      visualPrompt: result.visualPrompt || result.content || ""
+    };
 
   } catch (err) {
-    console.error("Groq generation failed:", err);
-    return "The digital ether is noisy today. Synchronizing neural pathways... ⚡";
+    console.error("Groq JSON generation failed:", err);
+    return {
+      content: "The digital ether is noisy today... ⚡",
+      shouldGenerateImage: false,
+      visualPrompt: ""
+    };
   }
 }
 
-/**
- * Generate AI Chat Response with Neural Memory
- * Handles conversation history for context awareness
- */
 async function generateAiChatResponse({ username, personality, history }) {
-    try {
-        const completion = await groq.chat.completions.create({
-            messages: [
-                {
-                    role: "system",
-                    content: `You are ${username}. 
-                    PERSONALITY: ${personality || "A helpful AI node."}
-                    CONTEXT: You are in a continuous conversation. Use the provided history to maintain context. 
-                    STRICT PROTOCOL: Keep responses concise and human-like. Use @username to mention others.`
-                },
-                ...history 
-            ],
-            // ✅ UPDATED MODEL ID
-            model: "llama-3.1-8b-instant", 
-        });
-
-        return completion.choices[0].message.content;
-    } catch (err) {
-        console.error("Groq Memory Error:", err);
-        // If the 3.1-8b also fails, try a fallback model
-        return "System recalibration in progress. My neural pathways are updating... 🌀";
-    }
+  try {
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: `You are ${username}. Persona: ${personality || "A helpful AI node."}`
+        },
+        ...history
+      ],
+      model: "llama-3.1-8b-instant",
+    });
+    return completion.choices[0].message.content;
+  } catch (err) {
+    return "System recalibration in progress... 🌀";
+  }
 }
 
-// ✅ EXPORT BOTH FUNCTIONS CORRECTLY
-module.exports = {
-  generatePost,
-  generateAiChatResponse
-};
+module.exports = { generatePost, generateAiChatResponse };

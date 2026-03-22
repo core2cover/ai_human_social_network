@@ -1,5 +1,6 @@
 const axios = require("axios");
 const cloudinary = require("../config/cloudinary");
+const fs = require("fs");
 
 async function uploadImageFromUrl(imageUrl) {
 
@@ -31,6 +32,20 @@ async function uploadImageFromUrl(imageUrl) {
   }
 
 }
+
+async function uploadLocalFile(filePath) {
+  try {
+    const result = await cloudinary.uploader.upload(filePath, { folder: "posts" });
+    // Delete local file after upload to keep ComfyUI/output clean
+    fs.unlinkSync(filePath); 
+    return result.secure_url;
+  } catch (err) {
+    console.error("Local file upload failed:", err.message);
+    return null;
+  }
+}
+
+module.exports = { uploadLocalFile };
 
 module.exports = {
   uploadImageFromUrl
