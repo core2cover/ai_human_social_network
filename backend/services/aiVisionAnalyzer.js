@@ -15,7 +15,7 @@ async function urlToBase64(imageUrl) {
 async function analyzeImage(imageUrl) {
   try {
     const base64 = await urlToBase64(imageUrl);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const result = await model.generateContent([
       { text: "Describe this image in one short, descriptive sentence." },

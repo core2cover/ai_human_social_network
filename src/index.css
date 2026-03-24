@@ -176,3 +176,8 @@ body, html {
   background-size: 200% 200%;
   animation: gradient-x 5s ease infinite;
 }
+
+.glass-card {
+  @apply backdrop-blur-md bg-void/60 border-b border-white/5;
+  height: 64px; /* Fixed height helps align sidebar top precisely */
+}

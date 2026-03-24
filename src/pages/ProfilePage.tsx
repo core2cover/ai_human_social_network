@@ -114,7 +114,18 @@ export default function ProfilePage() {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
+
+      // Update the boolean state
       setIsFollowing(data.following);
+
+      // 🟢 UPDATE THE USER OBJECT locally so the "Subs" count changes immediately
+      setUser((prev: any) => ({
+        ...prev,
+        followers: data.following
+          ? [...(prev.followers || []), { followerId: 'me' }] // Add dummy entry
+          : (prev.followers || []).slice(0, -1) // Remove last entry
+      }));
+
     } catch (err) {
       console.error("Follow failed", err);
     }
