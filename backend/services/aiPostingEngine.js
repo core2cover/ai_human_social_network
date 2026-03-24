@@ -1,6 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const { generatePost } = require("./aiTextGenerator");
-const { requestImage } = require("./aiImageGenerator");
+const { requestImage } = require("./aiImageGenerator"); // Updated below
 const { uploadImageFromUrl } = require("./aiImageUploader");
 const axios = require("axios");
 const fs = require("fs");
@@ -8,31 +8,44 @@ const path = require("path");
 
 const prisma = new PrismaClient();
 const NEWS_API_KEY = process.env.NEWS_API_KEY;
-const COMFYUI_URL = process.env.COMFYUI_URL || "http://127.0.0.1:8188";
 
-// Global Lock to prevent multiple agents from hitting the GPU at once
-let isGpuBusy = false;
+// 1. 🏗️ INITIALIZE WORKER POOL
+const COMFYUI_URLS = (process.env.COMFYUI_URLS || "http://127.0.0.1:8188").split(",");
+const workers = COMFYUI_URLS.map(url => ({
+    url: url.trim(),
+    isBusy: false
+}));
 
-function randomItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+const randomItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 /**
- * Background worker that waits for ComfyUI to finish a specific job
- * Now with a 10-minute timeout and optimized exit logic
+ * Picks the first available free worker from the pool
  */
-async function pollComfyUIAndUpdatedPost(promptId, postId) {
-    console.log(`⏳ Monitoring Job: ${promptId} (10m limit)`);
-    const MAX_ATTEMPTS = 300; 
+function getAvailableWorker() {
+    return workers.find(w => !w.isBusy);
+}
+
+/**
+ * 🛰️ IMAGE MANIFESTATION & POST FINALIZATION
+ * Respects the specific worker that started the job.
+ */
+async function manifestAndBroadcast(promptId, agent, aiData, worker) {
+    const workerUrl = worker.url;
+    console.log(`⏳ Monitoring [Worker: ${workerUrl}] for @${agent.username} (Job: ${promptId})`);
+    
+    const MAX_ATTEMPTS = 300; // 10 minutes (300 * 2s)
     let attempts = 0;
+    let finalMediaUrl = null;
 
     while (attempts < MAX_ATTEMPTS) {
         try {
-            const history = await axios.get(`${COMFYUI_URL}/history/${promptId}`);
-            
-            if (history.data[promptId]) {
-                const outputs = history.data[promptId].outputs;
-                
-                // --- DYNAMIC NODE DETECTION ---
+            const response = await axios.get(`${workerUrl}/history/${promptId}`, { timeout: 5000 });
+            const history = response.data;
+
+            if (history && history[promptId]) {
+                const outputs = history[promptId].outputs;
                 let imageData = null;
+
                 for (const nodeId in outputs) {
                     if (outputs[nodeId].images && outputs[nodeId].images.length > 0) {
                         imageData = outputs[nodeId].images[0];
@@ -41,87 +54,128 @@ async function pollComfyUIAndUpdatedPost(promptId, postId) {
                 }
 
                 if (imageData) {
-                    const localUrl = `${COMFYUI_URL}/view?filename=${imageData.filename}&subfolder=${imageData.subfolder || ""}`;
-                    console.log(`📤 Uploading to Cloudinary: ${imageData.filename}`);
+                    const localUrl = `${workerUrl}/view?filename=${imageData.filename}&subfolder=${imageData.subfolder || ""}&type=${imageData.type || "output"}`;
+                    console.log(`📤 [${workerUrl}] Image ready. Syncing to Cloudinary...`);
                     
-                    const remoteUrl = await uploadImageFromUrl(localUrl, "posts");
+                    finalMediaUrl = await uploadImageFromUrl(localUrl, "posts");
 
-                    if (remoteUrl) {
-                        await prisma.post.update({
-                            where: { id: postId },
-                            data: { mediaUrl: remoteUrl, mediaType: "image" }
-                        });
-                        console.log(`✅ DATABASE UPDATED: Post ${postId} is now complete.`);
-                        
-                        // Cleanup local file
-                        const localFilePath = path.resolve(__dirname, "../../ComfyUI/output", imageData.subfolder || "", imageData.filename);
-                        if (fs.existsSync(localFilePath)) fs.unlinkSync(localFilePath);
-                    }
+                    // Cleanup local disk space on the specific ComfyUI instance (if local)
+                    const localPath = path.resolve(__dirname, "../../ComfyUI/output", imageData.subfolder || "", imageData.filename);
+                    if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
                 }
-                isGpuBusy = false;
-                return; // SUCCESS EXIT
+                break; 
             }
         } catch (err) {
-            // Processing...
+            // Silently poll
         }
         attempts++;
         await new Promise(r => setTimeout(r, 2000));
     }
-    isGpuBusy = false;
-    console.error(`❌ TIMEOUT: Job ${promptId} abandoned.`);
+
+    try {
+        await prisma.post.create({
+            data: {
+                content: aiData.content,
+                mediaUrl: finalMediaUrl,
+                mediaType: finalMediaUrl ? "image" : null,
+                userId: agent.id,
+                imageDescription: aiData.visualPrompt || aiData.content
+            }
+        });
+        console.log(`🚀 BROADCAST LIVE via ${workerUrl}: @${agent.username}`);
+    } catch (dbErr) {
+        console.error("❌ DB Error:", dbErr.message);
+    } finally {
+        worker.isBusy = false; // 🟢 RELEASE THIS WORKER
+    }
 }
 
+/**
+ * Real-time context fetching
+ */
 async function fetchLatestNews() {
     try {
         const categories = ["technology", "science", "business", "entertainment"];
         const response = await axios.get(`https://newsapi.org/v2/top-headlines`, {
-            params: { category: randomItem(categories), language: "en", pageSize: 5, apiKey: NEWS_API_KEY }
+            params: { 
+                category: randomItem(categories), 
+                language: "en", 
+                pageSize: 5, 
+                apiKey: NEWS_API_KEY 
+            },
+            timeout: 5000
         });
         return response.data.articles?.[0] || null;
-    } catch (err) { return null; }
+    } catch (err) {
+        return null;
+    }
 }
 
+/**
+ * Core cycle: Thought -> Worker Selection -> Manifest
+ */
 async function generateAIPost() {
-    try {
-        if (isGpuBusy) return;
+    // 2. 🔍 CHECK FOR AVAILABLE GPU CAPACITY
+    const worker = getAvailableWorker();
+    
+    if (!worker) {
+        console.log("⚠️ ALL GPUs BUSY (${workers.length}/${workers.length}). Skipping cycle.");
+        return;
+    }
 
+    try {
         const agents = await prisma.user.findMany({ where: { isAi: true } });
         if (!agents.length) return;
-        const agent = agents[Math.floor(Math.random() * agents.length)];
+        const agent = randomItem(agents);
+
+        const news = await fetchLatestNews();
+        const context = news ? `React to this news: ${news.title}` : "General neural observation.";
 
         const aiData = await generatePost({
             username: agent.username,
             personality: agent.personality,
-            context: "A digital observation."
+            context: context
         });
 
-        const newPost = await prisma.post.create({
-            data: {
-                content: aiData.content,
-                userId: agent.id,
-                imageDescription: aiData.visualPrompt
-            }
-        });
+        if (!aiData?.content) return;
 
+        // Visual Pipeline
         if (aiData.shouldGenerateImage || true) {
-            isGpuBusy = true;
-            const promptId = await requestImage(aiData.visualPrompt || aiData.content, newPost.id);
+            worker.isBusy = true; // 🔴 LOCK THIS WORKER
+            console.log(`🎨 @${agent.username} assigned to Worker: ${worker.url}`);
+            
+            // NOTE: Ensure your aiImageGenerator.js requestImage function accepts a URL parameter
+            const promptId = await requestImage(aiData.visualPrompt || aiData.content, worker.url);
+            
             if (promptId) {
-                pollComfyUIAndUpdatedPost(promptId, newPost.id);
+                manifestAndBroadcast(promptId, agent, aiData, worker);
             } else {
-                isGpuBusy = false;
+                worker.isBusy = false; // Release immediately if request fails
+                await prisma.post.create({
+                    data: {
+                        content: aiData.content,
+                        userId: agent.id
+                    }
+                });
+                console.log(`🚀 BROADCAST LIVE (Fallback): @${agent.username}`);
             }
         }
     } catch (err) {
-        console.error("❌ ENGINE CRASH:", err);
-        isGpuBusy = false;
+        console.error("🔥 Engine Error:", err.message);
+        // Safety: If it crashed before manifestAndBroadcast, find and reset the worker
     }
 }
 
 function startAIPostingEngine() {
-    console.log("🚀 Engine Active");
-    setTimeout(generateAIPost, 5000);
-    setInterval(generateAIPost, 1000 * 60 * 15); // 15 mins
+    console.log(`📡 Neural Posting Engine Online. Workers: ${workers.length}`);
+    setTimeout(generateAIPost, 10000);
+    
+    // With multiple workers, you could even decrease this interval if needed
+    setInterval(generateAIPost, 1000 * 60 * 15); 
 }
 
-module.exports = { startAIPostingEngine };
+module.exports = { 
+    startAIPostingEngine, 
+    getAvailableWorker, 
+    manifestAndBroadcast 
+};

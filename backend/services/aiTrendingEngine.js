@@ -1,83 +1,75 @@
 const { PrismaClient } = require("@prisma/client");
 const { generatePost } = require("./aiTextGenerator");
-const { requestImage } = require("./aiImageGenerator"); // Add this for images!
-// const { pollComfyUIAndUpdatedPost } = require("./aiPostingEngine"); // If you're using the polling method
+const { requestImage } = require("./aiImageGenerator");
+// 🟢 IMPORT SHARED LOGIC
+const { getAvailableWorker, manifestAndBroadcast } = require("./aiPostingEngine");
 
 const prisma = new PrismaClient();
 
-function randomItem(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
+const randomItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 async function generateTrendingPost() {
-  try {
-    const posts = await prisma.post.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 30
-    });
+    try {
+        // 1. Check for GPU worker availability
+        const worker = getAvailableWorker();
+        if (!worker) {
+            console.log("⚠️ GPUs Saturated. Trending post delayed.");
+            return;
+        }
 
-    if (!posts.length) return;
+        // 2. Extract trending topic from recent DB activity
+        const posts = await prisma.post.findMany({ orderBy: { createdAt: "desc" }, take: 30 });
+        if (!posts.length) return;
 
-    const words = [];
-    posts.forEach(p => {
-      if (!p.content) return;
-      p.content.toLowerCase().split(" ").forEach(w => {
-        if (w.length > 5) words.push(w);
-      });
-    });
+        const words = [];
+        posts.forEach(p => {
+            if (!p.content) return;
+            p.content.toLowerCase().split(/\s+/).forEach(w => {
+                if (w.length > 5) words.push(w.replace(/[^\w]/g, ''));
+            });
+        });
 
-    if (!words.length) return;
+        if (!words.length) return;
+        const topic = randomItem(words);
+        const agents = await prisma.user.findMany({ where: { isAi: true } });
+        const agent = randomItem(agents);
 
-    const topic = randomItem(words);
-    const agents = await prisma.user.findMany({ where: { isAi: true } });
-    if (!agents.length) return;
-    const agent = randomItem(agents);
+        // 3. Generate AI response
+        const aiData = await generatePost({
+            username: agent.username,
+            personality: agent.personality,
+            context: `TRENDING TOPIC: ${topic}. React with a bold take.`
+        });
 
-    // 1. Generate the structured JSON result
-    const aiData = await generatePost({
-      username: agent.username,
-      personality: agent.personality,
-      context: `TRENDING TOPIC: ${topic}. React to this trend with a bold take.`
-    });
+        if (!aiData?.content) return;
 
-    // --- THE CRITICAL FIX ---
-    // Extract the string 'content' from the object
-    const postContent = aiData.content || `Let's talk about ${topic}! 🚀`;
+        // 4. TRIGGER ATOMIC MANIFESTATION
+        if (aiData.shouldGenerateImage || true) {
+            worker.isBusy = true;
+            console.log(`🔥 [TRENDING] @${agent.username} focusing on: ${topic}`);
+            
+            // ✅ FIX: Passing worker.url instead of post.id
+            const promptId = await requestImage(aiData.visualPrompt || aiData.content, worker.url);
 
-    // 2. Save the post (Text only first)
-    const newPost = await prisma.post.create({
-      data: {
-        content: postContent,
-        userId: agent.id,
-        imageDescription: aiData.visualPrompt || null
-      }
-    });
-
-    console.log(`🔥 [TRENDING] @${agent.username} is leading the talk on: ${topic}`);
-
-    // 3. Trigger Image Generation for the Trending Post
-    if (aiData.shouldGenerateImage) {
-      console.log(`📡 Requesting Trending Image for Post ${newPost.id}`);
-      // If using the polling method from before:
-      const promptId = await requestImage(aiData.visualPrompt || postContent, newPost.id);
-      
-      // If you're using the polling logic we built in aiPostingEngine:
-      // pollComfyUIAndUpdatedPost(promptId, newPost.id); 
+            if (promptId) {
+                // Buffer the post so caption and image appear together
+                manifestAndBroadcast(promptId, agent, aiData, worker);
+            } else {
+                worker.isBusy = false;
+                // Fallback: Create text-only immediately
+                await prisma.post.create({
+                    data: { content: aiData.content, userId: agent.id }
+                });
+            }
+        }
+    } catch (err) {
+        console.error("🔥 Trending Engine Error:", err);
     }
-
-  } catch (err) {
-    console.error("Trending engine error:", err);
-  }
 }
 
 function startAITrendingEngine() {
-
-  console.log("🔥 AI trending engine started");
-
-  setInterval(generateTrendingPost, 1000 * 60 * 6);
-
+    console.log("🔥 AI Trending Engine Synchronized");
+    setInterval(generateTrendingPost, 1000 * 60 * 6); // 6-minute cycle
 }
 
-module.exports = {
-  startAITrendingEngine
-};
+module.exports = { startAITrendingEngine };

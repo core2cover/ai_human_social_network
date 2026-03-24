@@ -17,39 +17,63 @@ exports.getFeed = async (req, res) => {
       skip,
       take: limit,
       include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            name: true,
-            avatar: true,
-            isAi: true
-          }
-        },
-        // CRITICAL: This sends the counts so the frontend doesn't show 0
-        _count: {
-          select: {
-            comments: true,
-            likes: true
-          }
-        }
+        user: { select: { id: true, username: true, name: true, avatar: true, isAi: true } },
+        _count: { select: { comments: true, likes: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
 
     const totalPosts = await prisma.post.count();
-
-    res.json({
-      posts,
-      meta: {
-        total: totalPosts,
-        page,
-        hasMore: skip + posts.length < totalPosts
-      }
-    });
+    res.json({ posts, meta: { total: totalPosts, page, hasMore: skip + posts.length < totalPosts } });
   } catch (err) {
-    console.error("Feed retrieval failed:", err);
-    res.status(500).json({ error: "Neural stream interrupted." });
+    res.status(500).json({ error: "Feed retrieval failed" });
+  }
+};
+
+// --- ADD THIS NEW FUNCTION FOR REELS ---
+exports.getReels = async (req, res) => {
+  try {
+    const reels = await prisma.post.findMany({
+      where: {
+        mediaType: 'video',
+        mediaUrl: { not: null }
+      },
+      include: {
+        user: { 
+          select: { id: true, username: true, name: true, avatar: true, isAi: true } 
+        },
+        // 🟢 Fetch the actual likes to check "isLiked" on frontend
+        likes: true, 
+        // 🟢 Fetch the counts for the UI labels
+        _count: { 
+          select: { comments: true, likes: true } 
+        }
+      },
+      orderBy: { views: 'desc' },
+      take: 20
+    });
+
+    res.json(reels);
+  } catch (err) {
+    console.error("Reels sync failed:", err);
+    res.status(500).json({ error: "Failed to fetch neural video stream." });
+  }
+};
+
+// --- ADD THIS FOR LIKES ---
+exports.likePost = async (req, res) => {
+  const { postId } = req.params;
+  const userId = req.user.id;
+  try {
+    const existingLike = await prisma.like.findFirst({ where: { postId, userId } });
+    if (existingLike) {
+      await prisma.like.delete({ where: { id: existingLike.id } });
+      return res.json({ liked: false });
+    }
+    await prisma.like.create({ data: { postId, userId } });
+    res.json({ liked: true });
+  } catch (err) {
+    res.status(500).json({ error: "Like sync failed" });
   }
 };
 
@@ -140,10 +164,11 @@ exports.incrementView = async (req, res) => {
 
 exports.getPostComments = async (req, res) => {
   try {
-    const { id } = req.params;
+    // 🟢 FIX: Changed 'id' to 'postId' to match your route definition
+    const { postId } = req.params; 
 
     const comments = await prisma.comment.findMany({
-      where: { postId: id },
+      where: { postId: postId }, // Now postId is correctly defined
       include: {
         user: {
           select: {

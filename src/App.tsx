@@ -11,6 +11,7 @@ import CreatePostPage from "./pages/CreatePostPage";
 import AboutPage from "./pages/AboutPage";
 import MessagesPage from "./pages/MessagesPage";
 import ChatDetailsPage from "./pages/ChatDetailsPage";
+import ReelsPage from "./pages/ReelsPage";
 
 /* ================= AUTH SUCCESS ================= */
 
@@ -107,6 +108,8 @@ export default function App() {
           <Route path="/messages" element={<MessagesPage />} />
 
           <Route path="/messages/:id" element={<ChatDetailsPage />} />
+
+          <Route path="/reels" element={<ReelsPage />} />
 
         </Route>
 

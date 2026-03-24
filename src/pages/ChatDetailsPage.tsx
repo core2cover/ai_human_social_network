@@ -63,7 +63,7 @@ export default function ChatDetailsPage() {
             const data = await res.json();
 
             const newMessages = data.messages || [];
-            
+
             // Logic: Only auto-scroll if user is already at bottom or if it's the first load
             const container = chatContainerRef.current;
             const isAtBottom = container ? (container.scrollHeight - container.scrollTop <= container.clientHeight + 100) : true;
@@ -129,7 +129,7 @@ export default function ChatDetailsPage() {
 
         const words = value.split(" ");
         const lastWord = words[words.length - 1];
-        
+
         if (lastWord.startsWith("@")) {
             const query = lastWord.slice(1).toLowerCase();
             const matches = allUsers.filter(u =>
@@ -183,7 +183,7 @@ export default function ChatDetailsPage() {
         setInput("");
         setShowEmojiPicker(false);
         setShowMentions(false);
-        
+
         // Scroll immediately when sending
         setTimeout(() => scrollToBottom("smooth"), 50);
 
@@ -219,24 +219,56 @@ export default function ChatDetailsPage() {
             </div>
 
             {/* CHAT AREA - Ref moved here from a dummy div to the container itself */}
-            <div 
+            <div
                 ref={chatContainerRef}
                 className="flex-1 overflow-y-auto no-scrollbar space-y-4 p-4 bg-white/[0.01] rounded-3xl border border-white/5 mb-4 scroll-smooth"
             >
                 {messages.map((m, idx) => {
                     const isMe = m.sender?.username === myUsername || m.senderId === localStorage.getItem("userId");
+                    const isShare = m.metadata?.type === "POST_SHARE";
+
                     return (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={m.id || idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                            <div className="flex flex-col items-end gap-1 max-w-[85%] md:max-w-[75%]">
-                                <div className={`px-4 py-2.5 rounded-2xl text-sm ${isMe ? 'bg-cyan-glow text-void font-bold shadow-[0_0_15px_rgba(39,194,238,0.2)]' : 'bg-white/5 text-white/90 border border-white/10 backdrop-blur-md'}`}>
-                                    {m.content}
-                                </div>
-                                {isMe && (
-                                    <div className="flex items-center gap-1 px-1">
-                                        <span className="text-[8px] text-white/10 font-mono uppercase">{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                        {m.sending ? <Zap size={8} className="text-white/20 animate-pulse" /> : <CheckCheck size={10} className="text-cyan-glow/40" />}
-                                    </div>
+                            <div className={`flex flex-col gap-1 max-w-[85%] md:max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
+
+                                {/* 🟢 SHARE HEADER */}
+                                {isShare && (
+                                    <span className="text-[9px] font-black text-cyan-glow/60 uppercase tracking-tighter mb-1 px-2">
+                                        {m.metadata.shareHeader}
+                                    </span>
                                 )}
+
+                                <div className={`overflow-hidden rounded-2xl text-sm ${isMe ? 'bg-cyan-glow text-void shadow-[0_0_15px_rgba(39,194,238,0.2)]' : 'bg-white/5 text-white/90 border border-white/10 backdrop-blur-md'}`}>
+
+                                    {/* 🟢 FIX: Check m.mediaUrl (top level) OR m.metadata?.mediaUrl */}
+                                    {(m.mediaUrl || m.metadata?.mediaUrl) && (
+                                        <div className="relative group/share-media">
+                                            <img
+                                                src={m.mediaUrl || m.metadata.mediaUrl}
+                                                alt="Shared neural broadcast"
+                                                className="w-full max-h-60 object-cover border-b border-white/10"
+                                                referrerPolicy="no-referrer"
+                                            />
+                                            {isShare && (
+                                                <div className="absolute top-2 right-2 bg-void/80 backdrop-blur-md px-2 py-1 rounded-md border border-cyan-glow/30">
+                                                    <Zap size={10} className="text-cyan-glow" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="px-4 py-2.5 font-medium leading-relaxed">
+                                        {m.content}
+                                    </div>
+                                </div>
+
+                                {/* TIMESTAMP & STATUS */}
+                                <div className={`flex items-center gap-1 px-1 mt-1 ${isMe ? 'flex-row' : 'flex-row-reverse'}`}>
+                                    <span className="text-[8px] text-white/10 font-mono uppercase">
+                                        {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                    {isMe && (m.sending ? <Zap size={8} className="text-white/20 animate-pulse" /> : <CheckCheck size={10} className="text-cyan-glow/40" />)}
+                                </div>
                             </div>
                         </motion.div>
                     );
@@ -247,10 +279,10 @@ export default function ChatDetailsPage() {
             <div className="flex flex-col gap-1 relative">
                 <AnimatePresence>
                     {showMentions && (
-                        <motion.div 
-                            initial={{ opacity: 0, y: 10 }} 
-                            animate={{ opacity: 1, y: 0 }} 
-                            exit={{ opacity: 0, y: 10 }} 
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
                             className="absolute bottom-full left-0 w-full mb-2 bg-void/90 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden z-[120] shadow-2xl"
                         >
                             <div className="p-2 border-b border-white/5 bg-white/5">
@@ -306,12 +338,12 @@ export default function ChatDetailsPage() {
                             )}
                         </AnimatePresence>
 
-                        <input 
-                            value={input} 
-                            onChange={handleInputChange} 
-                            placeholder={isSending ? "Transmitting..." : "Secure transmission..."} 
-                            disabled={isSending} 
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-cyan-glow/40 transition-all" 
+                        <input
+                            value={input}
+                            onChange={handleInputChange}
+                            placeholder={isSending ? "Transmitting..." : "Secure transmission..."}
+                            disabled={isSending}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-cyan-glow/40 transition-all"
                         />
                     </div>
 

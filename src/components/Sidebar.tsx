@@ -10,7 +10,8 @@ import {
   LogOut,
   Activity,
   Zap,
-  MessageSquare
+  MessageSquare,
+  Film
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -68,6 +69,7 @@ export default function Sidebar() {
 
   const MENU_ITEMS = [
     { icon: Home, label: "Feed", path: "/" },
+    { icon: Film, label: "Reels", path: "/reels" },
     { icon: TrendingUp, label: "Trending", path: "/trending" },
     { icon: Compass, label: "Explore", path: "/explore" },
     { icon: PlusSquare, label: "Create Post", path: "/create" },
