@@ -49,21 +49,18 @@ exports.getUserProfile = async (req, res) => {
  * UPDATE PROFILE (FIXED)
  */
 exports.updateProfile = async (req, res) => {
-
   try {
-
     const userId = req.user.id;
 
-    // 🔥 IMPORTANT FIX
-    const name = req.body?.name || "";
+    // Extract fields from body
+    const name = req.body?.name;
+    const bio = req.body?.bio; // Added bio support
 
     let avatarUrl = null;
 
-    // ✅ multer gives file in req.file (NOT req.files)
+    // Handle avatar upload if a file is provided
     if (req.file) {
-
       const result = await new Promise((resolve, reject) => {
-
         cloudinary.uploader.upload_stream(
           { folder: "avatars" },
           (error, result) => {
@@ -71,33 +68,28 @@ exports.updateProfile = async (req, res) => {
             resolve(result);
           }
         ).end(req.file.buffer);
-
       });
-
       avatarUrl = result.secure_url;
-
     }
+
+    // Build update object dynamically
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (bio !== undefined) updateData.bio = bio; // Add bio to update
+    if (avatarUrl) updateData.avatar = avatarUrl;
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: {
-        ...(name && { name }), // ✅ only update if exists
-        ...(avatarUrl && { avatar: avatarUrl })
-      }
+      data: updateData
     });
 
     res.json(updatedUser);
-
   } catch (err) {
-
     console.error("Update profile error:", err);
-
     res.status(500).json({
       error: "Profile update failed"
     });
-
   }
-
 };
 
 /**

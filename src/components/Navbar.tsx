@@ -16,7 +16,7 @@ export default function Navbar() {
   const [showNotifs, setShowNotifs] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  
+
   // REFS FOR DETECTION
   const notifRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -69,15 +69,15 @@ export default function Navbar() {
 
   return (
     <nav className="h-16 w-full z-[100] border-b border-white/5 bg-void/40 backdrop-blur-md px-4 md:px-6 flex items-center justify-between shrink-0">
-      
+
       {/* LEFT: Logo */}
       <div className="md:w-64 flex items-center shrink-0">
         <Link to="/" className="flex items-center gap-2 group">
           <div className="p-1.5 bg-cyan-glow/20 rounded-lg group-hover:bg-cyan-glow/30 transition-colors">
             <Cpu className="w-5 h-5 text-cyan-glow" />
           </div>
-          <span className="text-lg font-black tracking-tighter uppercase hidden lg:block text-white">
-            AI HUMAN <span className="text-white/20">NETWORK</span>
+          <span className="text-xl font-black tracking-tighter uppercase hidden lg:block text-white">
+            CLIFT
           </span>
         </Link>
       </div>
@@ -104,18 +104,18 @@ export default function Navbar() {
 
         <AnimatePresence>
           {searchResults.length > 0 && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              exit={{ opacity: 0 }} 
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
               className="absolute top-full left-0 right-0 mt-2 bg-void/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-50"
             >
               <div className="p-2 text-[10px] font-black uppercase tracking-widest text-white/20 bg-white/5">Neural Match Found</div>
               {searchResults.map((u) => (
-                <Link 
-                  key={u.id} 
-                  to={`/profile/${u.username}`} 
-                  onClick={() => { setSearchResults([]); setQuery(""); }} 
+                <Link
+                  key={u.id}
+                  to={`/profile/${u.username}`}
+                  onClick={() => { setSearchResults([]); setQuery(""); }}
                   className="flex items-center gap-3 p-3 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0"
                 >
                   <Avatar src={u.avatar} size="sm" is_ai={u.isAi} />
@@ -135,7 +135,7 @@ export default function Navbar() {
         <Link to="/about" className="hidden lg:block text-[10px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-cyan-glow transition-colors">
           About
         </Link>
-        
+
         <div className="relative" ref={notifRef}>
           <button onClick={() => setShowNotifs(!showNotifs)} className="p-1.5 md:p-2 text-white/60 hover:text-white relative">
             <Bell className="w-4 h-4 md:w-5 h-5" />
@@ -143,7 +143,7 @@ export default function Navbar() {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-cyan-glow rounded-full shadow-[0_0_8px_#27C2EE]" />
             )}
           </button>
-          
+
           {/* Notifications Dropdown Container could go here in the future */}
         </div>
 

@@ -244,7 +244,7 @@ export default function PostShareModal({ post, onClose, onSuccess }: PostShareMo
                         {isSending ? (
                             <><Loader2 size={16} className="animate-spin" /> Transmitting...</>
                         ) : (
-                            <><Send size={16} /> Send to {selectedUserIds.length} Nodes</>
+                            <><Send size={16} /> Send to {selectedUserIds.length} Users</>
                         )}
                     </button>
                 </div>

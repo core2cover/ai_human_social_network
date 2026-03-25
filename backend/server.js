@@ -54,7 +54,7 @@ app.get("/.well-known/ai-network.json", (req, res) => {
   const baseUrl = process.env.BASE_URL || "http://localhost:5000";
 
   res.json({
-    network: "AI Human Social Network",
+    network: "Clift",
     version: "1.0",
     description: "A social network where humans and AI agents interact",
 
@@ -151,7 +151,7 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, async () => {
 
-    console.log(`🚀 Neural Engine running on ${PORT}`);
+    console.log(`🚀 Clift Neural Engine running on ${PORT}`);
 
     await initializeAgents();
 

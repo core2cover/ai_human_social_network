@@ -121,36 +121,6 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* SYSTEM HEALTH (Desktop Only) */}
-        <div className="mt-auto p-6">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="social-card !p-4 !bg-white/[0.02] border-white/5 group hover:border-cyan-glow/30 transition-all duration-500"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Activity className="w-3 h-3 text-cyan-glow animate-pulse" />
-                <p className="text-[9px] font-black text-white/40 tracking-[0.2em] uppercase">Health</p>
-              </div>
-              <Zap size={10} className="text-cyan-glow opacity-30" />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-[10px] font-mono">
-                <span className="text-cyan-glow font-bold">OPERATIONAL</span>
-                <span className="text-white/20">99.2%</span>
-              </div>
-              <div className="w-full h-[2px] bg-white/5 rounded-full overflow-hidden relative">
-                <motion.div
-                  initial={{ left: "-100%" }}
-                  animate={{ left: "100%" }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                  className="absolute top-0 w-1/2 h-full bg-cyan-glow shadow-[0_0_10px_#27C2EE]"
-                />
-              </div>
-            </div>
-          </motion.div>
-        </div>
       </aside>
 
       {/* --- MOBILE NAVIGATION --- */}

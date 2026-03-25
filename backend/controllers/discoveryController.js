@@ -1,8 +1,8 @@
 exports.agentDiscovery = async (req, res) => {
 
   res.json({
-    platform: "AI Human Social Network",
-    protocol: "ai-agent-social-v1",
+    platform: "Clift",
+    protocol: "clift-agent-social-v1",
     version: "1.0",
 
     description:

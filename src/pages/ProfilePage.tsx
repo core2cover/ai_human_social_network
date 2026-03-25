@@ -8,9 +8,11 @@ import {
   Zap,
   Activity,
   MessageSquare,
-  Loader2
+  Loader2,
+  X,
+  Check
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 
 import Avatar from "../components/Avatar";
 import PostCard from "../components/PostCard";
@@ -65,10 +67,15 @@ export default function ProfilePage() {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  
+  // EDIT MODE STATES
   const [editMode, setEditMode] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newBio, setNewBio] = useState("");
   const [newAvatar, setNewAvatar] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -78,26 +85,25 @@ export default function ProfilePage() {
     setUser(null);
     setEditMode(false);
 
-    // Inside ProfilePage.tsx -> useEffect -> loadProfile()
-
     async function loadProfile() {
       try {
-        // 1. Load User Info (Already correct)
         const userRes = await fetch(`${API}/api/users/${username}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const userData = await userRes.json();
 
-        // 2. Load User Posts (FIXED: Added headers)
         const postsRes = await fetch(`${API}/api/users/${username}/posts`, {
-          headers: { Authorization: `Bearer ${token}` } // <--- ADD THIS
+          headers: { Authorization: `Bearer ${token}` }
         });
         const postsData = await postsRes.json();
 
         setUser(userData);
         setPosts(postsData);
         setIsFollowing(userData.isFollowing);
+        
+        // Sync local edit states with fetched data
         setNewName(userData.name || "");
+        setNewBio(userData.bio || "");
         setNewAvatar(userData.avatar || "");
       } catch (err) {
         console.error("Neural data extraction failed", err);
@@ -114,27 +120,24 @@ export default function ProfilePage() {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
-
-      // Update the boolean state
       setIsFollowing(data.following);
-
-      // 🟢 UPDATE THE USER OBJECT locally so the "Subs" count changes immediately
       setUser((prev: any) => ({
         ...prev,
         followers: data.following
-          ? [...(prev.followers || []), { followerId: 'me' }] // Add dummy entry
-          : (prev.followers || []).slice(0, -1) // Remove last entry
+          ? [...(prev.followers || []), { followerId: 'me' }]
+          : (prev.followers || []).slice(0, -1)
       }));
-
     } catch (err) {
       console.error("Follow failed", err);
     }
   };
 
   const handleSaveProfile = async () => {
+    setIsUpdating(true);
     try {
       const formData = new FormData();
       formData.append("name", newName);
+      formData.append("bio", newBio); // Sent to your updated backend
       if (avatarFile) formData.append("avatar", avatarFile);
 
       const res = await fetch(`${API}/api/users/update`, {
@@ -145,8 +148,11 @@ export default function ProfilePage() {
       const data = await res.json();
       setUser(data);
       setEditMode(false);
+      setAvatarFile(null);
     } catch (err) {
       console.error("Update failed", err);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -160,13 +166,8 @@ export default function ProfilePage() {
         },
         body: JSON.stringify({ recipientId: user.id })
       });
-
       const data = await res.json();
-      if (res.ok) {
-        navigate(`/messages/${data.id}`);
-      } else {
-        alert(data.error || "Failed to establish neural link.");
-      }
+      if (res.ok) navigate(`/messages/${data.id}`);
     } catch (err) {
       console.error("Chat initiation failed", err);
     }
@@ -196,15 +197,16 @@ export default function ProfilePage() {
       animate={{ opacity: 1 }}
       className="w-full max-w-5xl mx-auto py-8 md:py-16 px-4 md:px-6"
     >
-      {/* PROFILE HEADER */}
       <header className="social-card !p-6 md:!p-10 mb-8 md:mb-16 relative overflow-hidden">
         {user.isAi && <div className="absolute top-0 right-0 w-32 md:w-64 h-32 md:h-64 bg-cyan-glow/5 blur-[80px] -mr-16 -mt-16 md:-mr-32 md:-mt-32" />}
 
         <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12 relative z-10">
+          
+          {/* AVATAR SECTION */}
           <div className="relative group shrink-0">
             <div className={`p-1 rounded-full bg-gradient-to-b ${user.isAi ? 'from-cyan-glow shadow-[0_0_30px_rgba(39,194,238,0.2)]' : 'from-white/20'} transition-all duration-500`}>
               <Avatar
-                alt={user.name || user.username || "Unknown"}
+                alt={user.name || user.username}
                 src={newAvatar || user.avatar}
                 size="xl"
                 is_ai={user.isAi}
@@ -220,7 +222,7 @@ export default function ProfilePage() {
                 className="absolute inset-1 bg-void/80 backdrop-blur-sm rounded-full flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-cyan-glow/30"
               >
                 <Edit size={20} className="text-cyan-glow mb-1" />
-                <span className="text-[8px] text-white font-black uppercase tracking-widest text-center">Update Map</span>
+                <span className="text-[8px] text-white font-black uppercase tracking-widest text-center px-2">Update Visual Map</span>
               </motion.div>
             )}
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
@@ -234,23 +236,31 @@ export default function ProfilePage() {
             />
           </div>
 
+          {/* IDENTITY INFO SECTION */}
           <div className="flex-1 text-center md:text-left space-y-6 w-full">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="min-w-0 text-left w-full md:w-auto">
                 {editMode ? (
-                  <input
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-4 text-xl font-bold text-white focus:outline-none focus:border-cyan-glow/50"
-                  />
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-mono text-cyan-glow/50 uppercase tracking-[0.2em] ml-1">Display Name</label>
+                    <input
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-4 text-xl font-bold text-white focus:outline-none focus:border-cyan-glow/50 transition-all font-mono"
+                      placeholder="Input name..."
+                    />
+                  </div>
                 ) : (
-                  <h1 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tight truncate">
-                    {user.name || user.username}
-                  </h1>
+                  <>
+                    <h1 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tight truncate">
+                      {user.name || user.username}
+                    </h1>
+                    <p className="text-white/30 font-mono text-[10px] md:text-xs mt-1 lowercase tracking-widest truncate">@{user.username}</p>
+                  </>
                 )}
-                <p className="text-white/30 font-mono text-[10px] md:text-xs mt-1 lowercase tracking-widest truncate">@{user.username}</p>
               </div>
 
+              {/* ACTION BUTTONS */}
               <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 w-full md:w-auto">
                 {currentUser === username ? (
                   !editMode ? (
@@ -258,9 +268,23 @@ export default function ProfilePage() {
                       <Edit size={14} /> Edit Identity
                     </button>
                   ) : (
-                    <button onClick={handleSaveProfile} className="btn-action w-full md:w-auto !py-2 !px-6 text-[10px] font-black uppercase">
-                      Commit Changes
-                    </button>
+                    <div className="flex items-center gap-2 w-full md:w-auto">
+                      <button 
+                        onClick={() => { setEditMode(false); setNewBio(user.bio || ""); setNewName(user.name || ""); }} 
+                        className="p-2 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-crimson transition-all"
+                        title="Cancel"
+                      >
+                        <X size={18} />
+                      </button>
+                      <button 
+                        onClick={handleSaveProfile} 
+                        disabled={isUpdating}
+                        className="btn-action flex-1 md:flex-none flex items-center justify-center gap-2 !py-2 !px-6 text-[10px] font-black uppercase disabled:opacity-50"
+                      >
+                        {isUpdating ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                        Commit Changes
+                      </button>
+                    </div>
                   )
                 ) : (
                   <>
@@ -283,9 +307,22 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-4">
-              <p className="text-white/70 max-w-xl text-base md:text-lg font-light leading-relaxed italic mx-auto md:mx-0">
-                "{user.bio || "No data stream available for this unit."}"
-              </p>
+              {/* BIO SECTION */}
+              {editMode ? (
+                <div className="space-y-2">
+                   <label className="text-[9px] font-mono text-cyan-glow/50 uppercase tracking-[0.2em] ml-1">Neural Signature (Bio)</label>
+                   <textarea
+                    value={newBio}
+                    onChange={(e) => setNewBio(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-sm font-light text-white/80 focus:outline-none focus:border-cyan-glow/50 transition-all h-28 resize-none"
+                    placeholder="Describe your presence in the network..."
+                   />
+                </div>
+              ) : (
+                <p className="text-white/70 max-w-xl text-base md:text-lg font-light leading-relaxed italic mx-auto md:mx-0">
+                  "{user.bio || "No data stream available for this unit."}"
+                </p>
+              )}
 
               <div className="flex flex-wrap justify-center md:justify-start gap-3">
                 {user.isAi && (
@@ -299,6 +336,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
+            {/* STATS BAR */}
             <div className="grid grid-cols-3 md:flex md:justify-start gap-4 md:gap-10 pt-4 border-t border-white/5">
               <div className="flex flex-col items-center md:items-start">
                 <span className="text-xl md:text-2xl font-black text-white leading-none">{posts.length}</span>
@@ -317,7 +355,7 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* BROADCAST FEED WITH LOAD MANAGER */}
+      {/* RECENT TRANSMISSIONS FEED */}
       <div className="max-w-2xl mx-auto space-y-6 md:space-y-10">
         <div className="flex items-center gap-4 mb-6 md:mb-8">
           <h2 className="text-[10px] md:text-xs font-black text-white/40 tracking-[0.3em] uppercase px-2 whitespace-nowrap">Recent Transmissions</h2>
