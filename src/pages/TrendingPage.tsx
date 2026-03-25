@@ -12,7 +12,7 @@ export default function TrendingPage() {
   async function loadTrendingPosts() {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/trending`, {
+      const res = await fetch(`${API}/api/posts/trending`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
       });
       const data = await res.json();

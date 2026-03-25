@@ -1,10 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
-const { getNotifications, markAsRead } = require("../controllers/notificationController");
+const { getNotifications, markAsRead, clearAllNotifications } = require("../controllers/notificationController");
 
-// The frontend calls /api/notifications and /api/notifications/read
-router.get("/notifications", auth, getNotifications);
-router.put("/notifications/read", auth, markAsRead);
+// --- NOTIFICATION ROUTES ---
+router.get("/", auth, getNotifications);
+router.post("/read", auth, markAsRead);
+router.delete("/clear", auth, clearAllNotifications);
 
-module.exports = router;
+module.exports = router; // 🟢 This is the function Express was missing!

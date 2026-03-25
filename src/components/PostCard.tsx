@@ -48,7 +48,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [viewCount, setViewCount] = useState(post.views || 0);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-  // --- ZOOM & PAN STATES (Your Logic) ---
+  // --- ZOOM & PAN STATES ---
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -63,6 +63,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const hasViewed = useRef(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const commentEndRef = useRef<HTMLDivElement>(null);
 
   // --- VIDEO STATE ---
   const [isPlaying, setIsPlaying] = useState(false);
@@ -71,7 +72,14 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const isOwner = currentUser === post.user?.username;
   const displayCommentCount = comments.length > 0 ? comments.length : (post._count?.comments ?? 0);
 
-  // ---------------- ZOOM HANDLERS (Untouched) ----------------
+  // Auto-scroll to bottom when new comment added
+  useEffect(() => {
+    if (showComments) {
+      commentEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [comments, showComments]);
+
+  // ---------------- ZOOM HANDLERS ----------------
 
   const handleWheel = (e: React.WheelEvent) => {
     let newZoom = zoom - e.deltaY * 0.001;
@@ -294,25 +302,80 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           </footer>
         </div>
 
-        {/* COMMENTS SECTION */}
+        {/* FIXED COMMENTS SECTION */}
         <AnimatePresence>
           {showComments && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} id={`comments-${post.id}`} className="bg-white/[0.01] border-t border-white/5 overflow-hidden">
-              <div className="p-6">
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="bg-white/[0.01] border-t border-white/5 overflow-hidden flex flex-col"
+            >
+              {/* Scrollable Area */}
+              <div className="max-h-[300px] md:max-h-[400px] overflow-y-auto no-scrollbar p-4 space-y-1">
                 {comments.length === 0 && displayCommentCount > 0 ? (
-                  <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 text-cyan-glow animate-spin opacity-20" /></div>
-                ) : ( <CommentList comments={comments} /> )}
-                <div className="flex items-center gap-3 mt-6 relative">
-                  <div className="flex-1 relative flex items-center">
-                    <input value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Neural response..." className="w-full bg-void/50 border border-white/5 rounded-2xl px-5 py-3 pr-12 text-sm font-mono text-cyan-glow focus:outline-none focus:border-cyan-glow/30" />
-                    <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className={`absolute right-4 transition-colors ${showEmojiPicker ? 'text-cyan-glow' : 'text-white/20 hover:text-cyan-glow'}`}><Smile size={18} /></button>
-                    {showEmojiPicker && (
-                      <div className="absolute bottom-[calc(100%+10px)] right-0 z-[100] shadow-2xl">
-                        <EmojiPicker theme={Theme.DARK} onEmojiClick={(emojiData) => setNewComment(prev => prev + emojiData.emoji)} skinTonesDisabled height={350} width={280} />
-                      </div>
-                    )}
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="w-5 h-5 text-cyan-glow animate-spin opacity-20" />
                   </div>
-                  <button disabled={isSubmittingComment || !newComment.trim()} onClick={handleCommentSubmit} className="btn-action !py-3 !px-5 flex items-center gap-2 disabled:opacity-20 h-[46px]"><Send size={14} /></button>
+                ) : (
+                  <>
+                    <CommentList comments={comments} />
+                    <div ref={commentEndRef} />
+                  </>
+                )}
+              </div>
+
+              {/* Input Area - Tighter & Styled */}
+              <div className="px-4 pb-4 pt-1 bg-void/60 backdrop-blur-xl sticky bottom-0 border-t border-white/[0.02]">
+                <div className="flex items-center gap-2 relative">
+                  <div className="flex-1 relative flex items-center group">
+                    <input
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleCommentSubmit(); }}
+                      placeholder="Neural response..."
+                      className="w-full bg-void/40 border border-white/5 rounded-xl px-4 py-2 text-sm font-mono text-cyan-glow placeholder:text-white/10 focus:outline-none focus:border-cyan-glow/30 focus:bg-void/80 transition-all"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className={`absolute right-3 p-1 rounded-md transition-all ${showEmojiPicker ? 'text-cyan-glow bg-cyan-glow/10' : 'text-white/20 hover:text-white'}`}
+                    >
+                      <Smile size={16} />
+                    </button>
+
+                    {/* Styled Emoji Picker */}
+                    <AnimatePresence>
+                      {showEmojiPicker && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute bottom-[calc(100%+12px)] right-0 z-[100] shadow-[0_20px_50px_rgba(0,0,0,0.5)] clift-emoji-picker"
+                        >
+                          <EmojiPicker
+                            theme={Theme.DARK}
+                            onEmojiClick={(emojiData) => setNewComment(prev => prev + emojiData.emoji)}
+                            lazyLoadEmojis={true}
+                            searchPlaceholder="Search Neural Icons..."
+                            skinTonesDisabled
+                            height={320}
+                            width={280}
+                            previewConfig={{ showPreview: false }} // Removes the "What's your mood" bar for better UX
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <button
+                    disabled={isSubmittingComment || !newComment.trim()}
+                    onClick={handleCommentSubmit}
+                    className="flex items-center justify-center w-10 h-10 rounded-xl bg-cyan-glow/10 border border-cyan-glow/20 text-cyan-glow hover:bg-cyan-glow hover:text-void disabled:opacity-10 transition-all"
+                  >
+                    {isSubmittingComment ? <Loader2 size={14} className="animate-spin" /> : <Send size={16} />}
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -320,7 +383,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         </AnimatePresence>
       </motion.article>
 
-      {/* ---------------- FULLSCREEN ZOOM MODAL (Clift UI + Your Logic) ---------------- */}
+      {/* ZOOM MODAL (Untouched) */}
       <AnimatePresence>
         {isFullScreen && (
           <motion.div
@@ -332,11 +395,11 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               <div className="flex items-center gap-3">
                 <Avatar src={post.user?.avatar} size="sm" />
                 <div className="hidden sm:block">
-                   <p className="text-[10px] font-black text-white uppercase tracking-widest">{post.user?.displayName || post.user?.username}</p>
-                   <p className="text-[8px] font-mono text-white/20 uppercase tracking-tighter">Broadcast View</p>
+                  <p className="text-[10px] font-black text-white uppercase tracking-widest">{post.user?.displayName || post.user?.username}</p>
+                  <p className="text-[8px] font-mono text-white/20 uppercase tracking-tighter">Broadcast View</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-4">
                 <button onClick={() => { setZoom(zoom === 1 ? 2 : 1); setPosition({ x: 0, y: 0 }); }} className="p-3 bg-white/5 border border-white/10 rounded-full text-white/60 hover:text-cyan-glow transition-all">
                   <ZoomIn size={20} />
@@ -348,7 +411,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             </div>
 
             {/* IMAGE CONTAINER */}
-            <div 
+            <div
               className="w-full h-full flex items-center justify-center overflow-hidden"
               onWheel={handleWheel}
               onDoubleClick={handleDoubleClick}
@@ -363,14 +426,15 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 transition={{ type: "spring", stiffness: 200, damping: 25 }}
                 className={`max-w-[95%] max-h-[85%] object-contain rounded-lg shadow-2xl ${zoom > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-zoom-in"}`}
                 draggable={false}
+                loading="lazy"
               />
             </div>
 
             {/* HINT BAR */}
             <div className="absolute bottom-10 left-1/2 -translate-x-1/2 px-6 py-2 bg-cyan-glow/10 border border-cyan-glow/20 rounded-full backdrop-blur-md">
-                <p className="text-cyan-glow text-[9px] uppercase font-black tracking-[0.3em]">
-                   {zoom > 1 ? "Drag to move • Double click to reset" : "Scroll or double click to zoom"}
-                </p>
+              <p className="text-cyan-glow text-[9px] uppercase font-black tracking-[0.3em]">
+                {zoom > 1 ? "Drag to move • Double click to reset" : "Scroll or double click to zoom"}
+              </p>
             </div>
           </motion.div>
         )}

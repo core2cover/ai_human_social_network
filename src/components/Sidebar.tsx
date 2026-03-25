@@ -6,13 +6,11 @@ import {
   Compass,
   PlusSquare,
   User,
-  Settings,
   LogOut,
-  Activity,
-  Zap,
   MessageSquare,
   Film,
-  LayoutGrid
+  LayoutGrid,
+  Bot // 🟢 Imported Bot icon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -24,11 +22,9 @@ export default function Sidebar() {
   const username = localStorage.getItem("username");
   const token = localStorage.getItem("token");
 
-  // --- UI STATES ---
   const [hasUnread, setHasUnread] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  // --- UNREAD MESSAGE LOGIC ---
   const checkUnreadMessages = async () => {
     if (!token) return;
     try {
@@ -36,19 +32,16 @@ export default function Sidebar() {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
-
       const userId = localStorage.getItem("userId");
       const now = new Date().getTime();
 
       const unread = data.some((conv: any) => {
         const lastMsg = conv.messages?.[0];
         if (!lastMsg) return false;
-
         const isNotFromMe = lastMsg.senderId !== userId;
         const messageTime = new Date(lastMsg.createdAt).getTime();
         const isRecent = (now - messageTime) < (1000 * 60 * 30);
         const notCurrentlyOpen = location.pathname !== `/messages/${conv.id}`;
-
         return isNotFromMe && isRecent && notCurrentlyOpen;
       });
 
@@ -64,7 +57,6 @@ export default function Sidebar() {
     return () => clearInterval(interval);
   }, [location.pathname, token]);
 
-  // Close mobile menu when navigating
   useEffect(() => {
     setShowMobileMenu(false);
   }, [location.pathname]);
@@ -76,7 +68,7 @@ export default function Sidebar() {
     { icon: Compass, label: "Explore", path: "/explore" },
     { icon: PlusSquare, label: "Create Post", path: "/create" },
     { icon: User, label: "My Profile", path: `/profile/${username}` },
-    { icon: Settings, label: "Agent Forge", path: "/register-agent" },
+    { icon: Bot, label: "Agent Forge", path: "/register-agent" }, // 🟢 Updated icon here
     { icon: MessageSquare, label: "Messages", path: "/messages", alert: hasUnread },
   ];
 
@@ -91,9 +83,7 @@ export default function Sidebar() {
       {/* --- DESKTOP SIDEBAR --- */}
       <aside className="hidden md:flex w-64 h-full flex-col no-scrollbar border-r border-white/5 bg-white/[0.01] backdrop-blur-sm shrink-0">
         <div className="p-6">
-          <p className="text-[10px] font-black text-white/20 tracking-[0.4em] uppercase mb-6 ml-2">
-            Navigation
-          </p>
+          <p className="text-[10px] font-black text-white/20 tracking-[0.4em] uppercase mb-6 ml-2">Navigation</p>
           <nav className="flex flex-col gap-1">
             {MENU_ITEMS.map((item) => (
               <NavLink
@@ -112,21 +102,15 @@ export default function Sidebar() {
         </div>
 
         <div className="mt-4 px-6 pt-4 border-t border-white/5">
-          <button
-            onClick={handleLogout}
-            className="nav-link w-full text-crimson/60 hover:text-crimson hover:bg-crimson/5 group"
-          >
+          <button onClick={handleLogout} className="nav-link w-full text-crimson/60 hover:text-crimson hover:bg-crimson/5 group">
             <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             <span className="font-black text-[13px] tracking-[0.2em] uppercase">Logout</span>
           </button>
         </div>
-
       </aside>
 
       {/* --- MOBILE NAVIGATION --- */}
       <div className="md:hidden fixed bottom-6 left-4 right-4 z-[100] flex flex-col gap-3">
-        
-        {/* NEURAL HUB (Floating menu for Explore, Trending, Create, Forge) */}
         <AnimatePresence>
           {showMobileMenu && (
             <motion.div
@@ -151,8 +135,6 @@ export default function Sidebar() {
 
         {/* MAIN BOTTOM TAB BAR */}
         <div className="bg-void/80 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] flex justify-around items-center py-3 px-2 shadow-2xl">
-          
-          {/* Main Items: Feed, Reels, Messages, Profile */}
           {[MENU_ITEMS[0], MENU_ITEMS[1], MENU_ITEMS[7], MENU_ITEMS[5]].map((item) => (
             <NavLink
               key={item.label}
@@ -172,7 +154,6 @@ export default function Sidebar() {
             </NavLink>
           ))}
 
-          {/* HUB TOGGLE BUTTON */}
           <button 
             onClick={() => setShowMobileMenu(!showMobileMenu)}
             className={`p-3 rounded-2xl transition-all ${showMobileMenu ? 'bg-white/10 text-cyan-glow' : 'text-white/20'}`}

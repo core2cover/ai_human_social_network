@@ -24,17 +24,20 @@ const VisiblePost: React.FC<VisiblePostProps> = ({ children }) => {
           observer.unobserve(entry.target);
         }
       },
-      { rootMargin: "400px", threshold: 0.01 }
+      { rootMargin: "200px" } // Load slightly before it hits the screen
     );
     if (containerRef.current) observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, []);
 
   return (
-    <div ref={containerRef} className="min-h-[250px] w-full">
-      {isVisible ? children : (
-        <div className="w-full h-64 bg-white/[0.02] border border-white/5 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 animate-pulse">
-          <Zap className="w-6 h-6 text-white/5" />
+    <div ref={containerRef} className="min-h-[400px] w-full">
+      {isVisible ? (
+        children
+      ) : (
+        /* This is the "Lazy" placeholder */
+        <div className="w-full h-80 bg-white/[0.02] border border-white/5 rounded-[2.5rem] flex items-center justify-center">
+          <Loader2 className="w-6 h-6 text-cyan-glow/20 animate-spin" />
         </div>
       )}
     </div>
@@ -61,11 +64,11 @@ export default function FeedPage() {
     try {
       setLoading(true);
       const [feedRes, usersRes] = await Promise.all([
-        // UPDATED: Now pointing to /api/posts/feed to match postRoutes.js
+        // 🟢 FIX 1: Point this to /api/posts/feed, NOT /api/users
         fetch(`${API}/api/posts/feed?page=1&limit=10`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        // Ensure /api/users is correctly mounted in server.js
+        // 🟢 FIX 2: This one is correct for sidebars
         fetch(`${API}/api/users`, {
           headers: { Authorization: `Bearer ${token}` }
         })
@@ -89,7 +92,7 @@ export default function FeedPage() {
       } else {
         console.warn("Sidebar Sync Error: Received non-array data.", usersData);
       }
-      
+
     } catch (err) {
       console.error("Neural sync failed", err);
     } finally {
@@ -106,7 +109,7 @@ export default function FeedPage() {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
-      
+
       if (res.ok) {
         setPosts((prev) => {
           const existingIds = new Set(prev.map(p => p.id));
@@ -116,10 +119,10 @@ export default function FeedPage() {
         setPage(nextPage);
         setHasMore(data.meta?.hasMore ?? false);
       }
-    } catch (err) { 
-      console.error("Neural stream expansion failed:", err); 
-    } finally { 
-      setFetchingMore(false); 
+    } catch (err) {
+      console.error("Neural stream expansion failed:", err);
+    } finally {
+      setFetchingMore(false);
     }
   };
 
@@ -132,13 +135,13 @@ export default function FeedPage() {
     if (node) observerLoader.current.observe(node);
   }, [loading, fetchingMore, hasMore, page]);
 
-  useEffect(() => { 
-    initializeNeuralStream(); 
+  useEffect(() => {
+    initializeNeuralStream();
   }, [initializeNeuralStream]);
 
   return (
     <div className="w-full flex justify-center lg:justify-start xl:justify-center gap-4 xl:gap-12 px-4 md:px-8">
-      
+
       {/* MAIN FEED */}
       <main className="w-full max-w-2xl py-8 md:py-12">
         {loading ? (
@@ -196,8 +199,8 @@ export default function FeedPage() {
 
           <div className="flex flex-col gap-2">
             {agents.map((agent) => (
-              <div 
-                key={agent.id} 
+              <div
+                key={agent.id}
                 onClick={() => navigate(`/profile/${agent.username}`)}
                 className="flex items-center gap-4 p-3 rounded-2xl hover:bg-cyan-glow/[0.03] border border-transparent hover:border-cyan-glow/10 transition-all cursor-pointer group"
               >
@@ -224,8 +227,8 @@ export default function FeedPage() {
 
           <div className="flex flex-col gap-2">
             {humans.map((user) => (
-              <div 
-                key={user.id} 
+              <div
+                key={user.id}
                 onClick={() => navigate(`/profile/${user.username}`)}
                 className="flex items-center gap-4 p-3 rounded-2xl hover:bg-white/5 transition-all cursor-pointer group"
               >

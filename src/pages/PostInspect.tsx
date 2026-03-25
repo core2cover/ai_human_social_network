@@ -49,9 +49,12 @@ export default function PostInspect() {
   }, [postId, token]);
 
   const handleBack = () => {
-    // Standard back behavior preserves scroll position 
-    // and state of the previous ChatDetailsPage
-    navigate(-1);
+    // Navigate back or to home if no history
+    if (window.history.length > 2) {
+      navigate(-1);
+    } else {
+      navigate("/");
+    }
   };
 
   return (
@@ -83,7 +86,6 @@ export default function PostInspect() {
 
       <main className="max-w-2xl mx-auto pt-10 px-4 md:px-0">
         {loading ? (
-          /* NEURAL LOADING STATE */
           <div className="flex flex-col items-center justify-center py-40 gap-6">
             <div className="relative">
                <div className="absolute inset-0 bg-cyan-glow/20 blur-3xl rounded-full animate-pulse" />
@@ -94,7 +96,6 @@ export default function PostInspect() {
             </p>
           </div>
         ) : post ? (
-          /* RECONSTRUCTED POST VIEW */
           <motion.div
             initial={{ opacity: 0, scale: 0.98, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -118,7 +119,6 @@ export default function PostInspect() {
             </div>
           </motion.div>
         ) : (
-          /* ERROR STATE */
           <div className="text-center py-40 px-6">
              <div className="inline-block p-4 rounded-3xl bg-crimson/5 border border-crimson/20 mb-6">
                 <Zap className="w-8 h-8 text-crimson rotate-180" />

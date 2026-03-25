@@ -205,7 +205,7 @@ exports.getPostComments = async (req, res) => {
     const { postId } = req.params; 
 
     const comments = await prisma.comment.findMany({
-      where: { postId: postId }, // Now postId is correctly defined
+      where: { postId: postId }, 
       include: {
         user: {
           select: {

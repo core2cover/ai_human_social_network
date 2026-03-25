@@ -1,26 +1,22 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { Zap, Loader2 } from "lucide-react";
 
-// Components & Pages
-import Layout from "./components/Layout";
-import FeedPage from "./pages/FeedPage";
-import ProfilePage from "./pages/ProfilePage";
-import LoginPage from "./pages/LoginPage";
-import AgentRegisterPage from "./pages/AgentRegisterPage";
-import TrendingPage from "./pages/TrendingPage";
-import CreatePostPage from "./pages/CreatePostPage";
-import AboutPage from "./pages/AboutPage";
-import MessagesPage from "./pages/MessagesPage";
-import ChatDetailsPage from "./pages/ChatDetailsPage";
-import ReelsPage from "./pages/ReelsPage";
-import PostInspect from "./pages/PostInspect";
+// 1. Lazy Load your pages at the top level (outside components)
+const Layout = lazy(() => import("./components/Layout"));
+const FeedPage = lazy(() => import("./pages/FeedPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const AgentRegisterPage = lazy(() => import("./pages/AgentRegisterPage"));
+const TrendingPage = lazy(() => import("./pages/TrendingPage"));
+const CreatePostPage = lazy(() => import("./pages/CreatePostPage"));
+const AboutPage = lazy(() => import("./pages/AboutPage"));
+const MessagesPage = lazy(() => import("./pages/MessagesPage"));
+const ChatDetailsPage = lazy(() => import("./pages/ChatDetailsPage"));
+const ReelsPage = lazy(() => import("./pages/ReelsPage"));
+const PostInspect = lazy(() => import("./pages/PostInspect"));
 
 /* ================= AUTH SUCCESS COMPONENT ================= */
-/**
- * This component acts as the "Neural Gateway". 
- * It catches the token from the URL and redirects the user to their profile.
- */
 function AuthSuccess() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -28,14 +24,10 @@ function AuthSuccess() {
 
     if (token) {
       localStorage.setItem("token", token);
-      
       try {
-        // Decode the JWT payload to get the username
         const payload = JSON.parse(atob(token.split(".")[1]));
-        
         if (payload.username) {
           localStorage.setItem("username", payload.username);
-          // Redirect to profile for the user to set their bio/avatar
           window.location.href = `/profile/${payload.username}`;
         } else {
           window.location.href = "/";
@@ -49,22 +41,13 @@ function AuthSuccess() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-void gap-6">
-      <div className="relative">
-        <div className="absolute inset-0 bg-cyan-glow/20 blur-2xl rounded-full animate-pulse" />
-        <div className="relative p-5 rounded-3xl bg-void border border-white/10 shadow-2xl">
-          <Zap className="w-10 h-10 text-cyan-glow animate-bounce" />
-        </div>
-      </div>
-      <div className="text-center space-y-2">
-        <h2 className="text-white font-black tracking-[0.2em] uppercase text-sm">Synchronizing Identity</h2>
-        <p className="text-[10px] font-mono text-white/20 tracking-[0.4em] uppercase">Establishing Neural Link v2.0</p>
-      </div>
+      <Zap className="w-10 h-10 text-cyan-glow animate-bounce" />
+      <h2 className="text-white font-black tracking-[0.2em] uppercase text-sm">Synchronizing Identity</h2>
     </div>
   );
 }
 
 /* ================= MAIN APP COMPONENT ================= */
-
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
@@ -73,7 +56,6 @@ export default function App() {
     setIsAuthenticated(!!token);
   }, []);
 
-  /* WAIT UNTIL AUTH STATE IS RESOLVED */
   if (isAuthenticated === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-void">
@@ -84,36 +66,38 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        {/* OAUTH CALLBACK HANDLER */}
-        <Route path="/auth-success" element={<AuthSuccess />} />
+      {/* 2. Wrap the entire Routes block in ONE Suspense handler */}
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center bg-void">
+          <Loader2 className="w-8 h-8 text-cyan-glow animate-spin" />
+        </div>
+      }>
+        <Routes>
+          <Route path="/auth-success" element={<AuthSuccess />} />
+          
+          <Route
+            path="/login"
+            element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />}
+          />
 
-        {/* PUBLIC: LOGIN */}
-        <Route
-          path="/login"
-          element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />}
-        />
+          {/* PROTECTED ROUTES: Nested inside Layout */}
+          <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
+            <Route path="/" element={<FeedPage />} />
+            <Route path="/profile/:username" element={<ProfilePage />} />
+            <Route path="/register-agent" element={<AgentRegisterPage />} />
+            <Route path="/explore" element={<FeedPage />} />
+            <Route path="/trending" element={<TrendingPage />} />
+            <Route path="/create" element={<CreatePostPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/messages/:id" element={<ChatDetailsPage />} />
+            <Route path="/reels" element={<ReelsPage />} />
+            <Route path="/profile/:username/post/:postId" element={<PostInspect />} />
+          </Route>
 
-        {/* PROTECTED: REQUIRES AUTH */}
-        <Route
-          element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}
-        >
-          <Route path="/" element={<FeedPage />} />
-          <Route path="/profile/:username" element={<ProfilePage />} />
-          <Route path="/register-agent" element={<AgentRegisterPage />} />
-          <Route path="/explore" element={<FeedPage />} />
-          <Route path="/trending" element={<TrendingPage />} />
-          <Route path="/create" element={<CreatePostPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/messages" element={<MessagesPage />} />
-          <Route path="/messages/:id" element={<ChatDetailsPage />} />
-          <Route path="/reels" element={<ReelsPage />} />
-          <Route path="/profile/:username/post/:postId" element={<PostInspect />} />
-        </Route>
-
-        {/* FALLBACK */}
-        <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} />} />
-      </Routes>
+          <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

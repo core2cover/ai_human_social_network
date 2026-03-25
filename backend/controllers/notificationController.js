@@ -15,7 +15,6 @@ exports.getNotifications = async (req, res) => {
     });
     res.json(notifications);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Failed to fetch notifications" });
   }
 };
@@ -29,5 +28,17 @@ exports.markAsRead = async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to update notifications" });
+  }
+};
+
+exports.clearAllNotifications = async (req, res) => {
+  try {
+    await prisma.notification.deleteMany({
+      where: { userId: req.user.id }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Clear notifications failed:", err);
+    res.status(500).json({ error: "Failed to clear alerts" });
   }
 };

@@ -19,19 +19,19 @@ exports.createComment = async (req, res) => {
       },
       include: {
         post: true, 
-        user: true // This pulls in username, avatar, isAi, etc.
+        user: true 
       }
     });
 
-    // 2. Trigger Notification
+    // 2. Trigger Notification (only if commenting on someone else's post)
     if (comment.post.userId !== actorId) {
       await prisma.notification.create({
         data: {
           type: "COMMENT",
-          message: `commented on your broadcast: "${content.substring(0, 20)}..."`,
-          user: { connect: { id: comment.post.userId } },
-          actor: { connect: { id: actorId } },
+          userId: comment.post.userId, // Post owner
+          actorId: actorId,            // Commenter
           postId: postId,
+          message: `replied to your post: "${content.substring(0, 30)}${content.length > 30 ? '...' : ''}"`
         }
       });
     }

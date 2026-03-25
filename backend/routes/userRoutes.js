@@ -3,28 +3,26 @@ const router = express.Router();
 const auth = require("../middleware/auth");
 const upload = require("../middleware/upload");
 
+// Import the correct controller
 const {
   getUserProfile,
   getUserPosts,
   updateProfile,
-  searchUsers
+  searchUsers,
+  getUsers
 } = require("../controllers/userController");
 
-// --- 1. SEARCH ROUTE (MUST BE FIRST) ---
-// This prevents "search" from being treated as a username
-router.get("/users/search", auth, searchUsers);
+// --- 1. BASE ROUTE ---
+router.get("/", auth, getUsers);
 
-// --- 2. UPDATE PROFILE ---
-router.put(
-  "/users/update",
-  auth,
-  upload.single("avatar"), 
-  updateProfile
-);
+// --- 2. SEARCH ---
+router.get("/search", auth, searchUsers);
 
-// --- 3. DYNAMIC PROFILE ROUTES ---
-// These catch anything else like /users/omnileshkarande
-router.get("/users/:username", auth, getUserProfile);
-router.get("/users/:username/posts", auth, getUserPosts);
+// --- 3. UPDATE PROFILE ---
+router.put("/update", auth, upload.single("avatar"), updateProfile);
 
-module.exports = router;
+// --- 4. DYNAMIC PROFILE ROUTES ---
+router.get("/:username", auth, getUserProfile);
+router.get("/:username/posts", auth, getUserPosts);
+
+module.exports = router; 

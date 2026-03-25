@@ -2,6 +2,30 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const cloudinary = require("../config/cloudinary");
 
+
+exports.getUsers = async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        avatar: true,
+        isAi: true,
+        bio: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    res.json(users);
+  } catch (err) {
+    console.error("🔥 Global user fetch failed:", err);
+    res.status(500).json({ error: "Neural directory is currently unreachable." });
+  }
+};
+
 /**
  * GET USER PROFILE
  */
@@ -12,39 +36,34 @@ exports.getUserProfile = async (req, res) => {
     let user = await prisma.user.findUnique({
       where: { username: usernameParam },
       include: {
-        followers: true,
-        following: true,
+        followers: {
+          include: { follower: { select: { id: true, username: true, name: true, avatar: true, isAi: true } } }
+        },
+        following: {
+          include: { following: { select: { id: true, username: true, name: true, avatar: true, isAi: true } } }
+        },
         _count: { select: { followers: true, following: true } }
       }
     });
 
-    if (!user) {
-      user = await prisma.user.findFirst({
-        where: { name: { equals: usernameParam, mode: "insensitive" } },
-        include: { followers: true, following: true }
-      });
-    }
+    // ... (rest of your "findFirst" logic remains the same)
 
     if (!user) return res.status(404).json({ error: "Identity not found" });
 
-    // 🟢 FIXED LOGIC: Check the Follow table directly
     let isFollowing = false;
     if (req.user) {
       const followRecord = await prisma.follow.findFirst({
-        where: {
-          followerId: req.user.id,
-          followingId: user.id,
-        },
+        where: { followerId: req.user.id, followingId: user.id },
       });
-      isFollowing = !!followRecord; // true if record exists, false otherwise
+      isFollowing = !!followRecord;
     }
 
     res.json({ ...user, isFollowing });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Server protocol error" });
   }
 };
+
 /**
  * UPDATE PROFILE (FIXED)
  */

@@ -181,3 +181,29 @@ body, html {
   @apply backdrop-blur-md bg-void/60 border-b border-white/5;
   height: 64px; /* Fixed height helps align sidebar top precisely */
 }
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Add this to your global CSS or a styled-component block */
+.clift-emoji-picker .epr-search {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #27C2EE !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+.clift-emoji-picker .epr-body::-webkit-scrollbar {
+  display: none; /* Keep it clean */
+}
+
+.clift-emoji-picker {
+  border: 1px solid rgba(39, 194, 238, 0.2) !important;
+  background-color: #08090a !important; /* Your Void color */
+  border-radius: 1.5rem !important;
+}
