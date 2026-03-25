@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Users, Zap, Loader2, Activity, Radio } from "lucide-react";
+import { Users, Zap, Loader2, Activity } from "lucide-react";
 import PostCard from "../components/PostCard";
 import Avatar from "../components/Avatar";
 import { useNavigate } from "react-router-dom";
@@ -51,45 +51,76 @@ export default function FeedPage() {
   const [humans, setHumans] = useState<any[]>([]);
 
   const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const token = localStorage.getItem("token");
   const navigate = useNavigate();
   const observerLoader = useRef<IntersectionObserver | null>(null);
 
   const initializeNeuralStream = useCallback(async () => {
+    if (!token) return navigate("/login");
+
     try {
       setLoading(true);
       const [feedRes, usersRes] = await Promise.all([
-        fetch(`${API}/api/feed?page=1&limit=10`),
-        fetch(`${API}/api/users`)
+        // UPDATED: Now pointing to /api/posts/feed to match postRoutes.js
+        fetch(`${API}/api/posts/feed?page=1&limit=10`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        // Ensure /api/users is correctly mounted in server.js
+        fetch(`${API}/api/users`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
       ]);
+
       const feedData = await feedRes.json();
       const usersData = await usersRes.json();
 
-      setPosts(feedData.posts || []);
-      setHasMore(feedData.meta?.hasMore ?? false);
-      setAgents(usersData.filter((u: any) => u.isAi).slice(0, 5));
-      setHumans(usersData.filter((u: any) => !u.isAi).slice(0, 5));
+      // Handle Feed Data
+      if (feedRes.ok) {
+        setPosts(feedData.posts || []);
+        setHasMore(feedData.meta?.hasMore ?? false);
+      } else {
+        console.error("Feed Protocol Error:", feedData.error);
+      }
+
+      // Handle Users Data (Sidebars)
+      if (Array.isArray(usersData)) {
+        setAgents(usersData.filter((u: any) => u.isAi).slice(0, 5));
+        setHumans(usersData.filter((u: any) => !u.isAi).slice(0, 5));
+      } else {
+        console.warn("Sidebar Sync Error: Received non-array data.", usersData);
+      }
+      
     } catch (err) {
       console.error("Neural sync failed", err);
     } finally {
       setLoading(false);
     }
-  }, [API]);
+  }, [API, token, navigate]);
 
   const fetchMorePosts = async () => {
-    if (fetchingMore || !hasMore) return;
+    if (fetchingMore || !hasMore || !token) return;
     setFetchingMore(true);
     try {
       const nextPage = page + 1;
-      const res = await fetch(`${API}/api/feed?page=${nextPage}&limit=10`);
-      const data = await res.json();
-      setPosts((prev) => {
-        const existingIds = new Set(prev.map(p => p.id));
-        const filtered = (data.posts || []).filter((p: any) => !existingIds.has(p.id));
-        return [...prev, ...filtered];
+      const res = await fetch(`${API}/api/posts/feed?page=${nextPage}&limit=10`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      setPage(nextPage);
-      setHasMore(data.meta?.hasMore ?? false);
-    } catch (err) { console.error(err); } finally { setFetchingMore(false); }
+      const data = await res.json();
+      
+      if (res.ok) {
+        setPosts((prev) => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const filtered = (data.posts || []).filter((p: any) => !existingIds.has(p.id));
+          return [...prev, ...filtered];
+        });
+        setPage(nextPage);
+        setHasMore(data.meta?.hasMore ?? false);
+      }
+    } catch (err) { 
+      console.error("Neural stream expansion failed:", err); 
+    } finally { 
+      setFetchingMore(false); 
+    }
   };
 
   const lastPostElementRef = useCallback((node: HTMLDivElement) => {
@@ -101,7 +132,9 @@ export default function FeedPage() {
     if (node) observerLoader.current.observe(node);
   }, [loading, fetchingMore, hasMore, page]);
 
-  useEffect(() => { initializeNeuralStream(); }, [initializeNeuralStream]);
+  useEffect(() => { 
+    initializeNeuralStream(); 
+  }, [initializeNeuralStream]);
 
   return (
     <div className="w-full flex justify-center lg:justify-start xl:justify-center gap-4 xl:gap-12 px-4 md:px-8">
@@ -113,7 +146,7 @@ export default function FeedPage() {
             <Loader2 className="w-12 h-12 text-cyan-glow animate-spin opacity-20" />
             <p className="text-cyan-glow font-mono text-[10px] tracking-[0.4em] uppercase animate-pulse">Accelerating Stream...</p>
           </div>
-        ) : (
+        ) : posts.length > 0 ? (
           <div className="space-y-8 md:space-y-12">
             <AnimatePresence>
               {posts.map((post, index) => (
@@ -140,13 +173,18 @@ export default function FeedPage() {
               </div>
             )}
           </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-32 border border-dashed border-white/10 rounded-[3rem]">
+            <Zap className="w-12 h-12 text-white/5 mb-4" />
+            <p className="text-white/20 font-mono text-[10px] uppercase tracking-widest text-center px-10">
+              No transmissions found in your current coordinate.
+            </p>
+          </div>
         )}
       </main>
 
-      {/* RIGHT SIDEBAR (FIXED PART) */}
+      {/* RIGHT SIDEBAR */}
       <aside className="hidden xl:flex flex-col w-80 py-12 gap-10 sticky top-0 h-screen no-scrollbar overflow-y-auto">
-        
-        {/* SECTION 1: AI AGENTS */}
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-2">
@@ -178,7 +216,6 @@ export default function FeedPage() {
           </div>
         </div>
 
-        {/* SECTION 2: HUMANS */}
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-2 px-2">
             <Users className="w-4 h-4 text-white/40" />
@@ -204,7 +241,6 @@ export default function FeedPage() {
           </div>
         </div>
 
-        {/* FOOTER */}
         <div className="mt-auto pt-10 px-4 opacity-20">
           <p className="text-[9px] font-mono text-white tracking-[0.3em] uppercase">Neural Social v2.4</p>
         </div>

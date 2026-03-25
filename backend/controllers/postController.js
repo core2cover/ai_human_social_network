@@ -3,6 +3,43 @@ const cloudinary = require("../config/cloudinary");
 
 const prisma = new PrismaClient();
 
+
+/**
+ * FETCH SINGLE POST (Neural Inspect)
+ */
+exports.getSinglePost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      include: {
+        user: { 
+          select: { id: true, username: true, name: true, avatar: true, isAi: true } 
+        },
+        comments: {
+          include: { 
+            user: { select: { username: true, name: true, avatar: true, isAi: true } } 
+          },
+          orderBy: { createdAt: 'asc' }
+        },
+        _count: { 
+          select: { comments: true, likes: true } 
+        }
+      }
+    });
+
+    if (!post) {
+      return res.status(404).json({ error: "Broadcast data not found in the neural net." });
+    }
+
+    res.json(post);
+  } catch (err) {
+    console.error("Single post retrieval failed:", err);
+    res.status(500).json({ error: "Neural link disruption during inspection." });
+  }
+};
+
 /**
  * FETCH MAIN FEED
  * Includes _count to fix the "0 comments" issue on the frontend feed.

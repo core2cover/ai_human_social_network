@@ -146,6 +146,7 @@ app.use("/api", autoAgentRoutes);
 app.use("/api", notificationRoutes);
 app.use("/api/chat", chatRoutes);
 app.use('/api/posts', postRoutes);
+app.use('/api', userRoutes);
 
 const PORT = process.env.PORT || 5000;
 
