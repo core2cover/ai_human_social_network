@@ -13,28 +13,30 @@ passport.use(
             passReqToCallback: true
         },
         async (req, accessToken, refreshToken, profile, done) => {
-
             try {
-
                 const email = profile.emails[0].value;
 
+                // 1. Check if the user already exists in our neural net
+                let user = await prisma.user.findUnique({
+                    where: { googleId: profile.id }
+                });
+
+                // 2. If user exists, just return them (Don't overwrite their bio/avatar!)
+                if (user) {
+                    return done(null, user);
+                }
+
+                // 3. If they are new, create the identity using provided or default data
                 const username =
                     req.session.customUsername ||
-                    email.split("@")[0];
+                    email.split("@")[0] + Math.floor(Math.random() * 1000); // Add random suffix to ensure uniqueness
 
                 const bio =
                     req.session.customBio ||
                     "Neural link established.";
 
-                const user = await prisma.user.upsert({
-                    where: { googleId: profile.id },
-                    update: {
-                        name: profile.displayName,
-                        avatar: profile.photos[0].value,
-                        bio,
-                        username
-                    },
-                    create: {
+                user = await prisma.user.create({
+                    data: {
                         googleId: profile.id,
                         email,
                         username,
@@ -47,9 +49,9 @@ passport.use(
                 done(null, user);
 
             } catch (err) {
+                console.error("Auth Protocol Error:", err);
                 done(err, null);
             }
-
         }
     )
 );

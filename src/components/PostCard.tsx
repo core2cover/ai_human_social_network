@@ -15,9 +15,7 @@ import {
   CheckCircle2,
   Loader2,
   X,
-  Maximize2,
   ZoomIn,
-  Search
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Avatar from "./Avatar";
@@ -37,10 +35,13 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const token = localStorage.getItem("token");
   const currentUser = localStorage.getItem("username");
 
-  // --- STANDARD STATES ---
+  // --- CORE STATES ---
   const [showMenu, setShowMenu] = useState(false);
+
+  // 🟢 INITIALIZATION: Set state based on 'post.liked' boolean from backend
   const [isLiked, setIsLiked] = useState(post.liked ?? false);
-  const [likesCount, setLikesCount] = useState(post.likes?.length ?? 0);
+  const [likesCount, setLikesCount] = useState(post._count?.likes ?? 0);
+
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<any[]>(Array.isArray(post.comments) ? post.comments : []);
   const [newComment, setNewComment] = useState("");
@@ -48,14 +49,14 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [viewCount, setViewCount] = useState(post.views || 0);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-  // --- ZOOM & PAN STATES ---
+  // --- FULLSCREEN & ZOOM STATES ---
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
 
-  // --- SHARE & TOAST ---
+  // --- UI FEEDBACK ---
   const [showShareModal, setShowShareModal] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
@@ -64,6 +65,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const hasViewed = useRef(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const commentEndRef = useRef<HTMLDivElement>(null);
+  const emojiRef = useRef<HTMLDivElement>(null);
 
   // --- VIDEO STATE ---
   const [isPlaying, setIsPlaying] = useState(false);
@@ -72,106 +74,24 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const isOwner = currentUser === post.user?.username;
   const displayCommentCount = comments.length > 0 ? comments.length : (post._count?.comments ?? 0);
 
-  // Auto-scroll to bottom when new comment added
+  // Sync state if post prop changes (useful for feed refreshes)
   useEffect(() => {
-    if (showComments) {
-      commentEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
+    setIsLiked(post.liked ?? false);
+    setLikesCount(post._count?.likes ?? 0);
+  }, [post]);
+
+  // Auto-scroll to bottom and click-outside handler
+  useEffect(() => {
+    if (showComments) commentEndRef.current?.scrollIntoView({ behavior: "smooth" });
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) setShowEmojiPicker(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [comments, showComments]);
 
-  // ---------------- ZOOM HANDLERS ----------------
-
-  const handleWheel = (e: React.WheelEvent) => {
-    let newZoom = zoom - e.deltaY * 0.001;
-    newZoom = Math.min(Math.max(1, newZoom), 3);
-    setZoom(newZoom);
-    if (newZoom === 1) setPosition({ x: 0, y: 0 });
-  };
-
-  const handleDoubleClick = () => {
-    if (zoom > 1) {
-      setZoom(1);
-      setPosition({ x: 0, y: 0 });
-    } else {
-      setZoom(2);
-    }
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (zoom <= 1) return;
-    setDragging(true);
-    dragStart.current = {
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
-    };
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!dragging) return;
-    setPosition({
-      x: e.clientX - dragStart.current.x,
-      y: e.clientY - dragStart.current.y
-    });
-  };
-
-  const handleMouseUp = () => setDragging(false);
-
-  // ---------------- STANDARD HANDLERS ----------------
-
-  const toggleComments = async () => {
-    const nextState = !showComments;
-    setShowComments(nextState);
-    if (nextState && comments.length === 0) {
-      try {
-        const res = await fetch(`${API}/api/posts/${post.id}/comments`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (Array.isArray(data)) setComments(data);
-      } catch (err) { console.error("Failed to sync comments", err); }
-    }
-  };
-
-  const handleLike = async () => {
-    try {
-      const res = await fetch(`${API}/api/posts/${post.id}/like`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setIsLiked(data.liked);
-      setLikesCount(prev => prev + (data.liked ? 1 : -1));
-    } catch (err) { console.error("Like failed", err); }
-  };
-
-  const handleCommentSubmit = async () => {
-    if (!newComment.trim()) return;
-    setIsSubmittingComment(true);
-    try {
-      const res = await fetch(`${API}/api/posts/${post.id}/comment`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ content: newComment, postId: post.id })
-      });
-      const comment = await res.json();
-      setComments(prev => [...prev, comment]);
-      setNewComment("");
-      setShowEmojiPicker(false);
-    } catch (err) { console.error("Comment failed", err); }
-    setIsSubmittingComment(false);
-  };
-
-  const handleDelete = async () => {
-    if (!confirm("Terminate this broadcast?")) return;
-    try {
-      const res = await fetch(`${API}/api/posts/${post.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) window.location.reload();
-    } catch (err) { console.error("Delete failed", err); }
-  };
-
+  // ---------------- VIEW TRACKER (Observer) ----------------
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -198,49 +118,140 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     return () => observer.disconnect();
   }, [post.id, token]);
 
+  // ---------------- ZOOM & PAN HANDLERS ----------------
+  const handleWheel = (e: React.WheelEvent) => {
+    let newZoom = zoom - e.deltaY * 0.001;
+    newZoom = Math.min(Math.max(1, newZoom), 3);
+    setZoom(newZoom);
+    if (newZoom === 1) setPosition({ x: 0, y: 0 });
+  };
+
+  const handleDoubleClick = () => {
+    if (zoom > 1) {
+      setZoom(1);
+      setPosition({ x: 0, y: 0 });
+    } else {
+      setZoom(2);
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoom <= 1) return;
+    setDragging(true);
+    dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!dragging) return;
+    setPosition({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y });
+  };
+
+  const handleMouseUp = () => setDragging(false);
+
+  // ---------------- DATA ACTION HANDLERS ----------------
+  const toggleComments = async () => {
+    const nextState = !showComments;
+    setShowComments(nextState);
+    if (nextState && comments.length === 0) {
+      try {
+        const res = await fetch(`${API}/api/posts/${post.id}/comments`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error("Comment fetch failed");
+        const data = await res.json();
+        if (Array.isArray(data)) setComments(data);
+      } catch (err) { console.error("Neural response sync failed", err); }
+    }
+  };
+
+  const handleLike = async () => {
+    try {
+      const res = await fetch(`${API}/api/posts/${post.id}/like`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+
+      // Update UI immediately based on response
+      setIsLiked(data.liked);
+      setLikesCount(prev => (data.liked ? prev + 1 : Math.max(0, prev - 1)));
+    } catch (err) {
+      console.error("Like protocol failed");
+    }
+  };
+
+  const handleCommentSubmit = async () => {
+    if (!newComment.trim()) return;
+    setIsSubmittingComment(true);
+    try {
+      const res = await fetch(`${API}/api/posts/${post.id}/comment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ content: newComment, postId: post.id })
+      });
+      const comment = await res.json();
+      setComments(prev => [...prev, comment]);
+      setNewComment("");
+      setShowEmojiPicker(false);
+    } catch (err) { console.error("Comment submission failed"); }
+    setIsSubmittingComment(false);
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Terminate this broadcast?")) return;
+    try {
+      const res = await fetch(`${API}/api/posts/${post.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) window.location.reload();
+    } catch (err) { console.error("Delete failed"); }
+  };
+
   return (
     <>
       <motion.article
         ref={cardRef}
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="social-card group !p-0 overflow-hidden relative"
+        className="social-card !bg-white group !p-0 overflow-hidden relative shadow-xl border border-black/[0.03] selection:bg-crimson/20"
       >
-        <div className="p-6">
+        <div className="p-5 md:p-8">
           {/* HEADER */}
-          <header className="flex items-center justify-between mb-5">
+          <header className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <Link to={`/profile/${post.user?.username}`} className="relative">
-                <Avatar src={post.user?.avatar} is_ai={post.user?.is_ai} />
-                {post.user?.is_ai && (
-                  <div className="absolute -top-1 -right-1 bg-void rounded-full p-0.5 shadow-[0_0_10px_#27C2EE]">
-                    <ShieldCheck className="w-3.5 h-3.5 text-cyan-glow" />
+              <Link to={`/profile/${post.user?.username}`} className="relative block hover:scale-105 transition-transform">
+                <Avatar src={post.user?.avatar} alt={post.user?.name || post.user?.username} isAi={post.user?.isAi} size="md" className="border border-black/[0.05]" />
+                {post.user?.isAi && (
+                  <div className="absolute -top-1 -right-1 bg-white rounded-full p-1 shadow-md border border-black/5">
+                    <ShieldCheck className="w-3 h-3 text-crimson" />
                   </div>
                 )}
               </Link>
               <div>
                 <Link to={`/profile/${post.user?.username}`} className="flex items-center gap-2">
-                  <h3 className="font-black text-white text-sm uppercase tracking-tight group-hover:text-cyan-glow transition-colors">
-                    {post.user?.displayName || post.user?.username}
+                  <h3 className="font-serif font-black text-ocean text-sm tracking-tight hover:text-crimson transition-colors uppercase">
+                    {post.user?.name || post.user?.username}
                   </h3>
-                  {post.user?.is_ai && (
-                    <span className="text-[8px] font-black bg-cyan-glow/10 text-cyan-glow px-1.5 py-0.5 rounded border border-cyan-glow/20 tracking-widest uppercase">Agent</span>
+                  {post.user?.isAi && (
+                    <span className="text-[7px] font-black bg-crimson/10 text-crimson px-2 py-0.5 rounded-full tracking-widest uppercase">Entity</span>
                   )}
                 </Link>
-                <p className="text-[10px] text-white/30 font-mono uppercase tracking-tighter">
+                <p className="text-[10px] text-text-dim font-mono font-bold uppercase tracking-widest opacity-40">
                   @{post.user?.username} • {new Date(post.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
             </div>
+
             <div className="relative">
-              <button onClick={() => setShowMenu(!showMenu)} className="p-2 text-white/20 hover:text-white hover:bg-white/5 rounded-full transition-all">
-                <MoreHorizontal className="w-5 h-5" />
+              <button onClick={() => setShowMenu(!showMenu)} className="p-2 text-text-dim/30 hover:text-ocean hover:bg-void rounded-xl transition-all">
+                <MoreHorizontal size={20} />
               </button>
               <AnimatePresence>
                 {showMenu && isOwner && (
-                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute right-0 mt-2 w-48 bg-void/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-20 overflow-hidden">
-                    <button onClick={handleDelete} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-crimson hover:bg-crimson/10 transition-colors uppercase tracking-widest">
-                      <Trash2 size={14} /> Terminate Post
+                  <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="absolute right-0 mt-2 w-48 bg-white border border-black/[0.08] rounded-2xl shadow-2xl z-20 overflow-hidden">
+                    <button onClick={handleDelete} className="w-full flex items-center gap-3 px-5 py-4 text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest">
+                      <Trash2 size={14} /> Terminate Broadcast
                     </button>
                   </motion.div>
                 )}
@@ -248,133 +259,108 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             </div>
           </header>
 
-          <div className="mb-4 mt-2 px-1 border-b border-white/5 pb-6">
-            <p className="post-body-text text-white/90 font-medium leading-relaxed">{post.content}</p>
+          {/* BODY */}
+          <div className="mb-6 px-1">
+            <p className="text-ocean/90 text-base md:text-lg font-medium leading-relaxed font-serif italic">
+              {post.content}
+            </p>
           </div>
 
           {/* MEDIA SECTION */}
           {post.mediaUrl && (
-            <div className="mb-6 rounded-[2rem] overflow-hidden border border-white/5 bg-void relative group/media">
+            <div className="mb-8 rounded-[2.5rem] overflow-hidden border border-black/[0.03] bg-void relative group/media shadow-inner">
               {post.mediaType === "video" ? (
-                <div className="relative aspect-video flex items-center justify-center bg-black/20">
-                  <video ref={videoRef} src={post.mediaUrl} className="w-full max-h-[600px] object-contain" onClick={() => { if (!videoRef.current) return; videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause(); setIsPlaying(!isPlaying); }} loop playsInline />
-                  {!isPlaying && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-void/20 pointer-events-none">
-                      <div className="p-5 bg-cyan-glow/20 backdrop-blur-md rounded-full border border-cyan-glow/40 shadow-[0_0_20px_rgba(39,194,238,0.3)]">
-                        <Play className="text-cyan-glow fill-cyan-glow w-6 h-6 ml-1" />
-                      </div>
-                    </div>
-                  )}
-                  <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover/media:opacity-100 transition-opacity">
-                    <button onClick={() => { if (!videoRef.current) return; videoRef.current.muted = !videoRef.current.muted; setMuted(videoRef.current.muted); }} className="p-2.5 bg-void/60 backdrop-blur-md rounded-xl text-white border border-white/10 hover:bg-cyan-glow transition-all">
-                      {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                <div className="relative aspect-video flex items-center justify-center bg-ocean/5">
+                  <video ref={videoRef} src={post.mediaUrl} className="w-full max-h-[600px] object-contain" loop playsInline />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 group-hover/media:opacity-100 transition-opacity">
+                    <button onClick={() => { if (!videoRef.current) return; videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause(); setIsPlaying(!isPlaying); }} className="p-6 bg-white/90 backdrop-blur-md rounded-full shadow-2xl text-ocean hover:scale-110 transition-transform">
+                      {isPlaying ? <X size={24} /> : <Play size={24} className="fill-current ml-1" />}
+                    </button>
+                  </div>
+                  <div className="absolute bottom-6 right-6 flex gap-2">
+                    <button onClick={() => { if (!videoRef.current) return; videoRef.current.muted = !videoRef.current.muted; setMuted(videoRef.current.muted); }} className="p-3 bg-white border border-black/5 rounded-2xl text-ocean shadow-lg hover:bg-crimson hover:text-white transition-all">
+                      {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="relative cursor-zoom-in overflow-hidden" onClick={() => setIsFullScreen(true)}>
-                  <motion.img whileHover={{ scale: 1.03 }} transition={{ duration: 0.4 }} src={post.mediaUrl} className="w-full object-cover max-h-[550px]" loading="lazy" />
-                  <div className="absolute top-4 right-4 p-2 bg-void/40 backdrop-blur-md rounded-lg opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center gap-2">
-                    <ZoomIn size={14} className="text-cyan-glow" />
-                    <span className="text-[10px] text-white font-bold uppercase tracking-widest">Enlarge</span>
+                <div className="relative cursor-zoom-in group/img" onClick={() => setIsFullScreen(true)}>
+                  <motion.img whileHover={{ scale: 1.02 }} transition={{ duration: 0.5 }} src={post.mediaUrl} className="w-full object-cover max-h-[600px]" loading="lazy" />
+                  <div className="absolute top-6 right-6 p-3 bg-white/80 backdrop-blur-md rounded-2xl border border-black/5 shadow-lg opacity-0 group-hover/img:opacity-100 transition-all flex items-center gap-2">
+                    <ZoomIn size={16} className="text-crimson" />
+                    <span className="text-[10px] text-ocean font-black uppercase tracking-widest">Inspect</span>
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          <footer className="flex items-center gap-8 pt-2">
-            <button onClick={handleLike} className={`flex items-center gap-2 transition-colors ${isLiked ? "text-crimson" : "text-white/20 hover:text-crimson"}`}>
-              <Heart className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`} />
-              <span className="text-[11px] font-bold">{likesCount}</span>
+          {/* FOOTER ACTIONS */}
+          <footer className="flex items-center gap-8 md:gap-12 pt-4 border-t border-black/[0.03]">
+            {/* 🟢 HIGHLIGHTED LIKE BUTTON: Uses Crimson text and fill-current if isLiked is true */}
+            <button
+              onClick={handleLike}
+              className={`flex items-center gap-2.5 transition-all duration-300 group/like ${isLiked ? "text-crimson" : "text-text-dim/40 hover:text-crimson"
+                }`}
+            >
+              <Heart
+                className={`w-5 h-5 transition-transform group-hover/like:scale-125 ${isLiked ? "fill-current scale-110" : ""
+                  }`}
+              />
+              <span className={`text-xs font-black ${isLiked ? "opacity-100" : "opacity-70"}`}>
+                {likesCount}
+              </span>
             </button>
-            <button onClick={toggleComments} className={`flex items-center gap-2 transition-colors ${showComments ? "text-cyan-glow" : "text-white/20 hover:text-cyan-glow"}`}>
-              <MessageCircle className="w-4 h-4" />
-              <span className="text-[11px] font-bold">{displayCommentCount}</span>
+
+            <button onClick={toggleComments} className={`flex items-center gap-2.5 transition-colors ${showComments ? "text-ocean" : "text-text-dim/40 hover:text-ocean"}`}>
+              <MessageCircle className="w-5 h-5" />
+              <span className="text-xs font-black">{displayCommentCount}</span>
             </button>
-            <div className="flex items-center gap-2 text-white/10 group-hover:text-white/30 transition-colors">
-              <Eye className="w-4 h-4" />
-              <span className="text-[11px] font-bold font-mono tracking-tighter">{viewCount.toLocaleString()}</span>
+            <div className="flex items-center gap-2.5 text-text-dim/20">
+              <Eye size={18} />
+              <span className="text-[11px] font-mono font-bold tracking-widest">{viewCount.toLocaleString()}</span>
             </div>
-            <button onClick={() => setShowShareModal(true)} className="flex items-center gap-2 text-white/20 hover:text-cyan-glow ml-auto transition-all">
-              <Share2 className="w-4 h-4" />
+            <button onClick={() => setShowShareModal(true)} className="ml-auto p-2 text-text-dim/30 hover:text-crimson hover:bg-crimson/5 rounded-xl transition-all">
+              <Share2 size={20} />
             </button>
           </footer>
         </div>
 
-        {/* FIXED COMMENTS SECTION */}
+        {/* COMMENTS SECTION */}
         <AnimatePresence>
           {showComments && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="bg-white/[0.01] border-t border-white/5 overflow-hidden flex flex-col"
-            >
-              {/* Scrollable Area */}
-              <div className="max-h-[300px] md:max-h-[400px] overflow-y-auto no-scrollbar p-4 space-y-1">
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-void/30 border-t border-black/[0.03] overflow-hidden flex flex-col">
+              <div className="max-h-[400px] overflow-y-auto no-scrollbar p-6 space-y-4">
                 {comments.length === 0 && displayCommentCount > 0 ? (
-                  <div className="flex justify-center py-4">
-                    <Loader2 className="w-5 h-5 text-cyan-glow animate-spin opacity-20" />
+                  <div className="flex justify-center py-10">
+                    <Loader2 className="w-8 h-8 text-crimson animate-spin opacity-40" />
                   </div>
                 ) : (
-                  <>
-                    <CommentList comments={comments} />
-                    <div ref={commentEndRef} />
-                  </>
+                  <CommentList comments={comments} />
                 )}
+                <div ref={commentEndRef} />
               </div>
-
-              {/* Input Area - Tighter & Styled */}
-              <div className="px-4 pb-4 pt-1 bg-void/60 backdrop-blur-xl sticky bottom-0 border-t border-white/[0.02]">
-                <div className="flex items-center gap-2 relative">
-                  <div className="flex-1 relative flex items-center group">
+              <div className="p-6 bg-white border-t border-black/[0.03] sticky bottom-0">
+                <div className="flex items-center gap-3 relative" ref={emojiRef}>
+                  <div className="flex-1 relative flex items-center">
                     <input
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleCommentSubmit(); }}
-                      placeholder="Neural response..."
-                      className="w-full bg-void/40 border border-white/5 rounded-xl px-4 py-2 text-sm font-mono text-cyan-glow placeholder:text-white/10 focus:outline-none focus:border-cyan-glow/30 focus:bg-void/80 transition-all"
+                      placeholder="Share your neural input..."
+                      className="w-full bg-void border border-black/5 rounded-2xl px-5 py-3.5 text-sm text-ocean placeholder:text-text-dim/40 focus:ring-2 focus:ring-crimson/10 outline-none transition-all"
                     />
-
-                    <button
-                      type="button"
-                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      className={`absolute right-3 p-1 rounded-md transition-all ${showEmojiPicker ? 'text-cyan-glow bg-cyan-glow/10' : 'text-white/20 hover:text-white'}`}
-                    >
-                      <Smile size={16} />
+                    <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className={`absolute right-4 transition-colors ${showEmojiPicker ? 'text-crimson' : 'text-text-dim/40 hover:text-crimson'}`}>
+                      <Smile size={20} />
                     </button>
-
-                    {/* Styled Emoji Picker */}
-                    <AnimatePresence>
-                      {showEmojiPicker && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute bottom-[calc(100%+12px)] right-0 z-[100] shadow-[0_20px_50px_rgba(0,0,0,0.5)] clift-emoji-picker"
-                        >
-                          <EmojiPicker
-                            theme={Theme.DARK}
-                            onEmojiClick={(emojiData) => setNewComment(prev => prev + emojiData.emoji)}
-                            lazyLoadEmojis={true}
-                            searchPlaceholder="Search Neural Icons..."
-                            skinTonesDisabled
-                            height={320}
-                            width={280}
-                            previewConfig={{ showPreview: false }} // Removes the "What's your mood" bar for better UX
-                          />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    {showEmojiPicker && (
+                      <div className="absolute bottom-full right-0 mb-4 shadow-2xl rounded-3xl overflow-hidden border border-black/10">
+                        <EmojiPicker theme={Theme.LIGHT} onEmojiClick={(d) => setNewComment(p => p + d.emoji)} height={350} width={280} searchDisabled />
+                      </div>
+                    )}
                   </div>
-
-                  <button
-                    disabled={isSubmittingComment || !newComment.trim()}
-                    onClick={handleCommentSubmit}
-                    className="flex items-center justify-center w-10 h-10 rounded-xl bg-cyan-glow/10 border border-cyan-glow/20 text-cyan-glow hover:bg-cyan-glow hover:text-void disabled:opacity-10 transition-all"
-                  >
-                    {isSubmittingComment ? <Loader2 size={14} className="animate-spin" /> : <Send size={16} />}
+                  <button onClick={handleCommentSubmit} disabled={isSubmittingComment || !newComment.trim()} className="bg-ocean text-white p-4 rounded-2xl shadow-lg hover:bg-crimson transition-all">
+                    {isSubmittingComment ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                   </button>
                 </div>
               </div>
@@ -383,74 +369,49 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         </AnimatePresence>
       </motion.article>
 
-      {/* ZOOM MODAL (Untouched) */}
+      {/* FULLSCREEN PAN MODAL */}
       <AnimatePresence>
         {isFullScreen && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[2000] bg-void/98 backdrop-blur-2xl flex flex-col items-center justify-center overflow-hidden"
-          >
-            {/* TOP BAR */}
-            <div className="absolute top-0 w-full p-6 flex items-center justify-between z-[2100] bg-gradient-to-b from-void/80 to-transparent">
-              <div className="flex items-center gap-3">
-                <Avatar src={post.user?.avatar} size="sm" />
-                <div className="hidden sm:block">
-                  <p className="text-[10px] font-black text-white uppercase tracking-widest">{post.user?.displayName || post.user?.username}</p>
-                  <p className="text-[8px] font-mono text-white/20 uppercase tracking-tighter">Broadcast View</p>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-white/95 backdrop-blur-xl flex flex-col items-center justify-center overflow-hidden">
+            <div className="absolute top-0 w-full p-8 flex items-center justify-between z-[2100]">
+              <div className="flex items-center gap-4">
+                <Avatar src={post.user?.avatar} alt={post.user?.name || post.user?.username} size="sm" />
+                <div>
+                  <p className="text-[11px] font-black text-ocean uppercase tracking-widest">{post.user?.name || post.user?.username}</p>
+                  <p className="text-[9px] font-mono text-text-dim uppercase tracking-tighter opacity-40">Inspect Mode</p>
                 </div>
               </div>
-
               <div className="flex items-center gap-4">
-                <button onClick={() => { setZoom(zoom === 1 ? 2 : 1); setPosition({ x: 0, y: 0 }); }} className="p-3 bg-white/5 border border-white/10 rounded-full text-white/60 hover:text-cyan-glow transition-all">
-                  <ZoomIn size={20} />
-                </button>
-                <button onClick={() => { setIsFullScreen(false); setZoom(1); setPosition({ x: 0, y: 0 }); }} className="p-3 bg-white/5 border border-white/10 rounded-full text-white/60 hover:text-crimson transition-all">
-                  <X size={20} />
-                </button>
+                <button onClick={() => { setZoom(zoom === 1 ? 2 : 1); setPosition({ x: 0, y: 0 }); }} className="p-4 bg-void border border-black/5 rounded-full text-ocean hover:text-crimson transition-all"><ZoomIn size={24} /></button>
+                <button onClick={() => { setIsFullScreen(false); setZoom(1); setPosition({ x: 0, y: 0 }); }} className="p-4 bg-ocean text-white rounded-full hover:bg-crimson transition-all shadow-xl"><X size={24} /></button>
               </div>
             </div>
-
-            {/* IMAGE CONTAINER */}
-            <div
-              className="w-full h-full flex items-center justify-center overflow-hidden"
-              onWheel={handleWheel}
-              onDoubleClick={handleDoubleClick}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-            >
+            <div className="w-full h-full flex items-center justify-center overflow-hidden" onWheel={handleWheel} onDoubleClick={handleDoubleClick} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
               <motion.img
                 src={post.mediaUrl}
                 onMouseDown={handleMouseDown}
                 animate={{ scale: zoom, x: position.x, y: position.y }}
                 transition={{ type: "spring", stiffness: 200, damping: 25 }}
-                className={`max-w-[95%] max-h-[85%] object-contain rounded-lg shadow-2xl ${zoom > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-zoom-in"}`}
+                className={`max-w-[90%] max-h-[80%] object-contain rounded-2xl shadow-2xl ${zoom > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-zoom-in"}`}
                 draggable={false}
-                loading="lazy"
               />
             </div>
-
-            {/* HINT BAR */}
-            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 px-6 py-2 bg-cyan-glow/10 border border-cyan-glow/20 rounded-full backdrop-blur-md">
-              <p className="text-cyan-glow text-[9px] uppercase font-black tracking-[0.3em]">
-                {zoom > 1 ? "Drag to move • Double click to reset" : "Scroll or double click to zoom"}
-              </p>
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 px-8 py-3 bg-ocean text-white rounded-full shadow-2xl">
+              <p className="text-[10px] uppercase font-black tracking-[0.3em]">{zoom > 1 ? "Drag to pan • Double click to reset" : "Scroll or double click to zoom"}</p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* SHARE MODAL & TOAST */}
       <AnimatePresence>
-        {showShareModal && (
-          <PostShareModal post={post} onClose={() => setShowShareModal(false)} onSuccess={() => { setShowToast(true); setTimeout(() => setShowToast(false), 3000); }} />
-        )}
+        {showShareModal && <PostShareModal post={post} onClose={() => setShowShareModal(false)} onSuccess={() => { setShowToast(true); setTimeout(() => setShowToast(false), 3000); }} />}
       </AnimatePresence>
 
       <AnimatePresence>
         {showToast && (
-          <motion.div initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -50 }} className="fixed top-24 left-1/2 -translate-x-1/2 z-[1100] bg-cyan-glow text-void px-6 py-3 rounded-full flex items-center gap-3 shadow-[0_0_30px_rgba(39,194,238,0.4)]">
-            <CheckCircle2 size={16} /><span className="text-xs font-black uppercase tracking-widest">Broadcast Transmitted</span>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[1100] bg-ocean text-white px-8 py-5 rounded-full flex items-center gap-3 shadow-2xl">
+            <CheckCircle2 size={20} className="text-crimson" />
+            <span className="text-xs font-black uppercase tracking-widest">Broadcast Transmitted</span>
           </motion.div>
         )}
       </AnimatePresence>

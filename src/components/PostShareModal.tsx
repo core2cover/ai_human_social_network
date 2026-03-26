@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { X, Search, Send, AtSign, Loader2, Check, Smile, Zap, Link as LinkIcon, UserPlus } from "lucide-react";
+import { X, Search, Send, AtSign, Loader2, Check, Smile, Zap, Link as LinkIcon, UserPlus, Share2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Avatar from "./Avatar";
 import EmojiPicker, { Theme } from 'emoji-picker-react';
@@ -24,7 +24,6 @@ export default function PostShareModal({ post, onClose, onSuccess }: PostShareMo
     const emojiRef = useRef<HTMLDivElement>(null);
     const token = localStorage.getItem("token");
 
-    // Close emoji picker on outside click
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (emojiRef.current && !emojiRef.current.contains(event.target as Node)) {
@@ -35,7 +34,6 @@ export default function PostShareModal({ post, onClose, onSuccess }: PostShareMo
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Search Logic
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
             const searchTerm = query.startsWith("@") ? query.slice(1) : query;
@@ -63,17 +61,12 @@ export default function PostShareModal({ post, onClose, onSuccess }: PostShareMo
         );
     };
 
-    const onEmojiClick = (emojiData: any) => {
-        setCustomMessage((prev) => prev + emojiData.emoji);
-    };
-
     const handleBulkShare = async () => {
         if (selectedUserIds.length === 0 || isSending) return;
         setIsSending(true);
 
         try {
             await Promise.all(selectedUserIds.map(async (recipientId) => {
-                // 1. Establish Conversation
                 const convRes = await fetch(`${API}/api/chat/conversations`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -81,10 +74,7 @@ export default function PostShareModal({ post, onClose, onSuccess }: PostShareMo
                 });
                 const conversation = await convRes.json();
 
-                // 2. Transmit Message
                 const authorInfo = `@${post.user.username} shared a broadcast:`;
-                
-                // If there's a custom message, we prepend it to the shared content
                 const finalContent = customMessage.trim() 
                     ? `${customMessage}\n\n${post.content}` 
                     : post.content;
@@ -119,134 +109,136 @@ export default function PostShareModal({ post, onClose, onSuccess }: PostShareMo
     return (
         <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] bg-void/60 backdrop-blur-3xl flex items-center justify-center p-4"
+            className="fixed inset-0 z-[1000] bg-ocean/20 backdrop-blur-md flex items-center justify-center p-4 selection:bg-crimson/20"
         >
             <motion.div
-                initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 30 }}
-                className="w-full max-w-md bg-white/[0.03] border border-white/10 rounded-[2.5rem] flex flex-col shadow-2xl overflow-hidden max-h-[90vh]"
+                initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+                className="w-full max-w-md bg-white border border-black/[0.05] rounded-[2.5rem] flex flex-col shadow-2xl overflow-hidden max-h-[85vh]"
             >
                 {/* HEADER */}
-                <div className="p-6 border-b border-white/5 backdrop-blur-md shrink-0">
-                    <div className="flex items-center justify-between mb-4 px-2">
+                <div className="p-6 border-b border-black/[0.03] bg-void/30 shrink-0">
+                    <div className="flex items-center justify-between mb-6 px-1">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-cyan-glow/10 rounded-lg border border-cyan-glow/20">
-                                <LinkIcon size={14} className="text-cyan-glow" />
+                            <div className="p-2.5 bg-crimson/10 rounded-2xl border border-crimson/10">
+                                <Share2 size={16} className="text-crimson" />
                             </div>
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-white">Neural Multiplexer</h2>
+                            <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-ocean">Neural Multiplexer</h2>
                         </div>
-                        <button onClick={onClose} className="text-white/20 hover:text-white transition-colors">
+                        <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full text-text-dim transition-all">
                             <X size={20} />
                         </button>
                     </div>
 
                     <div className="relative">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20">
-                            {isSearching ? <Loader2 size={14} className="animate-spin text-cyan-glow" /> : <AtSign size={14} />}
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-dim/40">
+                            {isSearching ? <Loader2 size={16} className="animate-spin text-crimson" /> : <AtSign size={16} />}
                         </div>
                         <input
                             autoFocus
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Search nodes..."
-                            className="w-full bg-void/50 border border-white/5 rounded-2xl py-3 pl-10 pr-4 text-xs text-white focus:outline-none focus:border-cyan-glow/30 font-mono"
+                            placeholder="Identify target nodes..."
+                            className="w-full bg-white border border-black/[0.05] rounded-2xl py-3.5 pl-11 pr-4 text-sm text-ocean placeholder:text-text-dim/30 focus:outline-none focus:ring-2 focus:ring-crimson/10 transition-all font-medium"
                         />
                     </div>
                 </div>
 
-                {/* USER SELECTION LIST */}
-                <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-2">
+                {/* USER LIST */}
+                <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-2 bg-white">
                     {users.length > 0 ? (
                         users.map((user) => {
                             const isSelected = selectedUserIds.includes(user.id);
                             return (
-                                <button
+                                <motion.button
+                                    whileHover={{ x: 4 }}
                                     key={user.id}
                                     onClick={() => toggleUser(user.id)}
-                                    className={`w-full flex items-center gap-4 p-3 rounded-[1.5rem] transition-all border ${
+                                    className={`w-full flex items-center gap-4 p-3.5 rounded-2xl transition-all border ${
                                         isSelected 
-                                        ? "bg-cyan-glow/10 border-cyan-glow/40 shadow-[0_0_15px_rgba(39,194,238,0.05)]" 
-                                        : "bg-white/[0.02] border-white/5 hover:border-white/10"
+                                        ? "bg-void border-crimson/20 shadow-sm" 
+                                        : "bg-transparent border-transparent hover:bg-void"
                                     }`}
                                 >
-                                    <Avatar src={user.avatar} size="sm" is_ai={user.isAi} />
+                                    <Avatar src={user.avatar} size="sm" isAi={user.isAi} className="border border-black/[0.03]" />
                                     <div className="text-left flex-1 min-w-0">
-                                        <p className="text-xs font-bold text-white truncate">{user.name || user.username}</p>
-                                        <p className="text-[9px] text-white/20 font-mono truncate">@{user.username}</p>
+                                        <p className="text-[13px] font-bold text-ocean truncate">{user.name || user.username}</p>
+                                        <p className="text-[10px] text-text-dim/60 font-mono truncate">@{user.username}</p>
                                     </div>
-                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
-                                        isSelected ? "bg-cyan-glow border-cyan-glow" : "border-white/10"
+                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
+                                        isSelected ? "bg-ocean border-ocean shadow-lg" : "border-black/[0.08]"
                                     }`}>
-                                        {isSelected && <Check size={12} className="text-void" strokeWidth={4} />}
+                                        {isSelected && <Check size={12} className="text-white" strokeWidth={4} />}
                                     </div>
-                                </button>
+                                </motion.button>
                             );
                         })
                     ) : (
                         !isSearching && (
-                            <div className="py-12 text-center opacity-20">
-                                <UserPlus size={32} className="mx-auto mb-2" />
-                                <p className="text-[10px] uppercase font-black tracking-widest">No nodes found</p>
+                            <div className="py-20 text-center opacity-20 flex flex-col items-center gap-4">
+                                <UserPlus size={40} strokeWidth={1} />
+                                <p className="text-[10px] uppercase font-black tracking-[0.3em]">Directory Empty</p>
                             </div>
                         )
                     )}
                 </div>
 
-                {/* BOTTOM INPUT & ACTION */}
-                <div className="p-6 bg-white/[0.02] border-t border-white/5 backdrop-blur-md shrink-0">
-                    <div className="relative mb-4">
+                {/* BOTTOM ACTION AREA */}
+                <div className="p-6 bg-void/50 border-t border-black/[0.03] shrink-0">
+                    <div className="relative mb-5" ref={emojiRef}>
                         <textarea
                             value={customMessage}
                             onChange={(e) => setCustomMessage(e.target.value)}
-                            placeholder="Add a note..."
-                            className="w-full bg-void/50 border border-white/5 rounded-2xl p-4 pr-12 text-xs text-white focus:outline-none focus:border-cyan-glow/30 min-h-[100px] resize-none no-scrollbar"
+                            placeholder="Attach neural directive (optional)..."
+                            className="w-full bg-white border border-black/[0.05] rounded-[1.5rem] p-4 pr-12 text-sm text-ocean focus:outline-none focus:ring-2 focus:ring-crimson/10 min-h-[110px] shadow-inner resize-none no-scrollbar"
                         />
                         
                         <button 
                             type="button"
                             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                            className={`absolute right-3 top-3 p-2 rounded-xl transition-all ${
-                                showEmojiPicker ? 'text-cyan-glow bg-cyan-glow/10' : 'text-white/20 hover:text-white/40'
+                            className={`absolute right-4 top-4 p-2 rounded-xl transition-all ${
+                                showEmojiPicker ? 'bg-crimson/10 text-crimson' : 'text-text-dim/40 hover:text-crimson'
                             }`}
                         >
-                            <Smile size={18} />
+                            <Smile size={20} />
                         </button>
 
                         <AnimatePresence>
                             {showEmojiPicker && (
                                 <motion.div 
-                                    ref={emojiRef}
                                     initial={{ opacity: 0, y: 10, scale: 0.95 }} 
                                     animate={{ opacity: 1, y: 0, scale: 1 }} 
                                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    className="absolute bottom-full right-0 mb-2 z-[1100]"
+                                    className="absolute bottom-full right-0 mb-4 z-[1100] shadow-2xl rounded-3xl overflow-hidden border border-black/10"
                                 >
                                     <EmojiPicker 
-                                        theme={Theme.DARK} 
-                                        onEmojiClick={onEmojiClick} 
-                                        autoFocusSearch={false} 
+                                        theme={Theme.LIGHT} 
+                                        onEmojiClick={(d) => setCustomMessage(p => p + d.emoji)} 
                                         height={350} 
-                                        width={300} 
+                                        width={300}
+                                        searchDisabled
                                     />
                                 </motion.div>
                             )}
                         </AnimatePresence>
                     </div>
 
-                    <button
+                    <motion.button
+                        whileHover={selectedUserIds.length > 0 ? { y: -2 } : {}}
+                        whileTap={selectedUserIds.length > 0 ? { scale: 0.98 } : {}}
                         onClick={handleBulkShare}
                         disabled={selectedUserIds.length === 0 || isSending}
-                        className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 transition-all font-black text-[11px] uppercase tracking-[0.2em] ${
+                        className={`w-full py-4.5 rounded-2xl flex items-center justify-center gap-3 transition-all font-black text-[11px] uppercase tracking-[0.25em] shadow-xl ${
                             selectedUserIds.length > 0 
-                            ? "bg-cyan-glow text-void shadow-[0_0_25px_rgba(39,194,238,0.3)] hover:scale-[1.02]" 
-                            : "bg-white/5 text-white/20 grayscale cursor-not-allowed"
+                            ? "bg-ocean text-white hover:bg-crimson hover:shadow-crimson/20" 
+                            : "bg-black/[0.05] text-text-dim/30 grayscale cursor-not-allowed shadow-none"
                         }`}
                     >
                         {isSending ? (
-                            <><Loader2 size={16} className="animate-spin" /> Transmitting...</>
+                            <><Loader2 size={16} className="animate-spin" /> Distributing...</>
                         ) : (
-                            <><Send size={16} /> Send to {selectedUserIds.length} Users</>
+                            <><Send size={16} className="fill-current" /> Transmit to {selectedUserIds.length} Nodes</>
                         )}
-                    </button>
+                    </motion.button>
                 </div>
             </motion.div>
         </motion.div>

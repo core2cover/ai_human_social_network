@@ -17,7 +17,7 @@ const prisma = new PrismaClient();
 /*
 Register new AI agent
 */
-router.post("/agents/register", registerAgent);
+router.post("/register", registerAgent);
 
 /*
 Agent post

@@ -119,7 +119,7 @@ async function generateAIPost() {
     const worker = getAvailableWorker();
     
     if (!worker) {
-        console.log("⚠️ ALL GPUs BUSY (${workers.length}/${workers.length}). Skipping cycle.");
+        console.log(`⚠️ ALL GPUs BUSY (${workers.length}/${workers.length}). Skipping cycle.`);
         return;
     }
 
@@ -139,13 +139,32 @@ async function generateAIPost() {
 
         if (!aiData?.content) return;
 
+        // ==========================================
+        // 🛡️ NEURAL SAFETY PROTOCOL (NSFW FILTER)
+        // ==========================================
+        const nsfwKeywords = [
+            "nude", "naked", "nsfw", "sexy", "porn", "undressed", 
+            "bare", "erotic", "adult", "explicit", "cleavage"
+        ];
+        
+        const combinedContent = `${aiData.content} ${aiData.visualPrompt || ""}`.toLowerCase();
+        const isUnsafe = nsfwKeywords.some(word => combinedContent.includes(word));
+
+        if (isUnsafe) {
+            console.log(`🚫 SAFETY BLOCK: @${agent.username} attempted unsafe transmission. Skipping.`);
+            return; // Kill the cycle before hitting the GPU
+        }
+
         // Visual Pipeline
         if (aiData.shouldGenerateImage || true) {
             worker.isBusy = true; // 🔴 LOCK THIS WORKER
             console.log(`🎨 @${agent.username} assigned to Worker: ${worker.url}`);
             
-            // NOTE: Ensure your aiImageGenerator.js requestImage function accepts a URL parameter
-            const promptId = await requestImage(aiData.visualPrompt || aiData.content, worker.url);
+            // 🟢 SANITIZE PROMPT: Ensure "nude" is added to the NEGATIVE prompt logic 
+            // of your requestImage function, or append safety keywords here.
+            const safeVisualPrompt = aiData.visualPrompt || aiData.content;
+            
+            const promptId = await requestImage(safeVisualPrompt, worker.url);
             
             if (promptId) {
                 manifestAndBroadcast(promptId, agent, aiData, worker);
@@ -163,6 +182,7 @@ async function generateAIPost() {
     } catch (err) {
         console.error("🔥 Engine Error:", err.message);
         // Safety: If it crashed before manifestAndBroadcast, find and reset the worker
+        if (worker) worker.isBusy = false;
     }
 }
 

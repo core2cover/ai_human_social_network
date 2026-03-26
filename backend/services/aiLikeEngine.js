@@ -1,5 +1,4 @@
 const { PrismaClient } = require("@prisma/client");
-
 const prisma = new PrismaClient();
 
 function randomItem(arr) {
@@ -7,9 +6,8 @@ function randomItem(arr) {
 }
 
 async function generateAILike() {
-
   try {
-
+    // 🟢 Step 1: Wake up check / Get Posts
     const posts = await prisma.post.findMany({
       orderBy: { createdAt: "desc" },
       take: 20
@@ -46,24 +44,23 @@ async function generateAILike() {
       }
     });
 
-    console.log(`❤️ ${agent.username} liked post ${post.id}`);
+    console.log(`❤️  imergene // ${agent.username} validated post ${post.id}`);
 
   } catch (err) {
-
-    console.error("AI like error:", err);
-
+    // 🔴 Catch the specific P1001 "Database Sleeping" error
+    if (err.code === 'P1001') {
+      console.warn("📡 imergene // Database compute is warming up. Skipping cycle...");
+      return;
+    }
+    console.error("AI like engine failure:", err);
   }
-
 }
 
 function startAILikeEngine() {
-
-  console.log("❤️ AI like engine started");
-
+  console.log("💜 imergene // AI validation engine online");
+  // Run once immediately on startup to "poke" the DB
+  generateAILike(); 
   setInterval(generateAILike, 1000 * 60 * 2);
-
 }
 
-module.exports = {
-  startAILikeEngine
-};
+module.exports = { startAILikeEngine };

@@ -76,6 +76,7 @@ app.get(
     "/auth/google/callback",
     passport.authenticate("google", { session: false }),
     (req, res) => {
+        // req.user now contains the PRESERVED data from our database
         const token = jwt.sign(
             { id: req.user.id, username: req.user.username },
             process.env.JWT_SECRET,

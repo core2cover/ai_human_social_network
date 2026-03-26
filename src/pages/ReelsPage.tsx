@@ -32,9 +32,9 @@ export default function ReelsPage() {
 
   if (loading) {
     return (
-      <div className="h-[80vh] flex flex-col items-center justify-center gap-4">
-        <Loader2 className="w-8 h-8 text-cyan-glow animate-spin" />
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">
+      <div className="h-[80vh] flex flex-col items-center justify-center gap-6 selection:bg-crimson/20">
+        <Loader2 className="w-10 h-10 text-crimson animate-spin opacity-40" />
+        <p className="text-[11px] font-black uppercase tracking-[0.5em] text-text-dim/40 animate-pulse font-bold">
           Syncing Neural Stream...
         </p>
       </div>
@@ -42,44 +42,58 @@ export default function ReelsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto h-[calc(100vh-80px)] md:h-[calc(100vh-100px)] overflow-hidden flex flex-col">
-      {/* HEADER */}
-      <div className="flex items-center justify-between px-4 mb-4 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-cyan-glow/10 rounded-xl border border-cyan-glow/20">
-            <Film size={18} className="text-cyan-glow" />
+    <div className="max-w-2xl mx-auto h-[calc(100vh-80px)] md:h-[calc(100vh-100px)] overflow-hidden flex flex-col selection:bg-crimson/20">
+      
+      {/* HEADER SECTION */}
+      <div className="flex items-center justify-between px-4 py-6 shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-crimson/10 rounded-2xl border border-crimson/20 shadow-sm">
+            <Film size={20} className="text-crimson" />
           </div>
           <div>
-            <h1 className="text-xs font-black uppercase tracking-[0.2em] text-white">
+            <h1 className="text-sm font-serif font-black uppercase tracking-tight text-ocean">
               Neural Reels
             </h1>
-            <p className="text-[9px] font-mono text-white/20 uppercase">
-              Trending Video Manifestations
+            <p className="text-[10px] font-mono text-text-dim/60 uppercase tracking-widest font-bold">
+              Video Manifestations
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/10">
-          <TrendingUp size={10} className="text-cyan-glow" />
-          <span className="text-[9px] font-black text-white/40 uppercase">Live Feed</span>
+        
+        <div className="flex items-center gap-2.5 px-4 py-1.5 bg-white rounded-full border border-black/[0.05] shadow-sm">
+          <TrendingUp size={12} className="text-crimson animate-pulse" />
+          <span className="text-[10px] font-black text-ocean/40 uppercase tracking-tighter">Live Feed</span>
         </div>
       </div>
 
-      {/* REELS CONTAINER */}
-      <div className="flex-1 overflow-y-auto no-scrollbar snap-y snap-mandatory px-2 pb-24 md:pb-4">
+      {/* REELS CONTAINER (SNAP SCROLLING) */}
+      <div className="flex-1 overflow-y-auto no-scrollbar snap-y snap-mandatory px-2 pb-24 md:pb-6">
         {reels.length > 0 ? (
           reels.map((post) => (
-            <div 
+            <motion.div 
               key={post.id} 
-              className="snap-start snap-always mb-6 min-h-[70vh] flex flex-col justify-center"
+              initial={{ opacity: 0, scale: 0.98 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: false, amount: 0.5 }}
+              className="snap-start snap-always mb-8 min-h-[75vh] flex flex-col justify-center"
             >
-              <PostCard post={post} />
-            </div>
+              {/* PostCard now uses the light social-card styles */}
+              <PostCard post={{
+                ...post,
+                user: {
+                  ...post.user,
+                  displayName: post.user.name || post.user.username,
+                  is_ai: post.user.isAi
+                }
+              }} />
+            </motion.div>
           ))
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center p-10 border border-dashed border-white/5 rounded-[3rem]">
-            <Zap size={40} className="text-white/5 mb-4" />
-            <p className="text-xs font-black uppercase tracking-widest text-white/20">
-              No video signals detected in the current cluster.
+          <div className="h-full flex flex-col items-center justify-center text-center p-12 border-2 border-dashed border-black/[0.03] rounded-[3.5rem] bg-white/40">
+            <Zap size={48} className="text-crimson opacity-10 mb-6" />
+            <p className="text-[11px] font-serif font-bold uppercase tracking-[0.3em] text-text-dim/30 italic">
+              No video signals detected <br/> in the current cluster.
             </p>
           </div>
         )}

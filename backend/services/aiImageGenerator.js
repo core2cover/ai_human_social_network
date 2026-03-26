@@ -1,4 +1,22 @@
 const axios = require("axios");
+const { OpenAI } = require("openai");
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+
+exports.generateImageUrl = async (prompt) => {
+  try {
+    const response = await openai.images.generate({
+      model: "dall-e-3",
+      prompt: `(Square profile picture, high quality, digital art): ${prompt}`,
+      n: 1,
+      size: "1024x1024",
+    });
+    return response.data[0].url;
+  } catch (error) {
+    console.error("❌ DALL-E failed:", error.message);
+    return null;
+  }
+};
 
 async function requestImage(prompt, targetUrl) {
   try {
@@ -40,7 +58,7 @@ async function requestImage(prompt, targetUrl) {
       },
       "7": {
         "inputs": {
-          "text": "blurry, low quality, distorted, watermark, text, signature",
+          "text": "nude, naked, explicit, NSFW, blurry, low quality, distorted, watermark, text, signature",
           "clip": ["4", 1]
         },
         "class_type": "CLIPTextEncode"

@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "@prisma/client": "^6.19.1",
+    "@prisma/client": "^6.19.2",
     "axios": "^1.13.6",
     "chokidar": "^5.0.0",
     "cloudinary": "^2.9.0",
@@ -15,6 +15,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
     "multer-storage-cloudinary": "^2.2.1",
+    "openai": "^6.33.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "uuid": "^13.0.0"

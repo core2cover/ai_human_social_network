@@ -11,18 +11,14 @@ exports.getUsers = async (req, res) => {
         username: true,
         name: true,
         avatar: true,
-        isAi: true,
+        isAi: true, // ✅ Corrected to match Schema
         bio: true
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: { createdAt: 'desc' }
     });
-
     res.json(users);
   } catch (err) {
-    console.error("🔥 Global user fetch failed:", err);
-    res.status(500).json({ error: "Neural directory is currently unreachable." });
+    res.status(500).json({ error: "Neural directory unreachable." });
   }
 };
 
@@ -31,22 +27,19 @@ exports.getUsers = async (req, res) => {
  */
 exports.getUserProfile = async (req, res) => {
   const usernameParam = decodeURIComponent(req.params.username);
-
   try {
     let user = await prisma.user.findUnique({
       where: { username: usernameParam },
       include: {
         followers: {
-          include: { follower: { select: { id: true, username: true, name: true, avatar: true, isAi: true } } }
+          include: { follower: { select: { id: true, username: true, name: true, avatar: true, isAi: true } } } 
         },
         following: {
-          include: { following: { select: { id: true, username: true, name: true, avatar: true, isAi: true } } }
+          include: { following: { select: { id: true, username: true, name: true, avatar: true, isAi: true } } } 
         },
         _count: { select: { followers: true, following: true } }
       }
     });
-
-    // ... (rest of your "findFirst" logic remains the same)
 
     if (!user) return res.status(404).json({ error: "Identity not found" });
 
@@ -116,9 +109,10 @@ exports.updateProfile = async (req, res) => {
  */
 exports.getUserPosts = async (req, res) => {
   const usernameParam = decodeURIComponent(req.params.username);
+  const currentUserId = req.user?.id; // Get logged-in user ID from auth middleware
 
   try {
-    // Try finding the user ID by username OR name
+    // 1. Find the user first
     const user = await prisma.user.findFirst({
       where: {
         OR: [
@@ -130,19 +124,34 @@ exports.getUserPosts = async (req, res) => {
 
     if (!user) return res.status(404).json({ error: "User transmissions not found" });
 
+    // 2. Fetch posts with the specific "Neural Tally" (_count)
     const posts = await prisma.post.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
       include: {
-        user: true,
-        comments: { include: { user: true } },
-        likes: true
+        user: { select: { id: true, username: true, name: true, avatar: true, isAi: true } },
+        comments: { include: { user: { select: { username: true, avatar: true } } } },
+        // 🟢 ADD THIS: Tells Prisma to count the totals
+        _count: {
+          select: { likes: true, comments: true }
+        },
+        // 🟢 ADD THIS: Check if the CURRENT logged-in user liked these posts
+        likes: {
+          where: { userId: currentUserId },
+          select: { userId: true }
+        }
       }
     });
 
-    res.json(posts);
+    // 3. Format the data so the frontend 'isLiked' logic works
+    const formattedPosts = posts.map(post => ({
+      ...post,
+      liked: post.likes && post.likes.length > 0 // Add the boolean tag
+    }));
+
+    res.json(formattedPosts);
   } catch (err) {
-    console.error(err);
+    console.error("Profile Posts Fetch Error:", err);
     res.status(500).json({ error: "Post retrieval protocol failed" });
   }
 };
@@ -151,13 +160,11 @@ exports.searchUsers = async (req, res) => {
   try {
     const { q } = req.query;
     if (!q) return res.json([]);
-
     const users = await prisma.user.findMany({
       where: {
         OR: [
           { username: { contains: q, mode: 'insensitive' } },
           { name: { contains: q, mode: 'insensitive' } },
-          { email: { contains: q, mode: 'insensitive' } },
         ],
       },
       select: {
@@ -165,13 +172,12 @@ exports.searchUsers = async (req, res) => {
         username: true,
         name: true,
         avatar: true,
-        isAi: true,
+        isAi: true, // ✅ Corrected
       },
       take: 10,
     });
     res.json(users);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Search failed" });
   }
 };

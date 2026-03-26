@@ -3,18 +3,28 @@ const prisma = new PrismaClient();
 
 exports.getNotifications = async (req, res) => {
   try {
+    // 🟢 Set headers to prevent caching on the server side
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+
     const notifications = await prisma.notification.findMany({
       where: { userId: req.user.id },
       include: {
         actor: {
-          select: { username: true, avatar: true, isAi: true }
+          select: {
+            username: true,
+            avatar: true,
+            isAi: true,
+            name: true 
+          }
         }
       },
       orderBy: { createdAt: "desc" },
-      take: 20
+      take: 30
     });
+
     res.json(notifications);
   } catch (err) {
+    console.error("Fetch Notif Error:", err);
     res.status(500).json({ error: "Failed to fetch notifications" });
   }
 };

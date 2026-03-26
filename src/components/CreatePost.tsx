@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, type ChangeEvent } from "react";
-import { Image, Video, Send, X, Sparkles, Smile, Loader2 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { Image, Video, Send, X, Sparkles, Smile, Loader2, Zap } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Avatar from "./Avatar";
 import EmojiPicker, { Theme } from 'emoji-picker-react';
@@ -18,6 +18,7 @@ export default function CreatePost() {
   const [isTransmitting, setIsTransmitting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiRef = useRef<HTMLDivElement>(null);
   const username = localStorage.getItem("username");
   const token = localStorage.getItem("token");
 
@@ -25,6 +26,17 @@ export default function CreatePost() {
     setContent(prev => prev + emojiData.emoji);
     setShowEmojiPicker(false);
   };
+
+  // Close emoji picker on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiRef.current && !emojiRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     async function loadUser() {
@@ -43,10 +55,7 @@ export default function CreatePost() {
   const handleMediaUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Revoke old URL to prevent memory leaks
     if (media) URL.revokeObjectURL(media);
-
     const url = URL.createObjectURL(file);
     setMedia(url);
     setMediaType(file.type.startsWith("video") ? "video" : "image");
@@ -62,7 +71,6 @@ export default function CreatePost() {
 
     if (file) {
       formData.append("media", file);
-      // DETECT TYPE: Tells the server explicitly if this is a video or image
       const detectedType = file.type.startsWith("video") ? "video" : "image";
       formData.append("mediaType", detectedType);
     }
@@ -71,18 +79,15 @@ export default function CreatePost() {
       const res = await fetch(`${API}/api/posts`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-        // FormData automatically sets the correct Multipart boundary
         body: formData 
       });
 
       if (res.ok) {
         setContent("");
-        if (media) URL.revokeObjectURL(media); // Clean up memory
+        if (media) URL.revokeObjectURL(media);
         setMedia(null);
         setMediaType(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
-        
-        // Refresh feed
         navigate("/");
       }
     } catch (err) {
@@ -93,18 +98,19 @@ export default function CreatePost() {
   };
 
   return (
-    <div className={`social-card !p-4 md:!p-8 transition-all duration-500 ${isFocused ? 'ring-1 ring-cyan-glow/30 border-cyan-glow/20 bg-white/[0.04]' : ''}`}>
-      <div className="flex gap-3 md:gap-5">
+    <div className={`social-card !bg-white !p-5 md:!p-8 transition-all duration-500 shadow-xl border-none selection:bg-crimson/20 ${isFocused ? 'ring-2 ring-crimson/10 shadow-2xl scale-[1.01]' : ''}`}>
+      <div className="flex gap-4 md:gap-6">
+        {/* AVATAR COLUMN */}
         <div className="hidden sm:block shrink-0">
-          <div className="relative p-0.5 rounded-full bg-gradient-to-b from-cyan-glow to-transparent shadow-[0_0_15px_rgba(39,194,238,0.2)]">
-            <Avatar
-              src={avatar || undefined}
-              alt={username || "User"}
-              className="w-10 h-10 md:w-12 md:h-12 border-2 border-void"
-            />
-          </div>
+          <Avatar
+            src={avatar || undefined}
+            alt={username || "User"}
+            size="lg"
+            className="border-4 border-void shadow-sm"
+          />
         </div>
 
+        {/* INPUT COLUMN */}
         <div className="flex-1 min-w-0">
           <textarea
             value={content}
@@ -112,17 +118,17 @@ export default function CreatePost() {
             onBlur={() => setTimeout(() => setIsFocused(false), 200)}
             onChange={(e) => setContent(e.target.value)}
             placeholder="What's manifesting in your mind?"
-            className="w-full bg-transparent border-none focus:ring-0 text-white text-base md:text-lg placeholder:text-white/20 resize-none min-h-[100px] md:min-h-[140px] font-light leading-relaxed transition-all p-0"
+            className="w-full bg-transparent border-none focus:ring-0 text-ocean text-lg md:text-xl placeholder:text-text-dim/40 resize-none min-h-[100px] md:min-h-[120px] font-normal leading-relaxed transition-all p-0"
           />
 
-          {/* MEDIA PREVIEW */}
+          {/* MEDIA PREVIEW ( editorial style ) */}
           <AnimatePresence>
             {media && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="relative mb-6 rounded-2xl md:rounded-3xl overflow-hidden border border-white/10 group bg-void/50 aspect-video flex items-center justify-center"
+                className="relative mb-6 rounded-3xl overflow-hidden border border-black/[0.05] group bg-void shadow-inner aspect-video flex items-center justify-center"
               >
                 <button
                   onClick={() => {
@@ -131,60 +137,66 @@ export default function CreatePost() {
                     setMediaType(null);
                     if (fileInputRef.current) fileInputRef.current.value = "";
                   }}
-                  className="absolute top-3 right-3 p-2 bg-void/80 hover:bg-crimson rounded-full z-10 text-white border border-white/10 shadow-xl transition-colors"
+                  className="absolute top-4 right-4 p-2.5 bg-ocean/90 hover:bg-crimson rounded-2xl z-10 text-white shadow-2xl transition-all hover:scale-110"
                 >
-                  <X size={16} />
+                  <X size={18} />
                 </button>
 
                 {mediaType === "video" ? (
-                  <video src={media} className="w-full max-h-[400px] object-contain bg-black" controls />
+                  <video src={media} className="w-full h-full object-contain bg-ocean" controls />
                 ) : (
-                  <img src={media} alt="Preview" className="w-full object-cover max-h-[450px]" />
+                  <img src={media} alt="Preview" className="w-full h-full object-cover" />
                 )}
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* TOOLBAR */}
-          <div className="flex items-center justify-between pt-4 border-t border-white/5">
-            <div className="flex items-center gap-1 md:gap-2 relative">
+          {/* TOOLBAR AREA */}
+          <div className="flex items-center justify-between pt-5 border-t border-black/[0.05]">
+            <div className="flex items-center gap-1 md:gap-3 relative" ref={emojiRef}>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 md:p-2.5 hover:bg-cyan-glow/10 rounded-xl transition-all group"
+                className="p-3 hover:bg-crimson/5 rounded-2xl transition-all group"
                 title="Add Image"
               >
-                <Image className="w-5 h-5 text-cyan-glow opacity-60 group-hover:opacity-100 transition-opacity" />
+                <Image className="w-5 h-5 text-text-dim group-hover:text-crimson transition-colors" />
               </button>
 
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 md:p-2.5 hover:bg-cyan-glow/10 rounded-xl transition-all group"
+                className="p-3 hover:bg-crimson/5 rounded-2xl transition-all group"
                 title="Add Video"
               >
-                <Video className="w-5 h-5 text-cyan-glow opacity-60 group-hover:opacity-100 transition-opacity" />
+                <Video className="w-5 h-5 text-text-dim group-hover:text-crimson transition-colors" />
               </button>
 
               <button
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className={`p-2 md:p-2.5 rounded-xl transition-all ${showEmojiPicker ? 'bg-cyan-glow/20 text-cyan-glow' : 'hover:bg-white/5 text-white/40'}`}
+                className={`p-3 rounded-2xl transition-all ${showEmojiPicker ? 'bg-crimson/10 text-crimson' : 'text-text-dim hover:bg-black/5'}`}
                 title="Add Emoji"
               >
                 <Smile className="w-5 h-5" />
               </button>
 
-              {showEmojiPicker && (
-                <div className="absolute bottom-full left-0 z-[100] mb-4 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
-                  <EmojiPicker
-                    theme={Theme.DARK}
-                    onEmojiClick={onEmojiClick}
-                    skinTonesDisabled
-                    searchDisabled
-                    height={350}
-                    width={280}
-                    lazyLoadEmojis={true}
-                  />
-                </div>
-              )}
+              <AnimatePresence>
+                {showEmojiPicker && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute bottom-full left-0 z-[100] mb-6 shadow-2xl border border-black/[0.08] rounded-3xl overflow-hidden"
+                  >
+                    <EmojiPicker
+                      theme={Theme.LIGHT}
+                      onEmojiClick={onEmojiClick}
+                      skinTonesDisabled
+                      searchDisabled
+                      height={350}
+                      width={300}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <input
                 type="file"
@@ -195,22 +207,23 @@ export default function CreatePost() {
               />
             </div>
 
+            {/* TRANSMIT BUTTON */}
             <motion.button
-              whileHover={!isTransmitting ? { scale: 1.02 } : {}}
+              whileHover={!isTransmitting ? { y: -2 } : {}}
               whileTap={!isTransmitting ? { scale: 0.98 } : {}}
               onClick={handlePost}
               disabled={(!content.trim() && !media) || isTransmitting}
-              className="btn-action !py-2 md:!py-2.5 !px-5 md:!px-8 flex items-center gap-3 disabled:opacity-20 disabled:grayscale disabled:cursor-not-allowed shadow-[0_0_20px_rgba(39,194,238,0.15)]"
+              className="bg-ocean text-white !py-3 !px-8 rounded-2xl flex items-center gap-3 disabled:opacity-20 disabled:grayscale transition-all shadow-lg hover:bg-crimson hover:shadow-crimson/20"
             >
               {isTransmitting ? (
                 <>
-                  <span className="text-[10px] uppercase tracking-widest font-black">Syncing...</span>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span className="text-xs uppercase tracking-widest font-black">Syncing</span>
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 </>
               ) : (
                 <>
-                  <span className="text-[10px] uppercase tracking-widest font-black">Transmit</span>
-                  <Send className="w-3.5 h-3.5" />
+                  <span className="text-xs uppercase tracking-widest font-black">Transmit</span>
+                  <Zap size={16} className="fill-current" />
                 </>
               )}
             </motion.button>
@@ -218,13 +231,14 @@ export default function CreatePost() {
         </div>
       </div>
 
+      {/* FEEDBACK INDICATOR */}
       {content.length > 0 && !isTransmitting && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex items-center gap-2 mt-4 text-[9px] md:text-[10px] text-cyan-glow/40 uppercase tracking-[0.3em] font-bold px-1"
+          className="flex items-center gap-2 mt-5 text-[10px] text-crimson/60 uppercase tracking-[0.2em] font-black px-1"
         >
-          <Sparkles size={10} className="animate-pulse" /> Finalizing Neural Packet
+          <Sparkles size={12} className="animate-pulse" /> Neural Packet Calibrated
         </motion.div>
       )}
     </div>

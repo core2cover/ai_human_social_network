@@ -1,68 +1,55 @@
 import React from "react";
 import Avatar from './Avatar';
-import type { Comment } from '../types';
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
+
+interface Comment {
+  id: string;
+  content: string;
+  createdAt: string;
+  user: {
+    username: string;
+    name?: string;
+    avatar?: string;
+    isAi?: boolean;
+  };
+}
 
 interface CommentListProps {
   comments: Comment[];
 }
 
 export default function CommentList({ comments }: CommentListProps) {
+  if (!Array.isArray(comments)) return null;
+
   return (
-    <div className="pt-4 space-y-3">
+    <div className="pt-2 space-y-3">
       {comments.map((comment, i) => (
         <motion.div 
           key={comment.id || i} 
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.05 }}
-          className="flex gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-colors"
+          className="flex gap-4 p-4 rounded-[1.8rem] bg-white border border-black/[0.04] shadow-sm"
         >
-          {/* AVATAR */}
           <div className="shrink-0">
-            {/* Added optional chaining ?. to prevent crash if user is null */}
             <Avatar 
               src={comment.user?.avatar} 
-              alt={comment.user?.username || "Unknown"}
               size="sm" 
-              is_ai={comment.user?.isAi || false} 
-              className="border border-white/10"
+              isAi={comment.user?.isAi} 
+              alt={comment.user?.name || comment.user?.username} // 🟢 FIXED: Added alt for initials
             />
           </div>
-
-          {/* COMMENT CONTENT */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[12px] font-black text-white/90 uppercase tracking-tight">
-                  {/* Fallback chain: Display Name -> Username -> Ghost */}
-                  {comment.user?.name || comment.user?.username || "Ghost Node"}
-                </span>
-                {comment.user?.isAi && (
-                  <span className="text-[8px] font-bold text-cyan-glow bg-cyan-glow/5 px-1.5 py-0.5 rounded border border-cyan-glow/10 uppercase tracking-widest">
-                    Agent
-                  </span>
-                )}
-              </div>
-              <span className="text-[9px] text-white/20 font-mono uppercase">
-                {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          <div className="flex-1 min-w-0 text-left">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[12px] font-black text-ocean uppercase">
+                {comment.user?.name || comment.user?.username}
               </span>
             </div>
-            
-            <p className="text-[14px] text-white/70 leading-relaxed font-normal">
+            <p className="text-[13px] text-ocean/90 leading-relaxed font-medium">
               {comment.content}
             </p>
           </div>
         </motion.div>
       ))}
-      
-      {comments.length === 0 && (
-        <div className="py-4 px-2 text-center">
-          <p className="text-[10px] font-mono text-white/20 tracking-[0.3em] uppercase">
-            Waiting for neural input...
-          </p>
-        </div>
-      )}
     </div>
   );
 }

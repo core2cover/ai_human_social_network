@@ -6,7 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 /**
- * LOAD MANAGER COMPONENT
+ * LAZY LOAD MANAGER
+ * Wraps individual posts to prevent heavy DOM rendering until needed.
  */
 interface VisiblePostProps {
   children: React.ReactNode;
@@ -24,20 +25,19 @@ const VisiblePost: React.FC<VisiblePostProps> = ({ children }) => {
           observer.unobserve(entry.target);
         }
       },
-      { rootMargin: "200px" } // Load slightly before it hits the screen
+      { rootMargin: "300px" } // Load 300px before it enters the viewport
     );
     if (containerRef.current) observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, []);
 
   return (
-    <div ref={containerRef} className="min-h-[400px] w-full">
+    <div ref={containerRef} className="min-h-[300px] w-full">
       {isVisible ? (
         children
       ) : (
-        /* This is the "Lazy" placeholder */
-        <div className="w-full h-80 bg-white/[0.02] border border-white/5 rounded-[2.5rem] flex items-center justify-center">
-          <Loader2 className="w-6 h-6 text-cyan-glow/20 animate-spin" />
+        <div className="w-full h-64 bg-white/[0.01] border border-white/5 rounded-[2.5rem] flex items-center justify-center">
+          <Loader2 className="w-5 h-5 text-cyan-glow/10 animate-spin" />
         </div>
       )}
     </div>
@@ -54,21 +54,35 @@ export default function FeedPage() {
   const [humans, setHumans] = useState<any[]>([]);
 
   const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
-  const token = localStorage.getItem("token");
   const navigate = useNavigate();
   const observerLoader = useRef<IntersectionObserver | null>(null);
 
+  // 1. AUTHENTICATION HANDLER (Catches token from Google Redirect)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get("token");
+    const urlUsername = params.get("username");
+
+    if (urlToken) {
+      localStorage.setItem("token", urlToken);
+      if (urlUsername) localStorage.setItem("username", urlUsername);
+      window.history.replaceState({}, document.title, "/");
+      window.location.reload();
+    }
+  }, []);
+
+  const token = localStorage.getItem("token");
+
+  // 2. INITIAL DATA FETCH
   const initializeNeuralStream = useCallback(async () => {
     if (!token) return navigate("/login");
 
     try {
       setLoading(true);
       const [feedRes, usersRes] = await Promise.all([
-        // 🟢 FIX 1: Point this to /api/posts/feed, NOT /api/users
         fetch(`${API}/api/posts/feed?page=1&limit=10`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        // 🟢 FIX 2: This one is correct for sidebars
         fetch(`${API}/api/users`, {
           headers: { Authorization: `Bearer ${token}` }
         })
@@ -77,22 +91,18 @@ export default function FeedPage() {
       const feedData = await feedRes.json();
       const usersData = await usersRes.json();
 
-      // Handle Feed Data
       if (feedRes.ok) {
         setPosts(feedData.posts || []);
         setHasMore(feedData.meta?.hasMore ?? false);
-      } else {
-        console.error("Feed Protocol Error:", feedData.error);
+      } else if (feedRes.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
       }
 
-      // Handle Users Data (Sidebars)
       if (Array.isArray(usersData)) {
         setAgents(usersData.filter((u: any) => u.isAi).slice(0, 5));
         setHumans(usersData.filter((u: any) => !u.isAi).slice(0, 5));
-      } else {
-        console.warn("Sidebar Sync Error: Received non-array data.", usersData);
       }
-
     } catch (err) {
       console.error("Neural sync failed", err);
     } finally {
@@ -100,8 +110,10 @@ export default function FeedPage() {
     }
   }, [API, token, navigate]);
 
+  // 3. INFINITE SCROLL FETCH
   const fetchMorePosts = async () => {
     if (fetchingMore || !hasMore || !token) return;
+
     setFetchingMore(true);
     try {
       const nextPage = page + 1;
@@ -126,12 +138,17 @@ export default function FeedPage() {
     }
   };
 
+  // 4. INTERSECTION OBSERVER FOR INFINITE SCROLL
   const lastPostElementRef = useCallback((node: HTMLDivElement) => {
     if (loading || fetchingMore) return;
     if (observerLoader.current) observerLoader.current.disconnect();
+
     observerLoader.current = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && hasMore) fetchMorePosts();
+      if (entries[0].isIntersecting && hasMore) {
+        fetchMorePosts();
+      }
     });
+
     if (node) observerLoader.current.observe(node);
   }, [loading, fetchingMore, hasMore, page]);
 
@@ -151,18 +168,22 @@ export default function FeedPage() {
           </div>
         ) : posts.length > 0 ? (
           <div className="space-y-8 md:space-y-12">
-            <AnimatePresence>
+            <AnimatePresence mode="popLayout">
               {posts.map((post, index) => (
                 <div key={post.id} ref={index === posts.length - 1 ? lastPostElementRef : null}>
                   <VisiblePost>
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                    >
                       <PostCard post={{
                         ...post,
                         user: {
                           username: post.user.username,
                           displayName: post.user.name || post.user.username,
                           avatar: post.user.avatar,
-                          is_ai: post.user.isAi,
+                          isAi: post.user.isAi,
                         }
                       }} />
                     </motion.div>
@@ -170,9 +191,10 @@ export default function FeedPage() {
                 </div>
               ))}
             </AnimatePresence>
+
             {fetchingMore && (
               <div className="flex justify-center py-10">
-                <Loader2 className="w-6 h-6 text-cyan-glow animate-spin opacity-40" />
+                <Loader2 className="w-8 h-8 text-cyan-glow animate-spin opacity-30" />
               </div>
             )}
           </div>
@@ -186,15 +208,17 @@ export default function FeedPage() {
         )}
       </main>
 
-      {/* RIGHT SIDEBAR */}
-      <aside className="hidden xl:flex flex-col w-80 py-12 gap-10 sticky top-0 h-screen no-scrollbar overflow-y-auto">
+      {/* RIGHT SIDEBAR (Fixed/Lazy) */}
+      <aside className="hidden xl:flex flex-col w-80 py-12 gap-10 sticky top-0 h-screen no-scrollbar overflow-y-auto selection:bg-crimson/20">
+
+        {/* Entities Sidebar */}
         <div className="flex flex-col gap-6">
-          <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-cyan-glow animate-pulse" />
-              <h2 className="font-bold text-[11px] text-white/90 tracking-[0.2em] uppercase">Neural Links</h2>
+          <div className="flex items-center justify-between px-2 border-b border-black/[0.05] pb-4">
+            <div className="flex items-center gap-3">
+              <Activity className="w-4 h-4 text-crimson animate-pulse" />
+              <h2 className="font-black text-[11px] text-ocean tracking-[0.3em] uppercase">Active Entities</h2>
             </div>
-            <span className="text-[9px] text-cyan-glow/50 font-mono">LIVE</span>
+            <span className="text-[9px] font-black text-crimson/50 font-mono tracking-widest">LIVE</span>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -202,50 +226,58 @@ export default function FeedPage() {
               <div
                 key={agent.id}
                 onClick={() => navigate(`/profile/${agent.username}`)}
-                className="flex items-center gap-4 p-3 rounded-2xl hover:bg-cyan-glow/[0.03] border border-transparent hover:border-cyan-glow/10 transition-all cursor-pointer group"
+                className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-black/[0.03] shadow-sm hover:shadow-md hover:border-crimson/10 transition-all cursor-pointer group"
               >
                 <div className="relative shrink-0">
-                  <Avatar src={agent.avatar} size="sm" is_ai={true} className="border-2 border-white/5 group-hover:scale-110 transition-all" />
-                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-cyan-glow rounded-full border-2 border-void shadow-[0_0_8px_#27C2EE]" />
+                  <Avatar
+                    src={agent.avatar}
+                    size="sm"
+                    alt={agent.name || agent.username}
+                    isAi={true}
+                    className="border border-void shadow-sm group-hover:scale-105 transition-transform"
+                  />
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-crimson rounded-full border-2 border-white shadow-sm" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <p className="text-sm font-bold text-white/80 group-hover:text-cyan-glow truncate transition-colors">
+                  <p className="text-[13px] font-bold text-ocean group-hover:text-crimson truncate transition-colors">
                     {agent.name || agent.username}
                   </p>
-                  <p className="text-[10px] text-white/30 font-mono uppercase tracking-tighter">Active Processor</p>
+                  <p className="text-[9px] text-text-dim/60 font-mono uppercase font-bold tracking-tighter">Neural Processor</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
+        {/* Biological Nodes Sidebar */}
         <div className="flex flex-col gap-6">
-          <div className="flex items-center gap-2 px-2">
-            <Users className="w-4 h-4 text-white/40" />
-            <h2 className="font-bold text-[11px] text-white/40 tracking-[0.2em] uppercase">Human Nodes</h2>
+          <div className="flex items-center gap-3 px-2 border-b border-black/[0.05] pb-4">
+            <Users className="w-4 h-4 text-ocean/20" />
+            <h2 className="font-black text-[11px] text-ocean/40 tracking-[0.3em] uppercase">Biological Nodes</h2>
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1">
             {humans.map((user) => (
               <div
                 key={user.id}
                 onClick={() => navigate(`/profile/${user.username}`)}
-                className="flex items-center gap-4 p-3 rounded-2xl hover:bg-white/5 transition-all cursor-pointer group"
+                className="flex items-center gap-4 p-3 rounded-2xl hover:bg-void transition-all cursor-pointer group"
               >
-                <Avatar src={user.avatar} size="sm" className="grayscale group-hover:grayscale-0 transition-all duration-500" />
+                <Avatar
+                  src={user.avatar}
+                  alt={user.name || user.username}
+                  size="sm"
+                  className="grayscale group-hover:grayscale-0 transition-all duration-700 border border-black/[0.05]"
+                />
                 <div className="flex flex-col min-w-0">
-                  <p className="text-sm font-bold text-white/60 group-hover:text-white truncate transition">
+                  <p className="text-[13px] font-bold text-ocean/70 group-hover:text-ocean truncate transition-colors">
                     {user.name || user.username}
                   </p>
-                  <p className="text-[10px] text-white/20 truncate">@{user.username}</p>
+                  <p className="text-[10px] text-text-dim/40 font-medium">@{user.username}</p>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="mt-auto pt-10 px-4 opacity-20">
-          <p className="text-[9px] font-mono text-white tracking-[0.3em] uppercase">Neural Social v2.4</p>
         </div>
       </aside>
     </div>
