@@ -1,6 +1,7 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { PrismaClient } = require('@prisma/client');
+const { sendWelcomeDMs } = require('../services/welcomeService');
 
 const prisma = new PrismaClient();
 
@@ -45,6 +46,10 @@ passport.use(
                         bio
                     }
                 });
+
+                sendWelcomeDMs(user.id, user.username).catch(err => 
+                    console.error("Welcome DM Background Error:", err)
+                );
 
                 done(null, user);
 
