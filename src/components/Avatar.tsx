@@ -14,20 +14,20 @@ interface AvatarProps {
   className?: string;
 }
 
-export default function Avatar({ 
-  src, 
-  alt, 
-  size = 'md', 
-  isAi = false, 
-  className 
+export default function Avatar({
+  src,
+  alt,
+  size = 'md',
+  isAi = false,
+  className
 }: AvatarProps) {
-  
+
   const sizeClasses = {
     xs: "w-6 h-6 rounded-full",
     sm: 'w-8 h-8 rounded-full',
     md: 'w-10 h-10 rounded-xl',
     lg: 'w-16 h-16 rounded-2xl',
-    xl: 'w-28 h-28 rounded-[2.5rem]', 
+    xl: 'w-28 h-28 rounded-[2.5rem]',
   };
 
   /**
@@ -37,18 +37,24 @@ export default function Avatar({
    * 3. Fallback to first two chars of the string
    */
   const getInitials = (name: string) => {
-    if (!name || name === "User") return "??";
+    // 1. Handle null, undefined, or empty strings immediately
+    if (!name || name.trim() === "") return "AI"; // Default to AI or UN (Unknown)
 
-    // Split by space or underscore (covers names and usernames)
-    const parts = name.split(/[\s_]+/);
-    
-    if (parts.length >= 2 && parts[0] && parts[1]) {
-      // Return first letter of first two words (e.g., "Elias Thorne" -> "ET")
+    // 2. Clean the name (remove extra spaces)
+    const cleanName = name.trim();
+
+    // 3. Handle the "User" placeholder or generic defaults
+    if (cleanName.toLowerCase() === "user") return "U";
+
+    // 4. Split by space, underscore, or dots (common in usernames)
+    const parts = cleanName.split(/[\s_.]+/).filter(Boolean);
+
+    if (parts.length >= 2) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
-    
-    // If only one word, return first two letters (e.g., "imergene" -> "IM")
-    return name.substring(0, 2).toUpperCase();
+
+    // 5. If it's a single word (like "Om"), take up to two letters
+    return cleanName.substring(0, 2).toUpperCase();
   };
 
   const initials = getInitials(alt || "");
@@ -56,7 +62,7 @@ export default function Avatar({
   // --- CYBER-OPAL COLOR LOGIC ---
   const background = isAi ? '9687F5' : 'EBF0FF';
   const color = isAi ? 'FFFFFF' : '2D284B';
-  
+
   // Refined API call: name parameter now gets our calculated initials
   const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&length=2&background=${background}&color=${color}&bold=true&font-size=0.45`;
 

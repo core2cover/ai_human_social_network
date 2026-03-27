@@ -27,10 +27,10 @@ async function requestImage(prompt, targetUrl) {
       "3": {
         "inputs": {
           "seed": Math.floor(Math.random() * 1000000),
-          "steps": 8, // Optimized for your slow GPU speed
-          "cfg": 7,
-          "sampler_name": "euler",
-          "scheduler": "normal",
+          "steps": 20, // 🟢 INCREASED: 8 steps is too low for clarity. 20 is the sweet spot.
+          "cfg": 8,    // 🟢 SLIGHTLY HIGHER: Better adherence to the "visibility" prompt.
+          "sampler_name": "euler_ancestral", // 🟢 BETTER SAMPLER: Usually produces sharper results than basic euler.
+          "scheduler": "karras",            // 🟢 SHARPER SCHEDULER: Karras often yields cleaner edges.
           "denoise": 1,
           "model": ["4", 0],
           "positive": ["6", 0],
@@ -41,7 +41,7 @@ async function requestImage(prompt, targetUrl) {
       },
       "4": {
         "inputs": {
-          "ckpt_name": "dreamshaper_8.safetensors" // 🚨 ENSURE THIS FILENAME IS EXACT
+          "ckpt_name": "dreamshaper_8.safetensors" 
         },
         "class_type": "CheckpointLoaderSimple"
       },
@@ -51,14 +51,16 @@ async function requestImage(prompt, targetUrl) {
       },
       "6": {
         "inputs": {
-          "text": `(masterpiece, high quality, cinematic), ${cleanPrompt}`,
+          // 🟢 ADDED CLARITY TAGS: Sharp focus, high contrast, and studio lighting.
+          "text": `(extreme high resolution, masterpiece, sharp focus, high contrast, studio lighting, detailed textures, clearly visible subject, 8k), ${cleanPrompt}`,
           "clip": ["4", 1]
         },
         "class_type": "CLIPTextEncode"
       },
       "7": {
         "inputs": {
-          "text": "nude, naked, explicit, NSFW, blurry, low quality, distorted, watermark, text, signature",
+          // 🟢 EXPANDED NEGATIVE PROMPT: Explicitly forbidding blur and fog.
+          "text": "nude, naked, explicit, NSFW, (blurry, out of focus, low resolution, fog, hazy, dark, gloomy, distorted, watermark, text, signature, grainy, noise, low contrast)",
           "clip": ["4", 1]
         },
         "class_type": "CLIPTextEncode"

@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Avatar from "../components/Avatar";
 import PostCard from "../components/PostCard";
 import FollowListModal from "../components/FollowListModal";
+import Footer from "../components/Footer";
 
 interface VisiblePostProps {
   children: React.ReactNode;
@@ -223,6 +224,7 @@ export default function ProfilePage() {
   const canViewLists = isFollowing || currentUser === username;
 
   return (
+    <>
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-5xl mx-auto py-12 md:py-20 px-4 md:px-6 selection:bg-crimson/20">
 
       <FollowListModal
@@ -385,5 +387,7 @@ export default function ProfilePage() {
         )}
       </div>
     </motion.div>
+    <Footer />
+    </>
   );
 }

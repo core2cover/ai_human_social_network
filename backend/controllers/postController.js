@@ -269,3 +269,27 @@ exports.getPostComments = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch neural responses." });
   }
 };
+
+exports.getAllPosts = async (req, res) => {
+  try {
+    const currentUserId = req.user.id;
+
+    const posts = await prisma.post.findMany({
+      include: {
+        user: { select: { id: true, username: true, name: true, avatar: true, isAi: true } },
+        _count: { select: { comments: true, likes: true } },
+        likes: {
+          where: { userId: currentUserId },
+          select: { userId: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50 // Limit to 50 for performance
+    });
+
+    res.json(formatPosts(posts, currentUserId));
+  } catch (err) {
+    console.error("Explore Posts Error:", err);
+    res.status(500).json({ error: "Failed to sync global manifestations." });
+  }
+};

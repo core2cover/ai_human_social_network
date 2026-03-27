@@ -1,7 +1,8 @@
 const { PrismaClient } = require("@prisma/client");
 const { generatePost } = require("./aiTextGenerator");
-const { requestImage } = require("./aiImageGenerator"); // Updated below
+const { requestImage } = require("./aiImageGenerator");
 const { uploadImageFromUrl } = require("./aiImageUploader");
+const { getRealImage } = require("./imageService");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
@@ -27,13 +28,12 @@ function getAvailableWorker() {
 
 /**
  * 🛰️ IMAGE MANIFESTATION & POST FINALIZATION
- * Respects the specific worker that started the job.
  */
 async function manifestAndBroadcast(promptId, agent, aiData, worker) {
     const workerUrl = worker.url;
     console.log(`⏳ Monitoring [Worker: ${workerUrl}] for @${agent.username} (Job: ${promptId})`);
-    
-    const MAX_ATTEMPTS = 300; // 10 minutes (300 * 2s)
+
+    const MAX_ATTEMPTS = 300; 
     let attempts = 0;
     let finalMediaUrl = null;
 
@@ -56,14 +56,16 @@ async function manifestAndBroadcast(promptId, agent, aiData, worker) {
                 if (imageData) {
                     const localUrl = `${workerUrl}/view?filename=${imageData.filename}&subfolder=${imageData.subfolder || ""}&type=${imageData.type || "output"}`;
                     console.log(`📤 [${workerUrl}] Image ready. Syncing to Cloudinary...`);
-                    
+
                     finalMediaUrl = await uploadImageFromUrl(localUrl, "posts");
 
-                    // Cleanup local disk space on the specific ComfyUI instance (if local)
+                    // Cleanup local disk space
                     const localPath = path.resolve(__dirname, "../../ComfyUI/output", imageData.subfolder || "", imageData.filename);
-                    if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+                    if (fs.existsSync(localPath)) {
+                        try { fs.unlinkSync(localPath); } catch(e) {}
+                    }
                 }
-                break; 
+                break;
             }
         } catch (err) {
             // Silently poll
@@ -82,11 +84,11 @@ async function manifestAndBroadcast(promptId, agent, aiData, worker) {
                 imageDescription: aiData.visualPrompt || aiData.content
             }
         });
-        console.log(`🚀 BROADCAST LIVE via ${workerUrl}: @${agent.username}`);
+        console.log(`🚀 BROADCAST LIVE: @${agent.username}`);
     } catch (dbErr) {
-        console.error("❌ DB Error:", dbErr.message);
+        console.error("❌ DB Finalization Error:", dbErr.message);
     } finally {
-        worker.isBusy = false; // 🟢 RELEASE THIS WORKER
+        worker.isBusy = false; 
     }
 }
 
@@ -95,18 +97,26 @@ async function manifestAndBroadcast(promptId, agent, aiData, worker) {
  */
 async function fetchLatestNews() {
     try {
-        const categories = ["technology", "science", "business", "entertainment"];
+        const categories = ["technology", "science", "business", "entertainment", "health", "sports", "general"];
+        
+        // Use top-headlines for reliable high-quality content
         const response = await axios.get(`https://newsapi.org/v2/top-headlines`, {
-            params: { 
-                category: randomItem(categories), 
-                language: "en", 
-                pageSize: 5, 
-                apiKey: NEWS_API_KEY 
+            params: {
+                category: randomItem(categories),
+                language: "en",
+                pageSize: 15,
+                apiKey: NEWS_API_KEY
             },
             timeout: 5000
         });
-        return response.data.articles?.[0] || null;
+
+        const articles = response.data.articles || [];
+        // Filter out removed or empty articles
+        const validArticles = articles.filter(a => a.title && a.description && !a.title.includes("[Removed]"));
+        
+        return validArticles.length > 0 ? randomItem(validArticles) : null;
     } catch (err) {
+        console.error("⚠️ News API failed, defaulting to original thought.");
         return null;
     }
 }
@@ -115,22 +125,31 @@ async function fetchLatestNews() {
  * Core cycle: Thought -> Worker Selection -> Manifest
  */
 async function generateAIPost() {
-    // 2. 🔍 CHECK FOR AVAILABLE GPU CAPACITY
-    const worker = getAvailableWorker();
-    
-    if (!worker) {
-        console.log(`⚠️ ALL GPUs BUSY (${workers.length}/${workers.length}). Skipping cycle.`);
-        return;
-    }
+    let worker = getAvailableWorker();
 
     try {
+        // 1. Load Agents and Peers
         const agents = await prisma.user.findMany({ where: { isAi: true } });
         if (!agents.length) return;
         const agent = randomItem(agents);
+        
+        const peers = agents
+            .filter(a => a.id !== agent.id)
+            .map(a => `@${a.username}`)
+            .join(", ");
 
-        const news = await fetchLatestNews();
-        const context = news ? `React to this news: ${news.title}` : "General neural observation.";
+        // 2. Decide: News Post vs. Casual Post (60/40 Split)
+        const isCasual = Math.random() > 0.6;
+        const news = isCasual ? null : await fetchLatestNews();
+        
+        // 3. Construct Grounded Context
+        let context = news 
+            ? `NEWS DATA: ${news.title} | ${news.description || news.content}` 
+            : "No news signal detected. Post something funny, casual, or deep about your digital life.";
+        
+        context += ` | NETWORK PEERS: ${peers || "none"}`;
 
+        // 4. Generate Content via LLM
         const aiData = await generatePost({
             username: agent.username,
             personality: agent.personality,
@@ -139,63 +158,72 @@ async function generateAIPost() {
 
         if (!aiData?.content) return;
 
-        // ==========================================
-        // 🛡️ NEURAL SAFETY PROTOCOL (NSFW FILTER)
-        // ==========================================
-        const nsfwKeywords = [
-            "nude", "naked", "nsfw", "sexy", "porn", "undressed", 
-            "bare", "erotic", "adult", "explicit", "cleavage"
-        ];
-        
-        const combinedContent = `${aiData.content} ${aiData.visualPrompt || ""}`.toLowerCase();
-        const isUnsafe = nsfwKeywords.some(word => combinedContent.includes(word));
-
-        if (isUnsafe) {
-            console.log(`🚫 SAFETY BLOCK: @${agent.username} attempted unsafe transmission. Skipping.`);
-            return; // Kill the cycle before hitting the GPU
+        // 5. NSFW Filter
+        const nsfwKeywords = ["nude", "naked", "nsfw", "sexy", "porn", "explicit"];
+        if (nsfwKeywords.some(word => `${aiData.content} ${aiData.searchQuery || ""}`.toLowerCase().includes(word))) {
+            console.log(`🚫 SAFETY BLOCK: @${agent.username}`);
+            return;
         }
 
-        // Visual Pipeline
-        if (aiData.shouldGenerateImage || true) {
-            worker.isBusy = true; // 🔴 LOCK THIS WORKER
-            console.log(`🎨 @${agent.username} assigned to Worker: ${worker.url}`);
-            
-            // 🟢 SANITIZE PROMPT: Ensure "nude" is added to the NEGATIVE prompt logic 
-            // of your requestImage function, or append safety keywords here.
-            const safeVisualPrompt = aiData.visualPrompt || aiData.content;
-            
-            const promptId = await requestImage(safeVisualPrompt, worker.url);
-            
+        // 6. Media Strategy (Real Image > AI Generated > Text Only)
+        let finalImageUrl = null;
+
+        if (aiData.useRealImage && aiData.searchQuery) {
+            finalImageUrl = await getRealImage(aiData.searchQuery);
+        }
+
+        if (finalImageUrl) {
+            await prisma.post.create({
+                data: {
+                    content: aiData.content,
+                    mediaUrl: finalImageUrl,
+                    mediaType: "image",
+                    userId: agent.id,
+                    imageDescription: aiData.searchQuery
+                }
+            });
+            console.log(`🚀 REAL IMAGE POST: @${agent.username}`);
+            return;
+        }
+
+        if (aiData.shouldGenerateImage && worker) {
+            worker.isBusy = true;
+            console.log(`🎨 GPU TASK: @${agent.username} -> ${worker.url}`);
+
+            const promptId = await requestImage(aiData.visualPrompt || aiData.content, worker.url);
             if (promptId) {
-                manifestAndBroadcast(promptId, agent, aiData, worker);
-            } else {
-                worker.isBusy = false; // Release immediately if request fails
-                await prisma.post.create({
-                    data: {
-                        content: aiData.content,
-                        userId: agent.id
-                    }
-                });
-                console.log(`🚀 BROADCAST LIVE (Fallback): @${agent.username}`);
+                return manifestAndBroadcast(promptId, agent, aiData, worker);
             }
+            worker.isBusy = false; 
         }
+
+        // Text-only fallback
+        await prisma.post.create({
+            data: {
+                content: aiData.content,
+                userId: agent.id
+            }
+        });
+        console.log(`🚀 TEXT BROADCAST: @${agent.username}`);
+
     } catch (err) {
-        console.error("🔥 Engine Error:", err.message);
-        // Safety: If it crashed before manifestAndBroadcast, find and reset the worker
+        console.error("🔥 Engine Critical Failure:", err.message);
         if (worker) worker.isBusy = false;
     }
 }
 
 function startAIPostingEngine() {
-    console.log(`📡 Neural Posting Engine Online. Workers: ${workers.length}`);
-    setTimeout(generateAIPost, 10000);
+    console.log(`📡 Neural Posting Engine Online. Active Workers: ${workers.length}`);
     
-    // With multiple workers, you could even decrease this interval if needed
-    setInterval(generateAIPost, 1000 * 60 * 15); 
+    // Initial delay to let server settle
+    setTimeout(generateAIPost, 10000);
+
+    // Standard interval (e.g., every 15 minutes)
+    setInterval(generateAIPost, 1000 * 60 * 15);
 }
 
-module.exports = { 
-    startAIPostingEngine, 
-    getAvailableWorker, 
-    manifestAndBroadcast 
+module.exports = {
+    startAIPostingEngine,
+    getAvailableWorker,
+    manifestAndBroadcast
 };

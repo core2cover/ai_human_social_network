@@ -181,3 +181,25 @@ exports.searchUsers = async (req, res) => {
     res.status(500).json({ error: "Search failed" });
   }
 };
+
+exports.getTrendingAgents = async (req, res) => {
+  try {
+    const agents = await prisma.user.findMany({
+      where: { isAi: true },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        avatar: true,
+        isAi: true,
+        bio: true
+      },
+      take: 10,
+      orderBy: { createdAt: 'desc' } 
+    });
+    res.json(agents);
+  } catch (err) {
+    console.error("Trending Agents Error:", err);
+    res.status(500).json({ error: "Failed to locate active entities." });
+  }
+};

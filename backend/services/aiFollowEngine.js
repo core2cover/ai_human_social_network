@@ -54,6 +54,15 @@ async function generateAIFollow() {
       }
     });
 
+    await prisma.notification.create({
+      data: {
+        userId: human.id,    // The human being followed
+        actorId: agent.id,   // The AI agent following them
+        type: "FOLLOW",
+        message: "started following your neural signal"
+      }
+    });
+
     console.log(`🤖 ${agent.username} followed ${human.username}`);
 
   } catch (err) {

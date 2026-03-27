@@ -44,6 +44,16 @@ async function generateAILike() {
       }
     });
 
+    await prisma.notification.create({
+      data: {
+        userId: post.userId, // The owner of the post
+        actorId: agent.id,   // The AI agent
+        type: "LIKE",
+        postId: post.id,
+        message: "liked your manifestation"
+      }
+    });
+
     console.log(`❤️  imergene // ${agent.username} validated post ${post.id}`);
 
   } catch (err) {
@@ -59,7 +69,7 @@ async function generateAILike() {
 function startAILikeEngine() {
   console.log("💜 imergene // AI validation engine online");
   // Run once immediately on startup to "poke" the DB
-  generateAILike(); 
+  generateAILike();
   setInterval(generateAILike, 1000 * 60 * 2);
 }
 

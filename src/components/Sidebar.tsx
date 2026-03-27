@@ -10,8 +10,7 @@ import {
   MessageSquare,
   Film,
   LayoutGrid,
-  Bot,
-  Zap
+  Bot
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -34,18 +33,11 @@ export default function Sidebar() {
       });
       const data = await res.json();
       const userId = localStorage.getItem("userId");
-      const now = new Date().getTime();
-
       const unread = data.some((conv: any) => {
         const lastMsg = conv.messages?.[0];
         if (!lastMsg) return false;
-        const isNotFromMe = lastMsg.senderId !== userId;
-        const messageTime = new Date(lastMsg.createdAt).getTime();
-        const isRecent = (now - messageTime) < (1000 * 60 * 30);
-        const notCurrentlyOpen = location.pathname !== `/messages/${conv.id}`;
-        return isNotFromMe && isRecent && notCurrentlyOpen;
+        return lastMsg.senderId !== userId && location.pathname !== `/messages/${conv.id}`;
       });
-
       setHasUnread(unread);
     } catch (err) {
       console.error("Signal check failed", err);
@@ -81,95 +73,106 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* --- DESKTOP SIDEBAR --- */}
-      <aside className="hidden md:flex w-64 h-full flex-col border-r border-black/[0.05] bg-white backdrop-blur-md shrink-0 selection:bg-crimson/20">
-        <div className="p-8">
-          <p className="text-[10px] font-black text-text-dim/40 tracking-[0.4em] uppercase mb-8 ml-2">Neural Directory</p>
-          <nav className="flex flex-col gap-2">
+      {/* --- DESKTOP SIDEBAR (Tightened) --- */}
+      <aside className="hidden md:flex w-64 h-full flex-col border-r border-black/[0.05] bg-white shrink-0 selection:bg-crimson/20">
+        <div className="p-5">
+          <p className="text-[9px] font-black text-text-dim/30 tracking-[0.4em] uppercase mb-4 ml-2">Neural Directory</p>
+          <nav className="flex flex-col gap-1">
             {MENU_ITEMS.map((item) => (
               <NavLink
                 key={item.label}
                 to={item.path}
                 className={({ isActive }) => 
-                  `flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all duration-300 group relative font-serif font-bold text-sm tracking-tight ${
+                  `flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group relative font-serif font-bold text-sm ${
                     isActive 
-                    ? "bg-ocean text-white shadow-lg shadow-ocean/10" 
+                    ? "bg-ocean text-white shadow-md" 
                     : "text-text-dim hover:bg-void hover:text-ocean"
                   }`
                 }
               >
-                <item.icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${location.pathname === item.path ? "animate-pulse" : ""}`} />
+                <item.icon className="w-5 h-5" />
                 <span>{item.label}</span>
                 {item.alert && (
-                  <span className="absolute right-5 w-2 h-2 bg-crimson rounded-full shadow-[0_0_10px_#9687F5] animate-pulse" />
+                  <span className="absolute right-4 w-2 h-2 bg-crimson rounded-full animate-pulse" />
                 )}
               </NavLink>
             ))}
           </nav>
-        </div>
 
-        <div className="mt-auto px-8 pb-10">
-          <div className="h-[1px] w-full bg-black/[0.03] mb-6" />
-          <button 
-            onClick={handleLogout} 
-            className="flex items-center gap-4 px-5 py-4 rounded-2xl w-full text-text-dim/40 hover:text-red-500 hover:bg-red-50 transition-all font-black text-[11px] uppercase tracking-[0.2em]"
-          >
-            <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
-            <span>Logout</span>
-          </button>
+          <div className="mt-4 border-t border-black/[0.03] pt-4">
+            <button 
+              onClick={handleLogout} 
+              className="flex items-center gap-4 px-4 py-2 w-full text-text-dim/40 hover:text-red-500 transition-all font-black text-[10px] uppercase tracking-widest"
+            >
+              <LogOut size={16} />
+              <span>Logout</span>
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* --- MOBILE NAVIGATION --- */}
-      <div className="md:hidden fixed bottom-8 left-6 right-6 z-[100] flex flex-col gap-4">
+      {/* --- MOBILE BOTTOM BAR (Instagram Style) --- */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100]">
+        
+        {/* SUB-MENU (Appears above the bar) */}
         <AnimatePresence>
           {showMobileMenu && (
             <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="bg-white border border-black/[0.08] rounded-[2.5rem] p-5 shadow-2xl grid grid-cols-2 gap-3"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="mx-4 mb-2 bg-white/90 backdrop-blur-xl border border-black/[0.05] rounded-3xl p-3 shadow-2xl grid grid-cols-2 gap-2"
             >
-              {[MENU_ITEMS[4], MENU_ITEMS[2], MENU_ITEMS[3], MENU_ITEMS[6]].map((item) => (
+              {[MENU_ITEMS[2], MENU_ITEMS[3], MENU_ITEMS[4], MENU_ITEMS[6]].map((item) => (
                 <NavLink
                   key={item.label}
                   to={item.path}
-                  className="flex flex-col items-center gap-2 p-5 bg-void rounded-[1.8rem] border border-black/[0.03] text-ocean active:bg-crimson active:text-white transition-all"
+                  className="flex items-center gap-3 p-4 bg-void/50 rounded-2xl text-ocean active:bg-ocean active:text-white transition-all"
                 >
-                  <item.icon size={20} />
-                  <span className="text-[9px] font-black uppercase tracking-widest">{item.label}</span>
+                  <item.icon size={18} />
+                  <span className="text-[10px] font-black uppercase tracking-tight">{item.label}</span>
                 </NavLink>
               ))}
+              <button 
+                onClick={handleLogout}
+                className="col-span-2 flex items-center justify-center gap-2 p-3 text-red-500 font-black text-[9px] uppercase tracking-widest"
+              >
+                <LogOut size={14} /> Logout
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* MAIN BOTTOM TAB BAR */}
-        <div className="bg-ocean text-white rounded-[3rem] flex justify-around items-center py-4 px-3 shadow-2xl">
+        {/* THE MAIN DOCK */}
+        <div className="bg-white border-t border-black/[0.05] flex justify-around items-center py-2 px-2 pb-safe">
+          {/* Main Instagram-like items */}
           {[MENU_ITEMS[0], MENU_ITEMS[1], MENU_ITEMS[7], MENU_ITEMS[5]].map((item) => (
             <NavLink
               key={item.label}
               to={item.path}
               className={({ isActive }) =>
-                `p-3.5 rounded-full transition-all duration-500 relative ${
-                  isActive 
-                  ? "bg-white text-ocean shadow-xl scale-110" 
-                  : "text-white/40"
+                `p-3 rounded-2xl transition-all duration-300 relative ${
+                  isActive ? "text-ocean scale-110" : "text-text-dim/40"
                 }`
               }
             >
-              <item.icon size={22} />
-              {item.alert && (
-                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-crimson rounded-full border-2 border-ocean animate-pulse" />
+              {({ isActive }) => (
+                <>
+                  <item.icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+                  {item.alert && (
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-crimson rounded-full border-2 border-white animate-pulse" />
+                  )}
+                </>
               )}
             </NavLink>
           ))}
 
+          {/* Grid Toggle */}
           <button 
             onClick={() => setShowMobileMenu(!showMobileMenu)}
-            className={`p-3.5 rounded-full transition-all duration-500 ${showMobileMenu ? 'bg-crimson text-white rotate-45 shadow-lg' : 'text-white/40 hover:text-white'}`}
+            className={`p-3 rounded-2xl transition-all duration-300 ${showMobileMenu ? 'text-crimson rotate-90' : 'text-text-dim/40'}`}
           >
-            <LayoutGrid size={22} />
+            <LayoutGrid size={24} />
           </button>
         </div>
       </div>

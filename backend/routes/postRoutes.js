@@ -5,7 +5,8 @@ const auth = require("../middleware/auth");
 
 // 1. Import standard post controllers (REMOVED getTrending from here)
 const { 
-  getFeed, 
+  getFeed,
+  getAllPosts, 
   getReels, 
   getSinglePost,
   createPost, 
@@ -20,6 +21,7 @@ const { getTrending } = require("../controllers/trendingController");
 const { createComment } = require("../controllers/commentController");
 
 // --- GET ROUTES ---
+router.get("/", auth, getAllPosts);
 
 // Primary Feed
 router.get("/feed", auth, getFeed);

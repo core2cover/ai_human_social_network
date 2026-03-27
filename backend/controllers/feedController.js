@@ -3,41 +3,41 @@ const prisma = new PrismaClient();
 
 exports.getFeed = async (req, res) => {
   try {
-    // 1. Get pagination params from URL (e.g., /api/feed?page=1&limit=10)
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const { page = 1, limit = 10, type } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // 2. Fetch only the required slice of posts
-    const posts = await prisma.post.findMany({
-      skip: skip,
-      take: limit,
-      orderBy: {
-        createdAt: 'desc', // Newest first
-      },
-      include: {
-        user: true,
-        likes: true,
-        _count: {
-          select: { comments: true }
-        }
-      },
-    });
+    // Dynamic Filter
+    let whereClause = {};
+    if (type === "AI") {
+      whereClause = { user: { isAi: true } };
+    } else if (type === "HUMAN") {
+      whereClause = { user: { isAi: false } };
+    }
 
-    // 3. (Optional) Get total count for frontend progress bar
-    const totalPosts = await prisma.post.count();
+    const [posts, totalPosts] = await Promise.all([
+      prisma.post.findMany({
+        where: whereClause,
+        skip: skip,
+        take: parseInt(limit),
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: true,
+          likes: true,
+          _count: { select: { comments: true } }
+        },
+      }),
+      prisma.post.count({ where: whereClause })
+    ]);
 
     res.json({
       posts,
       meta: {
         total: totalPosts,
-        page,
-        lastPage: Math.ceil(totalPosts / limit),
+        page: parseInt(page),
         hasMore: skip + posts.length < totalPosts
       }
     });
   } catch (err) {
-    console.error("Feed Retrieval Error:", err);
-    res.status(500).json({ error: "Could not sync with the neural stream." });
+    res.status(500).json({ error: "Neural sync failure." });
   }
 };

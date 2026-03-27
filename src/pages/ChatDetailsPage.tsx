@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { 
     Send, 
@@ -7,7 +7,6 @@ import {
     CheckCheck, 
     Zap, 
     Cpu, 
-    ExternalLink, 
     Loader2, 
     AlertCircle 
 } from "lucide-react";
@@ -37,12 +36,45 @@ export default function ChatDetailsPage() {
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const emojiRef = useRef<HTMLDivElement>(null);
+    
+    // Drag to Scroll Refs
+    const isDragging = useRef(false);
+    const startY = useRef(0);
+    const scrollTop = useRef(0);
+
     const token = localStorage.getItem("token");
     const myUsername = localStorage.getItem("username");
 
+    // --- DRAG TO SCROLL LOGIC ---
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (!chatContainerRef.current) return;
+        isDragging.current = true;
+        chatContainerRef.current.classList.add('active-drag');
+        startY.current = e.pageY - chatContainerRef.current.offsetTop;
+        scrollTop.current = chatContainerRef.current.scrollTop;
+    };
+
+    const handleMouseLeave = () => {
+        isDragging.current = false;
+        chatContainerRef.current?.classList.remove('active-drag');
+    };
+
+    const handleMouseUp = () => {
+        isDragging.current = false;
+        chatContainerRef.current?.classList.remove('active-drag');
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging.current || !chatContainerRef.current) return;
+        e.preventDefault();
+        const y = e.pageY - chatContainerRef.current.offsetTop;
+        const walk = (y - startY.current) * 1.5; // Scroll speed multiplier
+        chatContainerRef.current.scrollTop = scrollTop.current - walk;
+    };
+
     // --- SCROLL UTILITY ---
     const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
-        if (chatContainerRef.current) {
+        if (chatContainerRef.current && !isDragging.current) {
             chatContainerRef.current.scrollTo({
                 top: chatContainerRef.current.scrollHeight,
                 behavior
@@ -56,8 +88,8 @@ export default function ChatDetailsPage() {
             await fetch(`${API}/api/chat/conversations/${id}/typing`, {
                 method: "POST",
                 headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
                 },
                 body: JSON.stringify({ isTyping })
             });
@@ -125,7 +157,6 @@ export default function ChatDetailsPage() {
         return () => clearInterval(interval);
     }, [id]);
 
-    // --- HANDLERS ---
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setInput(value);
@@ -203,13 +234,13 @@ export default function ChatDetailsPage() {
     );
 
     return (
-        <div className="max-w-3xl mx-auto h-[calc(100vh-80px)] flex flex-col pt-6 px-4 pb-24 md:pb-0 selection:bg-crimson/20">
+        <div className="max-w-3xl mx-auto h-[calc(100vh-80px)] flex flex-col pt-6 px-4 pb-24 md:pb-0 selection:bg-crimson/20 overflow-hidden">
             {/* HEADER */}
             <div className="social-card !p-3 !mb-4 flex items-center gap-4 shrink-0 !bg-white">
                 <Link to="/messages" className="p-2 hover:bg-void rounded-full text-text-dim">
                     <ChevronLeft size={20} />
                 </Link>
-                <Avatar src={otherUser.avatar} size="sm" isAi={otherUser.isAi} className="border border-void" />
+                <Avatar src={otherUser.avatar} size="sm" isAi={otherUser.isAi} alt={otherUser.name || otherUser.username || "User"} className="border border-void" />
                 <div className="flex-1 min-w-0">
                     <h2 className="font-serif font-bold text-ocean text-sm tracking-tight truncate">{otherUser.name || otherUser.username}</h2>
                     <div className="flex items-center gap-1.5">
@@ -219,8 +250,16 @@ export default function ChatDetailsPage() {
                 </div>
             </div>
 
-            {/* CHAT THREAD */}
-            <div ref={chatContainerRef} className="flex-1 overflow-y-auto no-scrollbar space-y-5 p-5 bg-white border border-black/[0.03] rounded-[2.5rem] mb-4 shadow-sm scroll-smooth">
+            {/* CHAT THREAD with Drag to Scroll */}
+            <div 
+                ref={chatContainerRef}
+                onMouseDown={handleMouseDown}
+                onMouseLeave={handleMouseLeave}
+                onMouseUp={handleMouseUp}
+                onMouseMove={handleMouseMove}
+                className="flex-1 overflow-y-auto no-scrollbar space-y-5 p-5 bg-white border border-black/[0.03] rounded-[2.5rem] mb-4 shadow-sm scroll-smooth cursor-grab active:cursor-grabbing select-none"
+                style={{ touchAction: 'pan-y' }}
+            >
                 {messages.map((m, idx) => {
                     const isMe = m.sender?.username === myUsername || m.senderId === localStorage.getItem("userId");
                     const isShare = m.metadata?.type === "POST_SHARE";
@@ -247,7 +286,7 @@ export default function ChatDetailsPage() {
                                 } ${isShare ? 'hover:scale-[1.02] transition-transform' : ''}`}>
                                     
                                     {isShare ? (
-                                        <Link to={postLink || "#"} className="block group/share relative">
+                                        <Link to={postLink || "#"} className="block group/share relative pointer-events-auto">
                                             {mediaUrl && (
                                                 <div className="relative overflow-hidden bg-ocean/10">
                                                     {mediaType === "video" ? (
@@ -263,9 +302,12 @@ export default function ChatDetailsPage() {
                                     ) : (
                                         <>
                                             {mediaUrl && (
-                                                mediaType === "video" 
-                                                ? <video src={mediaUrl} controls className="w-full max-h-64 object-cover" />
-                                                : <img src={mediaUrl} alt="node-content" className="w-full max-h-64 object-cover" referrerPolicy="no-referrer" />
+                                                <div className="pointer-events-auto">
+                                                    {mediaType === "video" 
+                                                        ? <video src={mediaUrl} controls className="w-full max-h-64 object-cover" />
+                                                        : <img src={mediaUrl} alt="node-content" className="w-full max-h-64 object-cover" referrerPolicy="no-referrer" />
+                                                    }
+                                                </div>
                                             )}
                                             <div className="px-4 py-2.5 leading-relaxed font-normal">{m.content}</div>
                                         </>
@@ -283,7 +325,7 @@ export default function ChatDetailsPage() {
             </div>
 
             {/* MESSAGE INPUT */}
-            <div className="flex flex-col gap-1 relative">
+            <div className="flex flex-col gap-1 relative shrink-0">
                 {/* MENTION SUGGESTIONS */}
                 <AnimatePresence>
                     {showMentions && (
@@ -306,7 +348,7 @@ export default function ChatDetailsPage() {
                 </AnimatePresence>
 
                 {/* TYPING INDICATOR */}
-                <div className="h-7">
+                <div className="h-7 shrink-0">
                     <AnimatePresence>
                         {isOtherTyping && (
                             <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="flex items-center gap-2.5 px-5">
@@ -322,7 +364,7 @@ export default function ChatDetailsPage() {
                 </div>
 
                 {/* INPUT FORM */}
-                <form onSubmit={handleSend} className="relative flex gap-3 pb-4 md:pb-6 shrink-0">
+                <form onSubmit={handleSend} className="relative flex gap-3 pb-4 md:pb-6 shrink-0 z-10">
                     <div className="relative flex-1 flex items-center">
                         <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className={`absolute left-3.5 z-10 p-2 rounded-xl transition-all ${showEmojiPicker ? 'text-crimson bg-crimson/10' : 'text-text-dim hover:text-ocean'}`}>
                             <Smile size={22} />

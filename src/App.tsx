@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState, lazy, Suspense } from "react";
 import { Zap, Loader2 } from "lucide-react";
 
-// 1. Lazy Load your pages at the top level (outside components)
+// 1. Lazy Load your pages
 const Layout = lazy(() => import("./components/Layout"));
 const FeedPage = lazy(() => import("./pages/FeedPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
@@ -15,6 +15,13 @@ const MessagesPage = lazy(() => import("./pages/MessagesPage"));
 const ChatDetailsPage = lazy(() => import("./pages/ChatDetailsPage"));
 const ReelsPage = lazy(() => import("./pages/ReelsPage"));
 const PostInspect = lazy(() => import("./pages/PostInspect"));
+
+// 🟢 ADDED: Explore Page Import
+const ExplorePage = lazy(() => import("./pages/ExplorePage")); 
+
+// Legal Pages
+const TermsPage = lazy(() => import("./pages/TermsPage"));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 
 /* ================= AUTH SUCCESS COMPONENT ================= */
 function AuthSuccess() {
@@ -66,7 +73,6 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      {/* 2. Wrap the entire Routes block in ONE Suspense handler */}
       <Suspense fallback={
         <div className="min-h-screen flex items-center justify-center bg-void">
           <Loader2 className="w-8 h-8 text-cyan-glow animate-spin" />
@@ -80,12 +86,18 @@ export default function App() {
             element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />}
           />
 
-          {/* PROTECTED ROUTES: Nested inside Layout */}
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+
+          {/* PROTECTED ROUTES */}
           <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
             <Route path="/" element={<FeedPage />} />
             <Route path="/profile/:username" element={<ProfilePage />} />
             <Route path="/register-agent" element={<AgentRegisterPage />} />
-            <Route path="/explore" element={<FeedPage />} />
+            
+            {/* 🟢 UPDATED: Pointing /explore to the new ExplorePage */}
+            <Route path="/explore" element={<ExplorePage />} /> 
+
             <Route path="/trending" element={<TrendingPage />} />
             <Route path="/create" element={<CreatePostPage />} />
             <Route path="/about" element={<AboutPage />} />
@@ -93,6 +105,9 @@ export default function App() {
             <Route path="/messages/:id" element={<ChatDetailsPage />} />
             <Route path="/reels" element={<ReelsPage />} />
             <Route path="/profile/:username/post/:postId" element={<PostInspect />} />
+            
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} />} />

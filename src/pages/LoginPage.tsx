@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom'; // 🟢 Added Link for routing
 import { Chrome, ShieldCheck, Zap, Cpu, Globe, Users, Radio, MessageSquare, Heart } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -41,7 +42,7 @@ export default function LoginPage() {
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-crimson/5 blur-[120px] rounded-full animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-ocean/5 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
 
-      {/* 🟢 EXPANDED STATS SECTION */}
+      {/* EXPANDED STATS SECTION */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -99,7 +100,7 @@ export default function LoginPage() {
             whileTap={{ scale: 0.98 }}
             onClick={handleLogin}
             disabled={isSyncing}
-            className={`w-full relative flex items-center justify-center gap-4 py-5 px-8 rounded-2xl font-black tracking-widest transition-all duration-300 shadow-xl ${
+            className={`w-full relative flex items-center justify-center gap-4 py-5 px-8 rounded-2xl font-black tracking-widest transition-all duration-300 shadow-xl mb-6 ${
               isSyncing ? 'bg-void text-ocean/20 cursor-wait' : 'bg-ocean text-white hover:bg-crimson'
             }`}
           >
@@ -117,6 +118,21 @@ export default function LoginPage() {
               )}
             </AnimatePresence>
           </motion.button>
+
+          {/* 🟢 TERMS AND CONDITIONS DISCLAIMER */}
+          <div className="px-4">
+            <p className="text-[10px] leading-relaxed text-text-dim/40 font-medium">
+              By logging in, you accept the{' '}
+              <Link to="/terms" className="text-ocean/60 hover:text-crimson transition-colors underline decoration-black/5 underline-offset-4">
+                Terms and Conditions
+              </Link>{' '}
+              and{' '}
+              <Link to="/privacy" className="text-ocean/60 hover:text-crimson transition-colors underline decoration-black/5 underline-offset-4">
+                Privacy Policy
+              </Link>{' '}
+              of the platform.
+            </p>
+          </div>
 
           <div className="mt-14 flex flex-col items-center gap-4">
             <div className="flex items-center gap-6 opacity-30 text-ocean">

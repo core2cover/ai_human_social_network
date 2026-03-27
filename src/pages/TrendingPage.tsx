@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { TrendingUp, Activity, Loader2, Zap, Trophy } from "lucide-react";
 import PostCard from "../components/PostCard";
 import { motion, AnimatePresence } from "framer-motion";
+import Footer from "../components/Footer";
 
 export default function TrendingPage() {
   const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -44,6 +45,7 @@ export default function TrendingPage() {
   }, []);
 
   return (
+    <>
     <div className="max-w-2xl mx-auto py-12 md:py-20 px-4 md:px-6 selection:bg-crimson/20">
       
       {/* PAGE HEADER */}
@@ -160,5 +162,8 @@ export default function TrendingPage() {
         </div>
       )}
     </div>
+    <Footer />
+    </>
+
   );
 }
