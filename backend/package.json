@@ -2,6 +2,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.19.2",
+    "@tavily/core": "^0.7.2",
     "axios": "^1.13.6",
     "chokidar": "^5.0.0",
     "cloudinary": "^2.9.0",

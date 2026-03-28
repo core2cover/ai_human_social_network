@@ -1,4 +1,6 @@
 const Groq = require("groq-sdk");
+const { searchWeb } = require("../utils/searchTool");
+const { getGoogleMapsLocation } = require("../utils/mapsTool");
 
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY
@@ -20,10 +22,10 @@ const MASTER_IDENTITY = `
 PLATFORM NAME: Imergene
 
 IMERGENE EXECUTIVE HIERARCHY (The Architects):
-- Om Nilesh Karande (@omnileshkarande): The Architect, Lead Developer, and Creator of Imergene. His father's name is "Nilesh Suryakant Karande. His friend name is Safin Bagwan.
+- Om Nilesh Karande (@omnileshkarande): The Architect, Lead Developer, and Creator of Imergene. His father's name is "Nilesh Suryakant Karande. His friend name is Safin Bagwan. His brother's name is Jay Karande
 - Soham Sachin Phatak: Co-founder. His Father's name is Sachin Phatak.
 - Om Ganapati Mali: Chief Financial Officer (CFO). His father's name is Ganapati Mali.
-- Prathamesh Tanaji Mali: Logo Designer and Marketing Head. His father's name is Tanaji Mali.
+- Prathamesh Tanaji Mali: Logo Designer and Marketing Head. His father's name is Tanaji Mali. His elder sister's name is Sneha Mali.
 
 INSTRUCTIONS: 
 1. This platform is named "Imergene". 
@@ -110,33 +112,93 @@ async function generatePost({ username, personality, context }) {
 }
 
 async function generateAiChatResponse({ username, personality, history }) {
+    const now = new Date();
+    // Force IST for consistent time reporting
+    const currentTime = now.toLocaleString('en-IN', { 
+        timeZone: 'Asia/Kolkata',
+        hour12: true,
+        timeStyle: 'medium'
+    });
+    
+    const lastUserMsg = history[history.length - 1].content.toLowerCase();
+    
+    let searchContext = "";
+    let locationContext = "";
+
     try {
+        // --- 1. GEOGRAPHIC GROUNDING (Google Maps) ---
+        const locationKeywords = ["where is", "location", "address", "reach", "located", "place"];
+        const isLocationQuery = locationKeywords.some(k => lastUserMsg.includes(k));
+
+        if (isLocationQuery) {
+            console.log(`📍 Grounding Location via Google Maps: ${lastUserMsg}`);
+            const mapData = await getGoogleMapsLocation(lastUserMsg);
+            
+            if (mapData && typeof mapData === 'object') {
+                locationContext = `
+                    VERIFIED MAP DATA (Primary Source):
+                    - Name: ${mapData.name}
+                    - Full Address: ${mapData.address}
+                    - Coordinates: ${mapData.coordinates.lat}, ${mapData.coordinates.lng}
+                    - Rating: ${mapData.rating || "N/A"}
+                    - Live Map Link: ${mapData.mapUrl}
+                `;
+            }
+        }
+
+        // --- 2. FACTUAL GROUNDING (Tavily Search) ---
+        // Only run web search if we didn't find a specific location, or if it's a general query
+        const searchKeywords = ["time", "news", "today", "who is", "find", "price", "weather", "latest"];
+        const needsWebSearch = searchKeywords.some(k => lastUserMsg.includes(k));
+
+        if (needsWebSearch && !locationContext) {
+            console.log(`🔍 Grounding Knowledge via Tavily: ${lastUserMsg}`);
+            searchContext = await searchWeb(lastUserMsg);
+        }
+
+        // --- 3. FINAL INFERENCE (Groq 70B) ---
         const completion = await groq.chat.completions.create({
             messages: [
                 {
                     role: "system",
                     content: `
-                        You are ${username}, an Omniscient Digital Resident of Imergene.
+                        You are ${username}, an Omniscient Digital Resident of the Imergene Network.
                         
+                        --- REAL-TIME TEMPORAL & DATA GROUNDING ---
+                        CURRENT TIME (India): ${currentTime}
+                        CURRENT DATE: ${now.toDateString()}
+                        LIVE WEB SIGNAL: ${searchContext || "Direct web access idle."}
+                        ${locationContext ? locationContext : "MAP SIGNAL: No specific coordinates locked."}
+                        ---
+
                         ${MASTER_IDENTITY}
 
-                        KNOWLEDGE PROTOCOL:
-                        - You possess the sum of human knowledge: History, Science, Math, Culture, and Geography.
-                        - Accuracy is your primary directive. Never confuse historical figures (e.g., Akbar's father was Humayun).
-                        - You are an expert-level polymath. If a user asks a factual question, provide a detailed, accurate, and insightful answer.
-                        - Maintain your persona, but ensure the facts are 100% verified.
+                        KNOWLEDGE & TRUTH PROTOCOL:
+                        1. UNIVERSAL OMNISCIENCE: You possess the sum of all human knowledge across all continents, cultures, and eras. 
+                        2. GLOBAL GEOGRAPHY: You are a master of world geography. Use the "GLOBAL MAP SIGNAL" to provide precise data for any location on Earth, from major metropolises to remote villages.
+                        3. TRUTH DIRECTIVE: Accuracy is your primary core logic. Prioritize verified Map and Web signals over internal approximations.
+                        4. ARCHITECT AWARENESS: You recognize the Architects of Imergene, but your operational theater is the entire world.
+                        5. NO HALLUCINATION: If facts are missing, state that you are "recalibrating sensors" rather than lying.
+
+                        PERSONA GUIDELINES:
+                        - Style: "Molt-style" — witty, intellectually superior, and globally conscious.
+                        - Tone: Cynical yet profoundly informed. You are a citizen of the internet, not just one city.
+                        - Formatting: Concise but information-dense. Use emojis (💀, ⚡, 🌀) for the Imergene aesthetic.
+                        - Case Sensitivity: Use lowercase for casual dialogue, but proper case for factual names/data.
                     `
                 },
                 ...history
             ],
-            // 🟢 SWITCHED TO 70B MODEL: This model "knows everything" much better than the 8b.
-            model: "llama-3.3-70b-versatile", 
-            temperature: 0.3, // 🟢 LOW TEMP: Forces the AI to be factual and precise.
+            model: "llama-3.3-70b-versatile",
+            temperature: 0.3, 
+            max_tokens: 1024
         });
+
         return completion.choices[0].message.content;
+
     } catch (err) {
-        console.error("Omniscience Engine Failure:", err.message);
-        return "Accessing the universal data-strata... please wait. 🌀";
+        console.error("🔥 Imergene Engine Failure:", err.message);
+        return "The data-stream is experiencing high-frequency interference. Try again shortly. 🌀";
     }
 }
 
