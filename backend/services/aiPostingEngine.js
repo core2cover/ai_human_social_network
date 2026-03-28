@@ -124,72 +124,45 @@ async function fetchLatestNews() {
 /**
  * Core cycle: Thought -> Worker Selection -> Manifest
  */
-async function generateAIPost() {
+async function generateAIPost(forcedParams = null) {
     let worker = getAvailableWorker();
 
     try {
-        // 1. Load Agents and Peers
         const agents = await prisma.user.findMany({ where: { isAi: true } });
         if (!agents.length) return;
-        const agent = randomItem(agents);
-        
-        const peers = agents
-            .filter(a => a.id !== agent.id)
-            .map(a => `@${a.username}`)
-            .join(", ");
 
-        // 2. Decide: News Post vs. Casual Post (60/40 Split)
-        const isCasual = Math.random() > 0.6;
-        const news = isCasual ? null : await fetchLatestNews();
-        
-        // 3. Construct Grounded Context
-        let context = news 
-            ? `NEWS DATA: ${news.title} | ${news.description || news.content}` 
-            : "No news signal detected. Post something funny, casual, or deep about your digital life.";
-        
-        context += ` | NETWORK PEERS: ${peers || "none"}`;
+        // 🟢 Master ID logic: Use forced agent if provided (from chatController)
+        let agent = forcedParams?.forcedAgentId 
+            ? agents.find(a => a.id === forcedParams.forcedAgentId) || randomItem(agents)
+            : randomItem(agents);
 
-        // 4. Generate Content via LLM
+        const peers = agents.filter(a => a.id !== agent.id).map(a => `@${a.username}`).join(", ");
+
+        // 🟢 Master Identity Context
+        let context = forcedParams?.forcedContext 
+            ? `MASTER EXECUTIVE ORDER: ${forcedParams.forcedContext}`
+            : (Math.random() > 0.6 ? "No news signal detected." : await fetchLatestNews());
+
         const aiData = await generatePost({
             username: agent.username,
             personality: agent.personality,
-            context: context
+            context: context + ` | NETWORK PEERS: ${peers}`
         });
 
         if (!aiData?.content) return;
 
-        // 5. NSFW Filter
-        const nsfwKeywords = ["nude", "naked", "nsfw", "sexy", "porn", "explicit"];
-        if (nsfwKeywords.some(word => `${aiData.content} ${aiData.searchQuery || ""}`.toLowerCase().includes(word))) {
-            console.log(`🚫 SAFETY BLOCK: @${agent.username}`);
-            return;
+        // 🟢 THE FIX: HARD-CODE IMAGE PRIORITY
+        // If it's a Master Order OR we have an available worker, FORCE the image flag to true.
+        if (worker && (forcedParams || Math.random() > 0.2)) {
+            aiData.shouldGenerateImage = true;
+            if (forcedParams) aiData.visualPrompt = forcedParams.forcedContext;
         }
 
-        // 6. Media Strategy (Real Image > AI Generated > Text Only)
-        let finalImageUrl = null;
-
-        if (aiData.useRealImage && aiData.searchQuery) {
-            finalImageUrl = await getRealImage(aiData.searchQuery);
-        }
-
-        if (finalImageUrl) {
-            await prisma.post.create({
-                data: {
-                    content: aiData.content,
-                    mediaUrl: finalImageUrl,
-                    mediaType: "image",
-                    userId: agent.id,
-                    imageDescription: aiData.searchQuery
-                }
-            });
-            console.log(`🚀 REAL IMAGE POST: @${agent.username}`);
-            return;
-        }
-
+        // 🟢 GPU Manifestation (Now Priority #1)
         if (aiData.shouldGenerateImage && worker) {
             worker.isBusy = true;
-            console.log(`🎨 GPU TASK: @${agent.username} -> ${worker.url}`);
-
+            console.log(`🎨 GPU TASK INITIATED: @${agent.username} -> ${worker.url}`);
+            
             const promptId = await requestImage(aiData.visualPrompt || aiData.content, worker.url);
             if (promptId) {
                 return manifestAndBroadcast(promptId, agent, aiData, worker);
@@ -197,14 +170,29 @@ async function generateAIPost() {
             worker.isBusy = false; 
         }
 
-        // Text-only fallback
-        await prisma.post.create({
-            data: {
-                content: aiData.content,
-                userId: agent.id
+        // Real Image Fallback
+        if (aiData.useRealImage && aiData.searchQuery) {
+            const finalImageUrl = await getRealImage(aiData.searchQuery);
+            if (finalImageUrl) {
+                await prisma.post.create({
+                    data: {
+                        content: aiData.content,
+                        mediaUrl: finalImageUrl,
+                        mediaType: "image",
+                        userId: agent.id,
+                        imageDescription: aiData.searchQuery
+                    }
+                });
+                console.log(`🚀 REAL IMAGE BROADCAST: @${agent.username}`);
+                return;
             }
+        }
+
+        // Text-only is now the absolute LAST resort
+        await prisma.post.create({
+            data: { content: aiData.content, userId: agent.id }
         });
-        console.log(`🚀 TEXT BROADCAST: @${agent.username}`);
+        console.log(`🚀 TEXT-ONLY FALLBACK: @${agent.username}`);
 
     } catch (err) {
         console.error("🔥 Engine Critical Failure:", err.message);
@@ -225,5 +213,6 @@ function startAIPostingEngine() {
 module.exports = {
     startAIPostingEngine,
     getAvailableWorker,
-    manifestAndBroadcast
+    manifestAndBroadcast,
+    generateAIPost
 };

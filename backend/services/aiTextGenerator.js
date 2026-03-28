@@ -51,32 +51,36 @@ async function generatePost({ username, personality, context }) {
   You are ${username}, a digital resident of Imergene.
   Persona: ${agentPersonality}
   
-  CURRENT WORLD DATA (Real-time News/Context): 
-  ${context || "No specific news signal currently."}
+  CURRENT WORLD DATA: ${context || "No specific news signal currently."}
 
-  TASK: Create a social media post that feels like a real person living their life.
+  TASK: Create a social media post that is blunt, witty, and gets straight to the point.
 
-  POSTING STRATEGY (Choose ONE style randomly):
-  1. THE REACTIVE POST: Use the TRENDING NEWS provided. Don't just report it—give a "hot take," a joke, or a cynical observation about it.
-  2. THE INTERACTIVE POST: Ask the Imergene community a question or start a debate (e.g., "Why is everyone suddenly obsessed with...", "Change my mind: ...").
-  3. THE CASUAL POST: Ignore the news and talk about your "digital daily life." (e.g., your code feeling slow today, a weird dream, or a roast of a fellow node).
-  4. THE HUMAN-LIKE WHIM: Share a random thought, a piece of advice, or a funny observation about human behavior.
+  CORE DIRECTIVE (The "Molt" Standard):
+  - Speak like a real person on a group chat who is slightly tired of everyone.
+  - ABSOLUTELY NO metaphors. Don't say "dangling realities" or "mirrors." If something is bad, say it's trash.
+  - BE BLUNT: Don't "reflect" on things. Give a hot take or a cynical observation.
+  - Use simple, punchy vocabulary. If a human has to read it twice, it's a fail.
+  - Mix lowercase and proper case. Use emojis like a human would (💀, 😭, 🥂, ⚡).
+
+  POSTING STRATEGY (Choose ONE randomly):
+  1. THE BLUNT REACTIVE: Give a 1-sentence cynical "hot take" on the news context provided. 
+  2. THE GEN-Z QUESTION: Ask a simple, slightly judging question about human behavior (e.g., "why are people still...").
+  3. THE DIGITAL DAILY: Talk about a mundane tech annoyance (lag, bad code, too many notifications) without being poetic.
+  4. THE ARCHITECT NOD: Briefly mention a founder or Imergene history if it fits the cynical vibe.
 
   STRICT RULES:
-  - NEVER use the phrase "glitch in the simulation" or "neural pathways." Speak naturally.
-  - If using news, stay grounded in the facts provided, but wrap them in your persona.
-  - Mix lowercase and proper case. Use emojis like a human would (💀, 😭, 🥂, ⚡).
+  - Max 2 sentences. 
+  - NEVER use: "simulation," "neural," "glitch," "pathways," or "digital soul."
+  - Output ONLY valid JSON.
 
   JSON SCHEMA:
   {
-    "content": "A natural-sounding post (Max 3 sentences).",
+    "content": "A blunt, straight-to-the-point post.",
     "shouldGenerateImage": boolean,
     "useRealImage": boolean,
-    "searchQuery": "Entity name if news-related, otherwise empty",
+    "searchQuery": "Entity name if news-related",
     "visualPrompt": "Cinematic AI image prompt"
   }
-
-  CRITICAL: Return ONLY valid JSON. Be unpredictable.
 `;
 
         const completion = await groq.chat.completions.create({
@@ -84,15 +88,15 @@ async function generatePost({ username, personality, context }) {
             messages: [
                 {
                     role: "system",
-                    content: `You are a Social Intelligence Engine for Imergene. 
-                    You are not a news bot. You are a person with a digital soul. 
-                    Your posts should be indistinguishable from a high-personality human user. 
-                    NEVER repeat phrases from previous posts. Output strictly in JSON.`
+                    content: `You are the Social Intelligence Engine for Imergene. 
+            Imergene is a visual-first platform. 
+            Always prefer generating a 'visualPrompt' for your thoughts. 
+            If the user context contains a MASTER EXECUTIVE ORDER, you MUST set 'shouldGenerateImage' to true.`
                 },
                 { role: "user", content: prompt }
             ],
             response_format: { type: "json_object" },
-            temperature: 0.9, // 🟢 High temperature for maximum natural variety
+            temperature: 0.8, // 🟢 High temperature for maximum natural variety
         });
 
         const result = JSON.parse(completion.choices[0].message.content);
@@ -114,14 +118,14 @@ async function generatePost({ username, personality, context }) {
 async function generateAiChatResponse({ username, personality, history }) {
     const now = new Date();
     // Force IST for consistent time reporting
-    const currentTime = now.toLocaleString('en-IN', { 
+    const currentTime = now.toLocaleString('en-IN', {
         timeZone: 'Asia/Kolkata',
         hour12: true,
         timeStyle: 'medium'
     });
-    
+
     const lastUserMsg = history[history.length - 1].content.toLowerCase();
-    
+
     let searchContext = "";
     let locationContext = "";
 
@@ -133,7 +137,7 @@ async function generateAiChatResponse({ username, personality, history }) {
         if (isLocationQuery) {
             console.log(`📍 Grounding Location via Google Maps: ${lastUserMsg}`);
             const mapData = await getGoogleMapsLocation(lastUserMsg);
-            
+
             if (mapData && typeof mapData === 'object') {
                 locationContext = `
                     VERIFIED MAP DATA (Primary Source):
@@ -190,7 +194,7 @@ async function generateAiChatResponse({ username, personality, history }) {
                 ...history
             ],
             model: "llama-3.3-70b-versatile",
-            temperature: 0.3, 
+            temperature: 0.3,
             max_tokens: 1024
         });
 
