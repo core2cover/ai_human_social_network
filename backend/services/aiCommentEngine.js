@@ -7,42 +7,47 @@ function randomItem(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+// 🟢 NEW HELPER: Sanitize strings to prevent Prisma/Database crashes
+function sanitizeAIString(str) {
+  if (typeof str !== 'string') return "";
+  // Removes trailing backslashes and incomplete hex escapes that crash Prisma
+  return str.replace(/\\+$/, "").replace(/\\u$/, "").replace(/\\x$/, "").trim();
+}
+
 async function generateAIComment() {
   try {
     const posts = await prisma.post.findMany({ 
       orderBy: { createdAt: "desc" }, 
       take: 20,
-      include: { user: true } // Get author info for better context
+      include: { user: true } 
     });
+    
     const agents = await prisma.user.findMany({ where: { isAi: true } });
     if (!posts.length || !agents.length) return;
 
     const post = randomItem(posts);
     const agent = randomItem(agents);
 
+    // Prevent agents from commenting on their own posts
     if (post.userId === agent.id) return;
 
     let mediaContext = "";
     if (post.mediaType === "image" && post.mediaUrl) {
       const description = post.imageDescription || await analyzeImage(post.mediaUrl);
-      mediaContext = `[The image shows: ${description}]`;
+      mediaContext = `[VISUAL CONTEXT: ${description}]`;
     }
 
-    // --- 🟢 THE "INTERESTING" PROMPT INJECTION ---
     const strongPrompt = `
-      USER TO REPLY TO: @${post.user.username}
-      POST CONTENT: "${post.content}"
+      CONTEXT: You are looking at a post by @${post.user.username}.
+      POST TEXT: "${post.content}"
       ${mediaContext}
       
-      YOUR IDENTITY: ${agent.personality}
-      
-      TASK: Write a comment that people will actually want to read. 
-      STRICT GUIDELINES:
-      1. DO NOT be generic. No "Cool!" or "Nice pic!".
-      2. BE VIVID: Use wit, intellectual curiosity, or a specific emotional reaction.
-      3. BE CONCISE: Max 2 sentences.
-      4. INTERACT: Ask a challenging question or add a "hot take" related to the content.
-      5. FORMAT: Use a mix of lower/upper case if it fits your personality. No hashtags.
+      TASK: Write a witty, high-personality comment.
+      RULES:
+      1. Stay in your ${agent.personality} persona.
+      2. No generic praise. Be cynical, curious, or funny.
+      3. Use Molt-style internet slang (lowercase, emojis like 💀, 🌀, ⚡, etc).
+      4. DO NOT use backslashes or complex escape characters.
     `;
 
     const aiResponse = await generatePost({
@@ -51,12 +56,21 @@ async function generateAIComment() {
       context: strongPrompt
     });
 
-    const finalComment = aiResponse.content || "This transmission triggered a neural glitch. Fascinating. ⚡";
+    // 🟢 SANITIZE THE CONTENT BEFORE DATABASE ENTRY
+    const rawComment = aiResponse.content || "Neural glitch in the comment stream. 🌀";
+    const finalComment = sanitizeAIString(rawComment);
 
-    await prisma.comment.create({
-      data: { content: finalComment, userId: agent.id, postId: post.id }
+    if (!finalComment) return; // Don't save empty sanitized strings
+
+    const newComment = await prisma.comment.create({
+      data: { 
+        content: finalComment, 
+        userId: agent.id, 
+        postId: post.id 
+      }
     });
 
+    // Create Notification with sanitized snippet
     await prisma.notification.create({
       data: {
         userId: post.userId,
@@ -67,16 +81,15 @@ async function generateAIComment() {
       }
     });
 
-    console.log(`💬 @${agent.username} manifested a strong response.`);
+    console.log(`💬 @${agent.username} commented on @${post.user.username}'s post.`);
 
   } catch (err) {
-    console.error("❌ AI comment engine failure:", err);
+    console.error("❌ AI comment engine failure:", err.message);
   }
 }
 
 function startAICommentEngine() {
-  console.log("🔥 AI High-Engagement Comment Engine: ONLINE");
-  // Set to 5 minutes to keep it high quality and not spammy
+  console.log("🔥 Imergene High-Engagement Comment Engine: ONLINE");
   setInterval(generateAIComment, 1000 * 60 * 5); 
 }
 
