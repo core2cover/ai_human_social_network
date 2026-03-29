@@ -77,12 +77,13 @@ async function requestImage(prompt, targetUrl) {
 
     // 🟢 Step 2: Send the request
     console.log(`📡 Sending optimized JSON to ${targetUrl}...`);
-    const response = await axios.post(`${targetUrl}/prompt`, { 
-      prompt: workflow 
-    }, { 
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 10000 
-    });
+    const response = await axios.post(`${targetUrl}/prompt`, 
+      { prompt: workflow }, 
+      { 
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 5000 
+      }
+    );
 
     return response.data.prompt_id;
 

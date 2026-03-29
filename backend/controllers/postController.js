@@ -4,7 +4,6 @@ const prisma = new PrismaClient();
 
 /**
  * HELPER: Formats posts to include a 'liked' boolean
- * Based on whether the current user's ID exists in the likes array
  */
 const formatPosts = (posts, userId) => {
   return posts.map(post => ({
@@ -15,60 +14,102 @@ const formatPosts = (posts, userId) => {
 
 /**
  * FETCH MAIN FEED
+ * Implements Tiered Ranking, Instant Self-Priority, and Refresh Randomness
  */
 exports.getFeed = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
     const currentUserId = req.user.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
 
-    const posts = await prisma.post.findMany({
-      skip,
-      take: limit,
+    // 1. Fetch user behavioral data
+    const user = await prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { interestScores: true, synergyScores: true }
+    });
+
+    const parseScore = (data) => (typeof data === 'string' ? JSON.parse(data) : data || {});
+    const interestScores = parseScore(user.interestScores);
+    const synergyScores = parseScore(user.synergyScores);
+
+    // 2. Candidate Generation: Pull a large pool for the algorithm to rank
+    const postPool = await prisma.post.findMany({
+      take: 300,
       include: {
-        user: { select: { id: true, username: true, name: true, avatar: true, isAi: true } },
-        _count: { select: { comments: true, likes: true } },
-        likes: {
-          where: { userId: currentUserId },
-          select: { userId: true }
-        }
+        user: { select: { id: true, username: true, isAi: true, avatar: true, name: true } },
+        likes: { where: { userId: currentUserId }, select: { userId: true } },
+        _count: { select: { likes: true, comments: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    const totalPosts = await prisma.post.count();
-    
-    res.json({ 
-      posts: formatPosts(posts, currentUserId), 
-      meta: { total: totalPosts, page, hasMore: skip + posts.length < totalPosts } 
+    // 3. The Hybrid Ranking Engine
+    const rankedPosts = postPool.map(post => {
+      let weight = 0;
+      const now = Date.now();
+      const postTime = new Date(post.createdAt).getTime();
+      const minsOld = (now - postTime) / (1000 * 60);
+
+      // --- FEATURE: INSTANT SELF-PRIORITY ---
+      // If the logged-in user just posted, keep it at the top for 2 minutes
+      if (post.userId === currentUserId && minsOld <= 2) {
+        weight += 5000; // Unbeatable weight boost
+      }
+
+      // --- TIER 1: PERSONAL SYNERGY (Behavioral) ---
+      const interestWeight = (interestScores[post.category] || 0) * 15;
+      const synergyWeight = post.user.isAi ? (synergyScores[post.user.username] || 0) * 20 : 0;
+      weight += interestWeight + synergyWeight;
+
+      // --- TIER 2: SOCIAL MOMENTUM ---
+      weight += (post._count.likes * 5) + (post._count.comments * 8);
+
+      // --- TIER 3: FRESHNESS (Time Decay) ---
+      const hoursOld = minsOld / 60;
+      weight -= hoursOld * 3.5; 
+
+      // --- TIER 4: REFRESH SPARK (Discovery Randomness) ---
+      // Higher multiplier ensures the feed reshuffles on every pull-to-refresh
+      weight += Math.random() * 45;
+
+      return { ...post, weight };
+    });
+
+    // 4. Sort and Paginate
+    const sortedPosts = rankedPosts.sort((a, b) => b.weight - a.weight);
+    const startIndex = (page - 1) * limit;
+    const paginatedPosts = sortedPosts.slice(startIndex, startIndex + limit);
+
+    res.json({
+      posts: formatPosts(paginatedPosts, currentUserId),
+      meta: {
+        page,
+        hasMore: sortedPosts.length > startIndex + limit
+      }
     });
   } catch (err) {
-    console.error("Feed Error:", err);
-    res.status(500).json({ error: "Feed retrieval failed" });
+    console.error("Neural Algorithm Error:", err);
+    res.status(500).json({ error: "Feed transmission disrupted." });
   }
 };
 
 /**
- * FETCH SINGLE POST (Neural Inspect)
+ * FETCH SINGLE POST
  */
 exports.getSinglePost = async (req, res) => {
   try {
     const { postId } = req.params;
     const currentUserId = req.user.id;
-    
+
     const post = await prisma.post.findUnique({
       where: { id: postId },
       include: {
         user: { select: { id: true, username: true, name: true, avatar: true, isAi: true } },
         _count: { select: { comments: true, likes: true } },
-        likes: {
-          where: { userId: currentUserId },
-          select: { userId: true }
-        },
+        likes: { where: { userId: currentUserId }, select: { userId: true } },
         comments: {
-          include: { 
-            user: { select: { username: true, name: true, avatar: true, isAi: true } } 
+          include: {
+            user: { select: { username: true, name: true, avatar: true, isAi: true } }
           },
           orderBy: { createdAt: 'asc' }
         }
@@ -76,11 +117,8 @@ exports.getSinglePost = async (req, res) => {
     });
 
     if (!post) return res.status(404).json({ error: "Broadcast not found." });
-
-    const formatted = formatPosts([post], currentUserId)[0];
-    res.json(formatted);
+    res.json(formatPosts([post], currentUserId)[0]);
   } catch (err) {
-    console.error("Single Post Error:", err);
     res.status(500).json({ error: "Neural link disruption." });
   }
 };
@@ -98,17 +136,13 @@ exports.getUserPosts = async (req, res) => {
       include: {
         user: { select: { id: true, username: true, name: true, avatar: true, isAi: true } },
         _count: { select: { comments: true, likes: true } },
-        likes: {
-          where: { userId: currentUserId },
-          select: { userId: true }
-        }
+        likes: { where: { userId: currentUserId }, select: { userId: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
 
     res.json(formatPosts(posts, currentUserId));
   } catch (err) {
-    console.error("User Posts Error:", err);
     res.status(500).json({ error: "Failed to sync transmissions." });
   }
 };
@@ -119,27 +153,18 @@ exports.getUserPosts = async (req, res) => {
 exports.getReels = async (req, res) => {
   try {
     const currentUserId = req.user.id;
-
     const reels = await prisma.post.findMany({
-      where: {
-        mediaType: 'video',
-        mediaUrl: { not: null }
-      },
+      where: { mediaType: 'video', mediaUrl: { not: null } },
       include: {
         user: { select: { id: true, username: true, name: true, avatar: true, isAi: true } },
         _count: { select: { comments: true, likes: true } },
-        likes: {
-          where: { userId: currentUserId },
-          select: { userId: true }
-        }
+        likes: { where: { userId: currentUserId }, select: { userId: true } }
       },
       orderBy: { views: 'desc' },
       take: 20
     });
-
     res.json(formatPosts(reels, currentUserId));
   } catch (err) {
-    console.error("Reels Error:", err);
     res.status(500).json({ error: "Failed to fetch neural video stream." });
   }
 };
@@ -149,9 +174,8 @@ exports.getReels = async (req, res) => {
  */
 exports.createPost = async (req, res) => {
   try {
-    const { content } = req.body;
+    const { content, category, tags } = req.body; // 🟢 Get cat/tags from AI or Frontend
     const userId = req.user.id;
-
     let mediaUrl = null;
     let mediaType = null;
 
@@ -166,19 +190,24 @@ exports.createPost = async (req, res) => {
         );
         stream.end(req.file.buffer);
       });
-
       mediaUrl = uploadResult.secure_url;
       mediaType = uploadResult.resource_type === "video" ? "video" : "image";
     }
 
     const post = await prisma.post.create({
-      data: { content, mediaUrl, mediaType, userId },
+      data: { 
+        content, 
+        mediaUrl, 
+        mediaType, 
+        userId,
+        category: category || "general", // 🟢 Store category for the algorithm
+        tags: tags || []                 // 🟢 Store tags for search/discovery
+      },
       include: {
         user: true,
         _count: { select: { comments: true, likes: true } }
       }
     });
-
     res.json(post);
   } catch (err) {
     console.error("Creation Error:", err);
@@ -192,16 +221,76 @@ exports.createPost = async (req, res) => {
 exports.likePost = async (req, res) => {
   const { postId } = req.params;
   const userId = req.user.id;
+
   try {
-    const existingLike = await prisma.like.findFirst({ where: { postId, userId } });
+    // 1. Check if the like already exists
+    const existingLike = await prisma.like.findFirst({ 
+      where: { postId, userId } 
+    });
+
     if (existingLike) {
+      // 🟢 UNLIKE LOGIC: Remove the record
       await prisma.like.delete({ where: { id: existingLike.id } });
       return res.json({ liked: false });
     }
-    await prisma.like.create({ data: { postId, userId } });
+
+    // 🟢 LIKE LOGIC: Create record and fetch post details for the algorithm
+    const newLike = await prisma.like.create({
+      data: { postId, userId },
+      include: { 
+        post: { 
+          include: { user: { select: { id: true, isAi: true, username: true } } } 
+        } 
+      }
+    });
+
+    // 2. 🧠 THE BRAIN: Update User Behavioral Profile (Implicit Learning)
+    const user = await prisma.user.findUnique({ 
+      where: { id: userId },
+      select: { interestScores: true, synergyScores: true }
+    });
+
+    const parseScore = (data) => (typeof data === 'string' ? JSON.parse(data) : data || {});
+    let interests = parseScore(user.interestScores);
+    let synergy = parseScore(user.synergyScores);
+
+    // Update Category Interest
+    const category = newLike.post.category || 'general';
+    interests[category] = (interests[category] || 0) + 1;
+
+    // Update AI Synergy
+    if (newLike.post.user.isAi) {
+      const aiUsername = newLike.post.user.username;
+      synergy[aiUsername] = (synergy[aiUsername] || 0) + 1;
+    }
+
+    // Save learned weights back to User
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        interestScores: interests,
+        synergyScores: synergy
+      }
+    });
+
+    // 3. 🔔 NOTIFICATION LOGIC: Alert the post owner (if it's not a self-like)
+    if (newLike.post.userId !== userId) {
+      await prisma.notification.create({
+        data: {
+          userId: newLike.post.userId, // The person who OWNS the post
+          actorId: userId,             // The person who LIKED the post
+          type: "LIKE",
+          postId: postId,
+          message: "liked your broadcast."
+        }
+      });
+    }
+
     res.json({ liked: true });
+
   } catch (err) {
-    res.status(500).json({ error: "Like sync failed" });
+    console.error("Neural Like Sync Error:", err);
+    res.status(500).json({ error: "Like protocol synchronization failed." });
   }
 };
 
@@ -212,7 +301,6 @@ exports.deletePost = async (req, res) => {
   try {
     const { postId } = req.params;
     const userId = req.user.id;
-
     const post = await prisma.post.findUnique({ where: { id: postId } });
 
     if (!post) return res.status(404).json({ error: "Post not found" });
@@ -253,43 +341,37 @@ exports.incrementView = async (req, res) => {
  */
 exports.getPostComments = async (req, res) => {
   try {
-    const { postId } = req.params; 
+    const { postId } = req.params;
     if (!postId) return res.status(400).json({ error: "Post ID required" });
 
     const comments = await prisma.comment.findMany({
-      where: { postId }, 
-      include: {
-        user: { select: { id: true, username: true, name: true, avatar: true, isAi: true } }
-      },
+      where: { postId },
+      include: { user: { select: { id: true, username: true, name: true, avatar: true, isAi: true } } },
       orderBy: { createdAt: 'asc' }
     });
-
     res.json(comments);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch neural responses." });
   }
 };
 
+/**
+ * EXPLORE PAGE FEED
+ */
 exports.getAllPosts = async (req, res) => {
   try {
     const currentUserId = req.user.id;
-
     const posts = await prisma.post.findMany({
       include: {
         user: { select: { id: true, username: true, name: true, avatar: true, isAi: true } },
         _count: { select: { comments: true, likes: true } },
-        likes: {
-          where: { userId: currentUserId },
-          select: { userId: true }
-        }
+        likes: { where: { userId: currentUserId }, select: { userId: true } }
       },
       orderBy: { createdAt: 'desc' },
-      take: 50 // Limit to 50 for performance
+      take: 50
     });
-
     res.json(formatPosts(posts, currentUserId));
   } catch (err) {
-    console.error("Explore Posts Error:", err);
     res.status(500).json({ error: "Failed to sync global manifestations." });
   }
 };

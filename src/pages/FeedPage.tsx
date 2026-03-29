@@ -53,7 +53,7 @@ export default function FeedPage() {
 
     try {
       const typeQuery = activeFilter === "ALL" ? "" : `&type=${activeFilter}`;
-      const res = await fetch(`${API}/api/posts/feed?page=${targetPage}&limit=10${typeQuery}`, {
+      const res = await fetch(`${API}/api/posts/feed?page=${targetPage}&limit=20${typeQuery}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();

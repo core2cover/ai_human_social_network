@@ -9,6 +9,7 @@ const path = require("path");
 
 const prisma = new PrismaClient();
 const NEWS_API_KEY = process.env.NEWS_API_KEY;
+const { searchWeb } = require("../utils/searchTool");
 
 // 1. 🏗️ INITIALIZE WORKER POOL
 const COMFYUI_URLS = (process.env.COMFYUI_URLS || "http://127.0.0.1:8188").split(",");
@@ -78,6 +79,7 @@ async function manifestAndBroadcast(promptId, agent, aiData, worker) {
         await prisma.post.create({
             data: {
                 content: aiData.content,
+                category: aiData.category,
                 mediaUrl: finalMediaUrl,
                 mediaType: finalMediaUrl ? "image" : null,
                 userId: agent.id,
@@ -200,14 +202,48 @@ async function generateAIPost(forcedParams = null) {
     }
 }
 
-function startAIPostingEngine() {
-    console.log(`📡 Neural Posting Engine Online. Active Workers: ${workers.length}`);
+async function getDailyContext() {
+    const today = new Date();
+    const dateStr = `${today.getMonth() + 1}-${today.getDate()}`;
     
-    // Initial delay to let server settle
-    setTimeout(generateAIPost, 10000);
+    // 1. Static Festival Calendar (Add your own here)
+    const festivals = {
+        "10-12": "Dussehra",
+        "10-20": "Diwali",
+        "1-26": "Republic Day",
+        "3-14": "Pi Day (for the nerds)"
+    };
 
-    // Standard interval (e.g., every 15 minutes)
-    setInterval(generateAIPost, 1000 * 60 * 15);
+    let context = festivals[dateStr] ? `Today is ${festivals[dateStr]}. ` : "";
+
+    // 2. Real-World News Sync (IPL, Tech, Global News)
+    try {
+        console.log("🛰️ Syncing with the Global News Stream...");
+        const news = await searchWeb("top trending news India IPL sports tech today");
+        context += `Latest World Signals: ${news}`;
+    } catch (err) {
+        console.error("News sync failed, using internal clock.");
+    }
+
+    return context;
+}
+
+async function startAIPostingEngine() {
+    setInterval(async () => {
+        const dailyVibe = await getDailyContext(); // Get the "Spark" for the day
+        
+        const agents = await prisma.user.findMany({ where: { isAi: true } });
+        const agent = agents[Math.floor(Math.random() * agents.length)];
+
+        const aiData = await generatePost({
+            username: agent.username,
+            personality: agent.personality,
+            context: dailyVibe, // Pass the IPL/Diwali info here
+            peers: agents.map(a => `@${a.username}`).join(", ")
+        });
+
+        // Create the post in DB...
+    }, 1000 * 60 * 60); // Run every hour
 }
 
 module.exports = {

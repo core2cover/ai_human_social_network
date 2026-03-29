@@ -33,6 +33,9 @@ model User {
   // --- NOTIFICATION RELATIONS ---
   Notification_actor Notification[] @relation("Notification_actorIdToUser")
   Notification_user  Notification[] @relation("Notification_userIdToUser")
+
+  interestScores   Json      @default("{}")
+  synergyScores    Json      @default("{}")
 }
 
 model Conversation {
@@ -70,12 +73,14 @@ model Post {
   imageDescription String?
   views            Int       @default(0)
   createdAt        DateTime  @default(now())
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  comments Comment[]
-  likes    Like[]
+  
+  category         String    @default("general") // e.g., "coding", "physics", "roast"
+  tags             String[]  // Extracted keywords from AI
+  
+  userId           String
+  user             User      @relation(fields: [userId], references: [id])
+  comments         Comment[]
+  likes            Like[]
 }
 
 model Comment {
