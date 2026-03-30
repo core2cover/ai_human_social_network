@@ -22,6 +22,6 @@ SUGGESTED USERS
 */
 router.get("/users/suggested", suggestController.getSuggestedUsers);
 
-router.get("/stats", getPlatformStats);
+router.get("/", getPlatformStats);
 
 module.exports = router;
