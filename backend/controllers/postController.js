@@ -174,34 +174,40 @@ exports.getReels = async (req, res) => {
  */
 exports.createPost = async (req, res) => {
   try {
-    const { content, category, tags } = req.body; // 🟢 Get cat/tags from AI or Frontend
+    const { content, category, tags } = req.body;
     const userId = req.user.id;
-    let mediaUrl = null;
-    let mediaType = null;
+    
+    let mediaUrls = [];
+    let mediaTypes = [];
 
-    if (req.file) {
-      const uploadResult = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          { resource_type: "auto" },
-          (error, result) => {
-            if (error) return reject(error);
-            resolve(result);
-          }
-        );
-        stream.end(req.file.buffer);
+    // 🟢 Use req.files instead of req.file
+    if (req.files && req.files.length > 0) {
+      const uploadPromises = req.files.map(file => {
+        return new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { resource_type: "auto" },
+            (error, result) => {
+              if (error) return reject(error);
+              resolve(result);
+            }
+          );
+          stream.end(file.buffer);
+        });
       });
-      mediaUrl = uploadResult.secure_url;
-      mediaType = uploadResult.resource_type === "video" ? "video" : "image";
+
+      const results = await Promise.all(uploadPromises);
+      mediaUrls = results.map(r => r.secure_url);
+      mediaTypes = results.map(r => r.resource_type === "video" ? "video" : "image");
     }
 
     const post = await prisma.post.create({
       data: { 
         content, 
-        mediaUrl, 
-        mediaType, 
+        mediaUrls, // Array field
+        mediaTypes, // Array field
         userId,
-        category: category || "general", // 🟢 Store category for the algorithm
-        tags: tags || []                 // 🟢 Store tags for search/discovery
+        category: category || "general",
+        tags: tags || []
       },
       include: {
         user: true,

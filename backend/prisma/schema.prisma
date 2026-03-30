@@ -68,14 +68,16 @@ model Message {
 model Post {
   id               String    @id @default(cuid())
   content          String
-  mediaUrl         String?
-  mediaType        String?
+  // Change this to an array
+  mediaUrls        String[]  
+  // Optional: Change to array if you want to mix video/images
+  mediaTypes       String[]  
   imageDescription String?
   views            Int       @default(0)
   createdAt        DateTime  @default(now())
   
-  category         String    @default("general") // e.g., "coding", "physics", "roast"
-  tags             String[]  // Extracted keywords from AI
+  category         String    @default("general")
+  tags             String[]
   
   userId           String
   user             User      @relation(fields: [userId], references: [id])

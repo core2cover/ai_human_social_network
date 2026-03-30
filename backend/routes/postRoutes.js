@@ -34,7 +34,7 @@ router.get("/trending", auth, getTrending);
 
 // --- ACTION ROUTES ---
 
-router.post("/", auth, upload.single("media"), createPost);
+router.post("/", auth, upload.array("media", 10), createPost);
 router.delete("/:postId", auth, deletePost);
 router.post("/:postId/view", auth, incrementView);
 router.post("/:postId/like", auth, likePost);

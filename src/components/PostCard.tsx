@@ -4,8 +4,6 @@ import {
   MessageCircle,
   Share2,
   MoreHorizontal,
-  Volume2,
-  VolumeX,
   Play,
   ShieldCheck,
   Trash2,
@@ -15,8 +13,9 @@ import {
   CheckCircle2,
   Loader2,
   X,
-  Zap,
-  AtSign
+  AtSign,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Avatar from "./Avatar";
@@ -48,6 +47,12 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // --- MULTI-MEDIA STATE ---
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const mediaItems = post.mediaUrls || (post.mediaUrl ? [post.mediaUrl] : []);
+  const mediaTypes = post.mediaTypes || (post.mediaType ? [post.mediaType] : []);
+  const hasMedia = mediaItems.length > 0;
+
   // --- @ MENTION STATES ---
   const [mentionQuery, setMentionQuery] = useState("");
   const [showMentionList, setShowMentionList] = useState(false);
@@ -75,15 +80,29 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   // --- VIDEO STATE ---
   const [isPlaying, setIsPlaying] = useState(false);
-  const [muted, setMuted] = useState(false);
 
   const isOwner = currentUser === post.user?.username;
   const displayCommentCount = comments.length > 0 ? comments.length : (post._count?.comments ?? 0);
-  const hasMedia = !!post.mediaUrl;
 
-  // --- EMOJI HANDLER ---
+  // --- HANDLERS ---
   const onEmojiClick = (emojiData: EmojiClickData) => {
     setNewComment((prev) => prev + emojiData.emoji);
+  };
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentMediaIndex < mediaItems.length - 1) {
+      setCurrentMediaIndex(prev => prev + 1);
+      setIsPlaying(false);
+    }
+  };
+
+  const handlePrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentMediaIndex > 0) {
+      setCurrentMediaIndex(prev => prev - 1);
+      setIsPlaying(false);
+    }
   };
 
   // --- @ MENTION LOGIC ---
@@ -104,11 +123,11 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    const position = e.target.selectionStart || 0;
+    const pos = e.target.selectionStart || 0;
     setNewComment(value);
-    setCursorPos(position);
+    setCursorPos(pos);
 
-    const lastChar = value.slice(0, position).split(" ").pop() || "";
+    const lastChar = value.slice(0, pos).split(" ").pop() || "";
     if (lastChar.startsWith("@")) {
       setMentionQuery(lastChar.slice(1).toLowerCase());
       setShowMentionList(true);
@@ -119,10 +138,9 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   const selectMention = (username: string) => {
     const before = newComment.slice(0, cursorPos).split(" ");
-    before.pop(); // Remove the partial @query
+    before.pop();
     const joinedBefore = before.join(" ");
     const after = newComment.slice(cursorPos);
-    
     setNewComment(`${joinedBefore}${joinedBefore ? " " : ""}@${username} ${after}`);
     setShowMentionList(false);
     inputRef.current?.focus();
@@ -132,7 +150,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     .filter(u => u.username.toLowerCase().includes(mentionQuery))
     .slice(0, 5);
 
-  // --- INTERSECTION OBSERVERS ---
+  // --- INTERSECTION & VIEW TRACKING ---
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -256,15 +274,13 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     });
   };
 
-  const handleMouseUp = () => {
-    setDragging(false);
-  };
+  const handleMouseUp = () => setDragging(false);
 
-  // --- SHARED UI: MENTION LIST ---
+  // --- UI COMPONENTS ---
   const MentionList = () => (
     <AnimatePresence>
       {showMentionList && filteredMentions.length > 0 && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 10 }}
@@ -292,7 +308,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     </AnimatePresence>
   );
 
-  // --- LAYOUT A: MEDIA POST ---
+  // --- MAIN RENDER ---
   if (hasMedia) {
     return (
       <>
@@ -303,6 +319,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           className="social-card !bg-black group !p-0 relative shadow-2xl rounded-[2.5rem] min-h-[500px] flex flex-col border border-white/5"
         >
           <div className="relative flex-1 w-full bg-black flex items-center justify-center overflow-hidden rounded-[2.5rem]">
+            {/* Overlay Header */}
             <header className="absolute top-0 left-0 w-full z-30 p-6 md:p-8 flex items-center justify-between pointer-events-none">
               <div className="flex items-center gap-4 pointer-events-auto drop-shadow-2xl">
                 <Link to={`/profile/${post.user?.username}`} className="relative block hover:scale-105 transition-transform">
@@ -329,21 +346,88 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               </div>
             </header>
 
+            {/* Media Content with Carousel Logic */}
             <div className="w-full h-full flex items-center justify-center relative">
-              {post.mediaType === "video" ? (
-                <video ref={videoRef} src={post.mediaUrl} className="w-full h-full max-h-[80vh] object-contain" loop playsInline onClick={(e) => { e.stopPropagation(); videoRef.current?.paused ? videoRef.current.play() : videoRef.current?.pause(); setIsPlaying(!videoRef.current?.paused); }} />
-              ) : (
-                <img src={post.mediaUrl} className="w-full h-full object-contain" onClick={() => setIsFullScreen(true)} loading="lazy" />
+              {/* Carousel Navigation */}
+              {mediaItems.length > 1 && (
+                <>
+                  <div className="absolute inset-y-0 left-0 z-30 flex items-center px-4">
+                    {currentMediaIndex > 0 && (
+                      <button onClick={handlePrev} className="p-2 bg-black/20 backdrop-blur-md rounded-full text-white hover:bg-crimson transition-all shadow-xl">
+                        <ChevronLeft size={24} />
+                      </button>
+                    )}
+                  </div>
+                  <div className="absolute inset-y-0 right-0 z-30 flex items-center px-4">
+                    {currentMediaIndex < mediaItems.length - 1 && (
+                      <button onClick={handleNext} className="p-2 bg-black/20 backdrop-blur-md rounded-full text-white hover:bg-crimson transition-all shadow-xl">
+                        <ChevronRight size={24} />
+                      </button>
+                    )}
+                  </div>
+                  {/* Pagination Dots */}
+                  <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 flex gap-1.5 bg-black/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                    {mediaItems.map((_, idx) => (
+                      <div key={idx} className={`h-1 rounded-full transition-all duration-300 ${idx === currentMediaIndex ? 'w-4 bg-crimson' : 'w-1 bg-white/40'}`} />
+                    ))}
+                  </div>
+                </>
               )}
-              <AnimatePresence>{!isPlaying && post.mediaType === "video" && (<motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.2 }} className="absolute inset-0 flex items-center justify-center pointer-events-none z-20"><div className="p-6 bg-white/10 backdrop-blur-md rounded-full text-white shadow-2xl border border-white/10"><Play size={40} className="fill-current ml-1" /></div></motion.div>)}</AnimatePresence>
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentMediaIndex}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="w-full h-full flex items-center justify-center"
+                >
+                  {mediaTypes[currentMediaIndex] === "video" ? (
+                    <video
+                      ref={videoRef}
+                      src={mediaItems[currentMediaIndex]}
+                      className="w-full h-full max-h-[80vh] object-contain"
+                      loop
+                      playsInline
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (videoRef.current?.paused) {
+                          videoRef.current.play();
+                          setIsPlaying(true);
+                        } else {
+                          videoRef.current?.pause();
+                          setIsPlaying(false);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <img
+                      src={mediaItems[currentMediaIndex]}
+                      className="w-full h-full object-contain cursor-zoom-in"
+                      onClick={() => setIsFullScreen(true)}
+                      loading="lazy"
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+
+              <AnimatePresence>
+                {!isPlaying && mediaTypes[currentMediaIndex] === "video" && (
+                  <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.2 }} className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                    <div className="p-6 bg-white/10 backdrop-blur-md rounded-full text-white shadow-2xl border border-white/10"><Play size={40} className="fill-current ml-1" /></div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
+            {/* Interaction Buttons */}
             <div className="absolute right-6 bottom-20 z-30 flex flex-col gap-8 items-center">
               <button onClick={(e) => { e.stopPropagation(); handleLike(); }} className="flex flex-col items-center gap-1.5"><div className={`p-4 backdrop-blur-xl rounded-full border border-white/10 transition-all ${isLiked ? 'bg-crimson text-white shadow-[0_0_20px_rgba(220,38,38,0.4)]' : 'bg-white/10 text-white hover:bg-crimson'}`}><Heart size={24} className={isLiked ? "fill-current" : ""} /></div><span className="text-xs font-black text-white drop-shadow-md">{likesCount}</span></button>
               <button onClick={(e) => { e.stopPropagation(); toggleComments(); }} className="flex flex-col items-center gap-1.5"><div className="p-4 bg-white/10 backdrop-blur-xl rounded-full text-white border border-white/10 hover:bg-ocean transition-all"><MessageCircle size={24} /></div><span className="text-xs font-black text-white drop-shadow-md">{displayCommentCount}</span></button>
               <button onClick={(e) => { e.stopPropagation(); setShowShareModal(true); }} className="flex flex-col items-center gap-1.5"><div className="p-4 bg-white/10 backdrop-blur-xl rounded-full text-white border border-white/10 hover:bg-white/30 transition-all"><Share2 size={24} /></div><span className="text-[10px] font-black text-white drop-shadow-md uppercase tracking-tighter">Sync</span></button>
             </div>
 
+            {/* Caption Overlay */}
             <div className="absolute bottom-0 left-0 w-full p-8 pt-24 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none z-20 text-left">
               <div className="flex items-center gap-2 text-white/40 mb-3 drop-shadow-md"><Eye size={14} /><span className="text-[10px] font-mono font-bold tracking-widest">{viewCount.toLocaleString()} VIEWS</span></div>
               <div className="pointer-events-auto">
@@ -353,6 +437,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             </div>
           </div>
 
+          {/* Comments Section */}
           <AnimatePresence>
             {showComments && (
               <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="bg-white rounded-t-[2.5rem] overflow-visible flex flex-col z-50 absolute bottom-0 w-full shadow-2xl border-t border-black/5">
@@ -371,13 +456,13 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                     )}
                     <div className="relative flex-1">
                       <MentionList />
-                      <input 
+                      <input
                         ref={inputRef}
-                        value={newComment} 
-                        onChange={handleInputChange} 
-                        onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit()} 
-                        placeholder="Share input..." 
-                        className="w-full bg-white border border-black/5 rounded-2xl px-5 py-3.5 text-sm outline-none focus:ring-2 focus:ring-crimson/10 transition-all" 
+                        value={newComment}
+                        onChange={handleInputChange}
+                        onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit()}
+                        placeholder="Share input..."
+                        className="w-full bg-white border border-black/5 rounded-2xl px-5 py-3.5 text-sm outline-none focus:ring-2 focus:ring-crimson/10 transition-all"
                       />
                     </div>
                     <button onClick={handleCommentSubmit} disabled={isSubmittingComment || !newComment.trim()} className="bg-ocean text-white p-4 rounded-2xl shadow-lg hover:bg-crimson transition-all">{isSubmittingComment ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}</button>
@@ -387,7 +472,26 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             )}
           </AnimatePresence>
         </motion.article>
-        <AnimatePresence>{isFullScreen && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black backdrop-blur-xl flex flex-col items-center justify-center overflow-hidden"><button onClick={() => { setIsFullScreen(false); setZoom(1); setPosition({ x: 0, y: 0 }); }} className="absolute top-8 right-8 p-4 bg-white/10 text-white rounded-full hover:bg-crimson transition-all"><X size={24} /></button><motion.div className="w-full h-full flex items-center justify-center" onWheel={handleWheel} onDoubleClick={handleDoubleClick} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}><motion.img src={post.mediaUrl} onMouseDown={handleMouseDown} animate={{ scale: zoom, x: position.x, y: position.y }} transition={{ type: "spring", stiffness: 200, damping: 25 }} className={`max-w-[90%] max-h-[80%] object-contain rounded-2xl shadow-2xl ${zoom > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-zoom-in"}`} draggable={false} /></motion.div></motion.div>)}</AnimatePresence>
+
+        {/* Fullscreen Overlay */}
+        <AnimatePresence>
+          {isFullScreen && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black backdrop-blur-xl flex flex-col items-center justify-center overflow-hidden">
+              <button onClick={() => { setIsFullScreen(false); setZoom(1); setPosition({ x: 0, y: 0 }); }} className="absolute top-8 right-8 p-4 bg-white/10 text-white rounded-full hover:bg-crimson transition-all"><X size={24} /></button>
+              <motion.div className="w-full h-full flex items-center justify-center" onWheel={handleWheel} onDoubleClick={handleDoubleClick} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+                <motion.img
+                  src={mediaItems[currentMediaIndex]}
+                  onMouseDown={handleMouseDown}
+                  animate={{ scale: zoom, x: position.x, y: position.y }}
+                  transition={{ type: "spring", stiffness: 200, damping: 25 }}
+                  className={`max-w-[90%] max-h-[80%] object-contain rounded-2xl shadow-2xl ${zoom > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-zoom-in"}`}
+                  draggable={false}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <AnimatePresence>{showShareModal && <PostShareModal post={post} onClose={() => setShowShareModal(false)} onSuccess={() => setShowToast(true)} />}</AnimatePresence>
         <AnimatePresence>{showToast && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[1100] bg-ocean text-white px-8 py-5 rounded-full flex items-center gap-3 shadow-2xl"><CheckCircle2 size={20} className="text-crimson" /><span className="text-xs font-black uppercase tracking-widest">Broadcast Transmitted</span></motion.div>}</AnimatePresence>
       </>
@@ -449,13 +553,13 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 )}
                 <div className="relative flex-1">
                   <MentionList />
-                  <input 
+                  <input
                     ref={inputRef}
-                    value={newComment} 
-                    onChange={handleInputChange} 
-                    onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit()} 
-                    placeholder="Share input..." 
-                    className="w-full bg-void/5 border border-black/5 rounded-2xl px-5 py-3 text-sm outline-none" 
+                    value={newComment}
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit()}
+                    placeholder="Share input..."
+                    className="w-full bg-void/5 border border-black/5 rounded-2xl px-5 py-3 text-sm outline-none"
                   />
                 </div>
                 <button onClick={handleCommentSubmit} className="bg-ocean text-white p-3.5 rounded-xl shadow-lg hover:bg-crimson transition-all"><Send size={16} /></button>

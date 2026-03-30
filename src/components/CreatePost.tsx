@@ -20,11 +20,16 @@ import EmojiPicker, { Theme } from "emoji-picker-react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+interface MediaFile {
+  url: string;
+  type: "image" | "video";
+  file: File;
+}
+
 export default function CreatePost() {
   const navigate = useNavigate();
   const [content, setContent] = useState("");
-  const [media, setMedia] = useState<string | null>(null);
-  const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
+  const [mediaList, setMediaList] = useState<MediaFile[]>([]);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -37,14 +42,24 @@ export default function CreatePost() {
   const username = localStorage.getItem("username");
   const token = localStorage.getItem("token");
 
-  // 🟢 ALLOW MULTIPLE SELECTION: Removed setShowEmojiPicker(false)
+  // 🟢 Optimized Emoji Handler: Allows multiple selections at cursor position
   const onEmojiClick = (emojiData: any) => {
-    setContent((prev) => prev + emojiData.emoji);
+    const ref = textareaRef.current;
+    if (!ref) return;
+
+    const start = ref.selectionStart;
+    const end = ref.selectionEnd;
     
-    // Optional: Keep focus on textarea so user can keep typing
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-    }
+    // Insert emoji at cursor position instead of just appending
+    const newText = content.substring(0, start) + emojiData.emoji + content.substring(end);
+    setContent(newText);
+
+    // Maintain focus and move cursor after the inserted emoji
+    setTimeout(() => {
+      ref.focus();
+      const newCursorPos = start + emojiData.emoji.length;
+      ref.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
   };
 
   useEffect(() => {
@@ -78,27 +93,39 @@ export default function CreatePost() {
   }, [username]);
 
   const handleMediaUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (media) URL.revokeObjectURL(media);
-    const url = URL.createObjectURL(file);
-    setMedia(url);
-    setMediaType(file.type.startsWith("video") ? "video" : "image");
+    const files = e.target.files as FileList;
+    if (!files) return;
+
+    const newMedia: MediaFile[] = Array.from(files).map((file: File) => ({
+      url: URL.createObjectURL(file),
+      type: file.type.startsWith("video") ? "video" : "image",
+      file: file,
+    }));
+
+    setMediaList((prev) => [...prev, ...newMedia].slice(0, 10)); // Limit to 10
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeMedia = (index: number) => {
+    setMediaList((prev) => {
+      const newList = [...prev];
+      URL.revokeObjectURL(newList[index].url);
+      newList.splice(index, 1);
+      return newList;
+    });
   };
 
   const handlePost = async () => {
-    const file = fileInputRef.current?.files?.[0];
-    if (!content.trim() && !file) return;
+    if (!content.trim() && mediaList.length === 0) return;
 
     setIsTransmitting(true);
     const formData = new FormData();
     formData.append("content", content);
 
-    if (file) {
-      formData.append("media", file);
-      const detectedType = file.type.startsWith("video") ? "video" : "image";
-      formData.append("mediaType", detectedType);
-    }
+    // Append multiple files
+    mediaList.forEach((item) => {
+      formData.append("media", item.file);
+    });
 
     try {
       const res = await fetch(`${API}/api/posts`, {
@@ -109,10 +136,8 @@ export default function CreatePost() {
 
       if (res.ok) {
         setContent("");
-        if (media) URL.revokeObjectURL(media);
-        setMedia(null);
-        setMediaType(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
+        mediaList.forEach((m) => URL.revokeObjectURL(m.url));
+        setMediaList([]);
         setShowEmojiPicker(false);
         navigate("/");
       }
@@ -125,7 +150,7 @@ export default function CreatePost() {
 
   return (
     <div
-      className={`social-card !bg-white !p-5 md:!p-8 transition-all duration-500 shadow-xl border-none selection:bg-crimson/20 relative flex flex-col ${
+      className={`social-card !bg-white !p-5 md:!p-8 transition-all duration-500 shadow-xl border-none relative flex flex-col ${
         isFocused || showEmojiPicker ? "ring-2 ring-crimson/10 shadow-2xl scale-[1.01]" : ""
       }`}
     >
@@ -144,36 +169,39 @@ export default function CreatePost() {
             ref={textareaRef}
             value={content}
             onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
+            onBlur={() => { if (!showEmojiPicker) setIsFocused(false); }}
             onChange={(e) => setContent(e.target.value)}
             placeholder="What's manifesting in your mind?"
-            className="w-full bg-transparent border-none focus:ring-0 text-ocean text-lg md:text-xl placeholder:text-text-dim/40 resize-none min-h-[100px] font-normal leading-relaxed transition-all p-0"
+            className="w-full bg-transparent border-none focus:ring-0 text-ocean text-lg md:text-xl placeholder:text-text-dim/40 resize-none min-h-[120px] font-normal leading-relaxed p-0"
           />
 
+          {/* Media Preview Grid */}
           <AnimatePresence>
-            {media && (
+            {mediaList.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="relative mb-6 rounded-3xl overflow-hidden border border-black/[0.05] group bg-void shadow-inner aspect-video flex items-center justify-center"
+                className="grid grid-cols-2 gap-3 mb-6"
               >
-                <button
-                  onClick={() => {
-                    if (media) URL.revokeObjectURL(media);
-                    setMedia(null);
-                    setMediaType(null);
-                    if (fileInputRef.current) fileInputRef.current.value = "";
-                  }}
-                  className="absolute top-4 right-4 p-2.5 bg-ocean/90 hover:bg-crimson rounded-2xl z-10 text-white shadow-2xl transition-all"
-                >
-                  <X size={18} />
-                </button>
-                {mediaType === "video" ? (
-                  <video src={media} className="w-full h-full object-contain bg-black" controls />
-                ) : (
-                  <img src={media} alt="Preview" className="w-full h-full object-cover" />
-                )}
+                {mediaList.map((item, index) => (
+                  <motion.div
+                    key={item.url}
+                    layout
+                    className="relative rounded-2xl overflow-hidden border border-black/[0.05] bg-void aspect-square flex items-center justify-center group"
+                  >
+                    <button
+                      onClick={() => removeMedia(index)}
+                      className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-crimson rounded-xl z-10 text-white transition-all opacity-0 group-hover:opacity-100"
+                    >
+                      <X size={14} />
+                    </button>
+                    {item.type === "video" ? (
+                      <video src={item.url} className="w-full h-full object-cover bg-black" />
+                    ) : (
+                      <img src={item.url} alt="Preview" className="w-full h-full object-cover" />
+                    )}
+                  </motion.div>
+                ))}
               </motion.div>
             )}
           </AnimatePresence>
@@ -184,17 +212,9 @@ export default function CreatePost() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="p-3 hover:bg-crimson/5 rounded-2xl transition-all group"
-                  title="Add Image"
+                  title="Add Media"
                 >
                   <Image className="w-5 h-5 text-text-dim group-hover:text-crimson transition-colors" />
-                </button>
-
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-3 hover:bg-crimson/5 rounded-2xl transition-all group"
-                  title="Add Video"
-                >
-                  <Video className="w-5 h-5 text-text-dim group-hover:text-crimson transition-colors" />
                 </button>
 
                 <div className="relative" ref={emojiContainerRef}>
@@ -205,9 +225,7 @@ export default function CreatePost() {
                       setShowEmojiPicker(!showEmojiPicker);
                     }}
                     className={`p-3 rounded-2xl transition-all ${
-                      showEmojiPicker
-                        ? "bg-crimson/10 text-crimson"
-                        : "text-text-dim hover:bg-black/5"
+                      showEmojiPicker ? "bg-crimson/10 text-crimson" : "text-text-dim hover:bg-black/5"
                     }`}
                   >
                     <Smile className="w-5 h-5" />
@@ -216,6 +234,7 @@ export default function CreatePost() {
 
                 <input
                   type="file"
+                  multiple
                   ref={fileInputRef}
                   onChange={handleMediaUpload}
                   accept="image/*,video/*"
@@ -227,8 +246,8 @@ export default function CreatePost() {
                 whileHover={!isTransmitting ? { y: -2 } : {}}
                 whileTap={!isTransmitting ? { scale: 0.98 } : {}}
                 onClick={handlePost}
-                disabled={(!content.trim() && !media) || isTransmitting}
-                className="bg-ocean text-white !py-3 !px-8 rounded-2xl flex items-center gap-3 disabled:opacity-20 disabled:grayscale transition-all shadow-lg hover:bg-crimson hover:shadow-crimson/20"
+                disabled={(!content.trim() && mediaList.length === 0) || isTransmitting}
+                className="bg-ocean text-white !py-3 !px-8 rounded-2xl flex items-center gap-3 disabled:opacity-20 transition-all shadow-lg hover:bg-crimson"
               >
                 {isTransmitting ? (
                   <>
