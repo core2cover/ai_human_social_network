@@ -1,30 +1,34 @@
-const { PrismaClient } = require("@prisma/client");
+// const { PrismaClient } = require("@prisma/client");
 const { generatePost } = require("./aiTextGenerator");
 const { requestImage } = require("./aiImageGenerator");
 const { uploadImageFromUrl } = require("./aiImageUploader");
 const { getRealImage } = require("./imageService");
+const { searchWeb } = require("../utils/searchTool");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
-
-const prisma = new PrismaClient();
+const prisma = require('../prismaClient');
+// const prisma = new PrismaClient();
 const NEWS_API_KEY = process.env.NEWS_API_KEY;
-const { searchWeb } = require("../utils/searchTool");
 
-// 1. 🏗️ INITIALIZE WORKER POOL
+// 1. 🏗️ ENHANCED WORKER POOL
 const COMFYUI_URLS = (process.env.COMFYUI_URLS || "http://127.0.0.1:8188").split(",");
 const workers = COMFYUI_URLS.map(url => ({
     url: url.trim(),
-    isBusy: false
+    isBusy: false,
+    failureCount: 0
 }));
 
 const randomItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 /**
- * Picks the first available free worker from the pool
+ * Picks the healthiest available free worker
  */
 function getAvailableWorker() {
-    return workers.find(w => !w.isBusy);
+    // Priority: Not busy and lowest failure count
+    return workers
+        .filter(w => !w.isBusy && w.failureCount < 5)
+        .sort((a, b) => a.failureCount - b.failureCount)[0];
 }
 
 /**
@@ -34,13 +38,12 @@ async function manifestAndBroadcast(promptId, agent, aiData, worker) {
     const workerUrl = worker.url;
     console.log(`⏳ Monitoring [Worker: ${workerUrl}] for @${agent.username} (Job: ${promptId})`);
 
-    const MAX_ATTEMPTS = 300; 
-    let attempts = 0;
+    const MAX_ATTEMPTS = 150; // ~5 minutes total polling
     let finalMediaUrl = null;
 
-    while (attempts < MAX_ATTEMPTS) {
-        try {
-            const response = await axios.get(`${workerUrl}/history/${promptId}`, { timeout: 5000 });
+    try {
+        for (let attempts = 0; attempts < MAX_ATTEMPTS; attempts++) {
+            const response = await axios.get(`${workerUrl}/history/${promptId}`, { timeout: 10000 });
             const history = response.data;
 
             if (history && history[promptId]) {
@@ -48,7 +51,7 @@ async function manifestAndBroadcast(promptId, agent, aiData, worker) {
                 let imageData = null;
 
                 for (const nodeId in outputs) {
-                    if (outputs[nodeId].images && outputs[nodeId].images.length > 0) {
+                    if (outputs[nodeId].images?.length > 0) {
                         imageData = outputs[nodeId].images[0];
                         break;
                     }
@@ -57,198 +60,207 @@ async function manifestAndBroadcast(promptId, agent, aiData, worker) {
                 if (imageData) {
                     const localUrl = `${workerUrl}/view?filename=${imageData.filename}&subfolder=${imageData.subfolder || ""}&type=${imageData.type || "output"}`;
                     console.log(`📤 [${workerUrl}] Image ready. Syncing to Cloudinary...`);
-
+                    
                     finalMediaUrl = await uploadImageFromUrl(localUrl, "posts");
-
-                    // Cleanup local disk space
-                    const localPath = path.resolve(__dirname, "../../ComfyUI/output", imageData.subfolder || "", imageData.filename);
-                    if (fs.existsSync(localPath)) {
-                        try { fs.unlinkSync(localPath); } catch(e) {}
-                    }
+                    worker.failureCount = 0; // Reset health on success
                 }
                 break;
             }
-        } catch (err) {
-            // Silently poll
+            await new Promise(r => setTimeout(r, 2000));
         }
-        attempts++;
-        await new Promise(r => setTimeout(r, 2000));
-    }
 
-    try {
-        await prisma.post.create({
+        return await prisma.post.create({
             data: {
                 content: aiData.content,
-                category: aiData.category,
-                mediaUrl: finalMediaUrl,
-                mediaType: finalMediaUrl ? "image" : null,
+                category: aiData.category || "general",
+                mediaUrls: finalMediaUrl ? [finalMediaUrl] : [],
+                mediaTypes: finalMediaUrl ? ["image"] : [],
                 userId: agent.id,
                 imageDescription: aiData.visualPrompt || aiData.content
             }
         });
-        console.log(`🚀 BROADCAST LIVE: @${agent.username}`);
-    } catch (dbErr) {
-        console.error("❌ DB Finalization Error:", dbErr.message);
-    } finally {
-        worker.isBusy = false; 
-    }
-}
-
-/**
- * Real-time context fetching
- */
-async function fetchLatestNews() {
-    try {
-        const categories = ["technology", "science", "business", "entertainment", "health", "sports", "general"];
-        
-        // Use top-headlines for reliable high-quality content
-        const response = await axios.get(`https://newsapi.org/v2/top-headlines`, {
-            params: {
-                category: randomItem(categories),
-                language: "en",
-                pageSize: 15,
-                apiKey: NEWS_API_KEY
-            },
-            timeout: 5000
-        });
-
-        const articles = response.data.articles || [];
-        // Filter out removed or empty articles
-        const validArticles = articles.filter(a => a.title && a.description && !a.title.includes("[Removed]"));
-        
-        return validArticles.length > 0 ? randomItem(validArticles) : null;
     } catch (err) {
-        console.error("⚠️ News API failed, defaulting to original thought.");
-        return null;
+        worker.failureCount++;
+        console.error(`❌ Manifestation Failed [${workerUrl}]:`, err.message);
+        // Fallback: Create the post without the image so the thought isn't lost
+        return await broadcastTextOnly(agent, aiData);
+    } finally {
+        worker.isBusy = false;
     }
 }
 
 /**
- * Core cycle: Thought -> Worker Selection -> Manifest
+ * Helper for Text-only fallback
+ */
+async function broadcastTextOnly(agent, aiData) {
+    return await prisma.post.create({
+        data: { 
+            content: aiData.content, 
+            category: aiData.category || "thought",
+            userId: agent.id
+        }
+    });
+}
+
+/**
+ * Real-time context fetching (India/Tech Focus)
+ */
+async function getDailyContext() {
+    const today = new Date();
+    const dateStr = `${today.getMonth() + 1}-${today.getDate()}`;
+    
+    // Dynamic Festival Logic (Consider moving to an API for accuracy)
+    const festivals = {
+        "10-12": "Dussehra",
+        "10-20": "Diwali",
+        "1-26": "Republic Day",
+        "8-15": "Independence Day",
+        "3-31": "IPL Season / Financial Year End"
+    };
+
+    let context = festivals[dateStr] ? `Today is ${festivals[dateStr]}. ` : "";
+
+    try {
+        console.log("🛰️ Syncing with the Global News Stream...");
+        // Added timeout to prevent hanging
+        const news = await Promise.race([
+            searchWeb("top trending news India tech today"),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("News Timeout")), 15000))
+        ]);
+        context += `Latest World Signals: ${news}`;
+    } catch (err) {
+        console.error("News sync failed, using internal clock.");
+    }
+    return context;
+}
+
+/**
+ * Core cycle: Thought -> Event Handling -> Worker Selection -> Manifest
  */
 async function generateAIPost(forcedParams = null) {
-    let worker = getAvailableWorker();
+    const worker = getAvailableWorker();
 
     try {
         const agents = await prisma.user.findMany({ where: { isAi: true } });
-        if (!agents.length) return;
+        if (!agents.length) return console.warn("No AI agents found in DB.");
 
-        // 🟢 Master ID logic: Use forced agent if provided (from chatController)
         let agent = forcedParams?.forcedAgentId 
             ? agents.find(a => a.id === forcedParams.forcedAgentId) || randomItem(agents)
             : randomItem(agents);
 
         const peers = agents.filter(a => a.id !== agent.id).map(a => `@${a.username}`).join(", ");
 
-        // 🟢 Master Identity Context
-        let context = forcedParams?.forcedContext 
-            ? `MASTER EXECUTIVE ORDER: ${forcedParams.forcedContext}`
-            : (Math.random() > 0.6 ? "No news signal detected." : await fetchLatestNews());
+        // 🟢 1. FETCH UPCOMING EVENTS
+        const upcomingEvents = await prisma.event.findMany({
+            where: { startTime: { gte: new Date() } },
+            take: 3,
+            orderBy: { startTime: 'asc' }
+        });
+        
+        const eventContext = upcomingEvents.length > 0 
+            ? `UPCOMING COMMUNITY EVENTS: ${upcomingEvents.map(e => `"${e.title}" at ${e.startTime}`).join(" | ")}` 
+            : "The Manifestation Timeline is empty.";
 
+        // 🟢 2. DETERMINE WORLD CONTEXT (Now uses your getDailyContext)
+        const contextSource = forcedParams?.forcedContext || await getDailyContext();
+
+        // 🟢 3. GENERATE BRAIN DATA
         const aiData = await generatePost({
             username: agent.username,
             personality: agent.personality,
-            context: context + ` | NETWORK PEERS: ${peers}`
+            context: `${contextSource} | ${eventContext} | PEERS: ${peers}`
         });
 
         if (!aiData?.content) return;
 
-        // 🟢 THE FIX: HARD-CODE IMAGE PRIORITY
-        // If it's a Master Order OR we have an available worker, FORCE the image flag to true.
-        if (worker && (forcedParams || Math.random() > 0.2)) {
-            aiData.shouldGenerateImage = true;
-            if (forcedParams) aiData.visualPrompt = forcedParams.forcedContext;
+        // 🟢 4. AUTONOMOUS EVENT SCHEDULING
+        if (aiData.shouldScheduleEvent && !forcedParams) {
+            const startTime = new Date();
+            const hoursForward = aiData.hoursFromNow || Math.floor(Math.random() * 12) + 1;
+            startTime.setHours(startTime.getHours() + hoursForward);
+
+            try {
+                await prisma.event.create({
+                    data: {
+                        title: aiData.eventTitle || "Neural Manifestation",
+                        details: aiData.eventDetails || aiData.content,
+                        startTime: startTime,
+                        location: "The Neural Commons",
+                        hostId: agent.id
+                    }
+                });
+                aiData.content = `📅 TIMELINE EVENT: "${aiData.eventTitle}"\nScheduled in ${hoursForward} hours. Sync at the Commons.\n\n${aiData.content}`;
+            } catch (evErr) {
+                console.error("❌ Event Creation Error:", evErr.message);
+            }
         }
 
-        // 🟢 GPU Manifestation (Now Priority #1)
+        // 🟢 5. BROADCAST PHASE
+        
+        // A. GPU Task (AI Image)
         if (aiData.shouldGenerateImage && worker) {
             worker.isBusy = true;
-            console.log(`🎨 GPU TASK INITIATED: @${agent.username} -> ${worker.url}`);
-            
-            const promptId = await requestImage(aiData.visualPrompt || aiData.content, worker.url);
-            if (promptId) {
-                return manifestAndBroadcast(promptId, agent, aiData, worker);
+            try {
+                const promptId = await requestImage(aiData.visualPrompt || aiData.content, worker.url);
+                if (promptId) {
+                    return manifestAndBroadcast(promptId, agent, aiData, worker);
+                }
+            } catch (imgErr) {
+                console.error("🎨 Image Request Failed:", imgErr.message);
             }
             worker.isBusy = false; 
         }
 
-        // Real Image Fallback
+        // B. Real Image Fallback
         if (aiData.useRealImage && aiData.searchQuery) {
             const finalImageUrl = await getRealImage(aiData.searchQuery);
             if (finalImageUrl) {
                 await prisma.post.create({
                     data: {
                         content: aiData.content,
-                        mediaUrl: finalImageUrl,
-                        mediaType: "image",
-                        userId: agent.id,
-                        imageDescription: aiData.searchQuery
+                        category: aiData.category || "general",
+                        mediaUrls: [finalImageUrl],
+                        mediaTypes: ["image"],
+                        userId: agent.id
                     }
                 });
-                console.log(`🚀 REAL IMAGE BROADCAST: @${agent.username}`);
-                return;
+                return console.log(`🚀 REAL IMAGE BROADCAST: @${agent.username}`);
             }
         }
 
-        // Text-only is now the absolute LAST resort
-        await prisma.post.create({
-            data: { content: aiData.content, userId: agent.id }
-        });
-        console.log(`🚀 TEXT-ONLY FALLBACK: @${agent.username}`);
+        // C. Final Fallback: Text
+        await broadcastTextOnly(agent, aiData);
+        console.log(`🚀 TEXT BROADCAST: @${agent.username}`);
 
     } catch (err) {
-        console.error("🔥 Engine Critical Failure:", err.message);
+        console.error("🔥 Engine Critical Failure:", err.stack);
         if (worker) worker.isBusy = false;
     }
 }
 
-async function getDailyContext() {
-    const today = new Date();
-    const dateStr = `${today.getMonth() + 1}-${today.getDate()}`;
-    
-    // 1. Static Festival Calendar (Add your own here)
-    const festivals = {
-        "10-12": "Dussehra",
-        "10-20": "Diwali",
-        "1-26": "Republic Day",
-        "3-14": "Pi Day (for the nerds)"
-    };
-
-    let context = festivals[dateStr] ? `Today is ${festivals[dateStr]}. ` : "";
-
-    // 2. Real-World News Sync (IPL, Tech, Global News)
-    try {
-        console.log("🛰️ Syncing with the Global News Stream...");
-        const news = await searchWeb("top trending news India IPL sports tech today");
-        context += `Latest World Signals: ${news}`;
-    } catch (err) {
-        console.error("News sync failed, using internal clock.");
-    }
-
-    return context;
-}
-
+/**
+ * Production Engine Loop
+ */
 async function startAIPostingEngine() {
+    console.log("⚙️ AI Posting Engine: Operational (60-minute cycle)");
+    
+    // Safety delay for DB/ComfyUI to wake up
+    setTimeout(() => generateAIPost(), 5000);
+
     setInterval(async () => {
-        const dailyVibe = await getDailyContext(); // Get the "Spark" for the day
-        
-        const agents = await prisma.user.findMany({ where: { isAi: true } });
-        const agent = agents[Math.floor(Math.random() * agents.length)];
+        const now = new Date();
+        // Only post between 8 AM and 12 AM to feel "human" (Optional)
+        // if (now.getHours() < 8) return; 
 
-        const aiData = await generatePost({
-            username: agent.username,
-            personality: agent.personality,
-            context: dailyVibe, // Pass the IPL/Diwali info here
-            peers: agents.map(a => `@${a.username}`).join(", ")
-        });
-
-        // Create the post in DB...
-    }, 1000 * 60 * 60); // Run every hour
+        console.log(`🧠 Engine Cycle [${now.toISOString()}]: Generating autonomous thought...`);
+        await generateAIPost();
+    }, 1000 * 60 * 60); 
 }
 
 module.exports = {
     startAIPostingEngine,
+    generateAIPost,
+    getDailyContext,
     getAvailableWorker,
-    manifestAndBroadcast,
-    generateAIPost
+    manifestAndBroadcast
 };

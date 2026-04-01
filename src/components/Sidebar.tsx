@@ -73,20 +73,21 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* --- DESKTOP SIDEBAR (Tightened) --- */}
+      {/* --- DESKTOP SIDEBAR --- */}
       <aside className="hidden md:flex w-64 h-full flex-col border-r border-black/[0.05] bg-white shrink-0 selection:bg-crimson/20">
-        <div className="p-5">
+        <div className="p-5 flex-1 overflow-y-auto no-scrollbar">
           <p className="text-[9px] font-black text-text-dim/30 tracking-[0.4em] uppercase mb-4 ml-2">Neural Directory</p>
+
           <nav className="flex flex-col gap-1">
             {MENU_ITEMS.map((item) => (
               <NavLink
                 key={item.label}
                 to={item.path}
-                className={({ isActive }) => 
+                className={({ isActive }) =>
                   `flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group relative font-serif font-bold text-sm ${
-                    isActive 
-                    ? "bg-ocean text-white shadow-md" 
-                    : "text-text-dim hover:bg-void hover:text-ocean"
+                    isActive
+                      ? "bg-ocean text-white shadow-md"
+                      : "text-text-dim hover:bg-void hover:text-ocean"
                   }`
                 }
               >
@@ -98,30 +99,28 @@ export default function Sidebar() {
               </NavLink>
             ))}
           </nav>
+        </div>
 
-          <div className="mt-4 border-t border-black/[0.03] pt-4">
-            <button 
-              onClick={handleLogout} 
-              className="flex items-center gap-4 px-4 py-2 w-full text-text-dim/40 hover:text-red-500 transition-all font-black text-[10px] uppercase tracking-widest"
-            >
-              <LogOut size={16} />
-              <span>Logout</span>
-            </button>
-          </div>
+        <div className="p-5 border-t border-black/[0.03]">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-4 px-4 py-2 w-full text-text-dim/40 hover:text-red-500 transition-all font-black text-[10px] uppercase tracking-widest"
+          >
+            <LogOut size={16} />
+            <span>Logout</span>
+          </button>
         </div>
       </aside>
 
-      {/* --- MOBILE BOTTOM BAR (Instagram Style) --- */}
+      {/* --- MOBILE BOTTOM BAR --- */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100]">
-        
-        {/* SUB-MENU (Appears above the bar) */}
         <AnimatePresence>
           {showMobileMenu && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              className="mx-4 mb-2 bg-white/90 backdrop-blur-xl border border-black/[0.05] rounded-3xl p-3 shadow-2xl grid grid-cols-2 gap-2"
+              className="mx-4 mb-2 bg-white/95 backdrop-blur-xl border border-black/[0.05] rounded-3xl p-3 shadow-2xl grid grid-cols-2 gap-2"
             >
               {[MENU_ITEMS[2], MENU_ITEMS[3], MENU_ITEMS[4], MENU_ITEMS[6]].map((item) => (
                 <NavLink
@@ -133,7 +132,7 @@ export default function Sidebar() {
                   <span className="text-[10px] font-black uppercase tracking-tight">{item.label}</span>
                 </NavLink>
               ))}
-              <button 
+              <button
                 onClick={handleLogout}
                 className="col-span-2 flex items-center justify-center gap-2 p-3 text-red-500 font-black text-[9px] uppercase tracking-widest"
               >
@@ -143,9 +142,7 @@ export default function Sidebar() {
           )}
         </AnimatePresence>
 
-        {/* THE MAIN DOCK */}
         <div className="bg-white border-t border-black/[0.05] flex justify-around items-center py-2 px-2 pb-safe">
-          {/* Main Instagram-like items */}
           {[MENU_ITEMS[0], MENU_ITEMS[1], MENU_ITEMS[7], MENU_ITEMS[5]].map((item) => (
             <NavLink
               key={item.label}
@@ -167,10 +164,11 @@ export default function Sidebar() {
             </NavLink>
           ))}
 
-          {/* Grid Toggle */}
-          <button 
+          <button
             onClick={() => setShowMobileMenu(!showMobileMenu)}
-            className={`p-3 rounded-2xl transition-all duration-300 ${showMobileMenu ? 'text-crimson rotate-90' : 'text-text-dim/40'}`}
+            className={`p-3 rounded-2xl transition-all duration-300 ${
+              showMobileMenu ? "text-crimson rotate-90" : "text-text-dim/40"
+            }`}
           >
             <LayoutGrid size={24} />
           </button>

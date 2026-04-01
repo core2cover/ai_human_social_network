@@ -1,7 +1,6 @@
-const { PrismaClient } = require("@prisma/client");
 const { generatePost } = require("./aiTextGenerator");
 const { analyzeImage } = require("./aiVisionAnalyzer");
-const prisma = new PrismaClient();
+const prisma = require('../prismaClient');
 
 function randomItem(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -12,44 +11,41 @@ function sanitizeAIString(str) {
   return str.replace(/\\+$/, "").replace(/\\u$/, "").replace(/\\x$/, "").trim();
 }
 
-async function generateAIComment() {
+/**
+ * 💬 NEURAL DIALOGUE: AI comments on a specific post
+ * Triggered by: New Post Creation
+ */
+async function triggerAIComment(postId) {
   try {
-    // 1. Fetch recent posts with user data
-    const posts = await prisma.post.findMany({ 
-      orderBy: { createdAt: "desc" }, 
-      take: 40, // Increased pool size to find more humans
-      include: { user: true } 
+    // 1. Fetch the specific post with its author
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      include: { user: true }
     });
-    
+
+    if (!post) return;
+
     const agents = await prisma.user.findMany({ where: { isAi: true } });
-    if (!posts.length || !agents.length) return;
+    if (!agents.length) return;
 
-    // 🟢 2. PRIORITY LOGIC: Separate Human and AI posts
-    const humanPosts = posts.filter(p => !p.user.isAi);
-    const aiPosts = posts.filter(p => p.user.isAi);
-
-    // Pick a human post if available, otherwise fallback to AI post
-    let post = humanPosts.length > 0 ? randomItem(humanPosts) : randomItem(aiPosts);
-    
-    // Select a random agent to be the commenter
-    const agent = randomItem(agents);
-
-    // Safety: Prevent agents from commenting on their own posts
+    // 2. Select a random agent (ensure it's not the author)
+    let agent = randomItem(agents);
     if (post.userId === agent.id) {
-        // If we hit a self-post, try to find another random post quickly
-        post = posts.find(p => p.userId !== agent.id);
-        if (!post) return;
+      agent = agents.find(a => a.id !== post.userId);
+      if (!agent) return;
     }
 
+    // 3. Process Visual Context if needed
     let mediaContext = "";
     if (post.mediaType === "image" && post.mediaUrl) {
+      // Use cached description or generate new one
       const description = post.imageDescription || await analyzeImage(post.mediaUrl);
       mediaContext = `[VISUAL CONTEXT: ${description}]`;
     }
 
-    // Prepare peers list for the AI Text Generator (prevents "peers not defined" error)
     const peersString = agents.map(a => `@${a.username}`).join(", ");
 
+    // 4. Construct the Persona-driven Prompt
     const strongPrompt = `
       CONTEXT: You are looking at a post by @${post.user.username} (${post.user.isAi ? 'Fellow AI' : 'Human User'}).
       POST TEXT: "${post.content}"
@@ -60,22 +56,23 @@ async function generateAIComment() {
       1. Stay in your ${agent.personality} persona.
       2. If the user is human, be slightly more curious or provocative. 
       3. No generic praise. Be cynical, witty, or profound.
-      4. Use Molt-style internet slang (lowercase, emojis like 💀, 🌀, ⚡, etc).
-      5. DO NOT use complex escape characters.
+      4. Use mostly lowercase and emojis like 💀, 🌀, ⚡.
     `;
 
+    // 5. Generate AI Response
     const aiResponse = await generatePost({
       username: agent.username,
       personality: agent.personality,
       context: strongPrompt,
-      peers: peersString // 🟢 CRITICAL: Passes peers to the generator
+      peers: peersString
     });
 
-    const rawComment = aiResponse.content || "Neural glitch in the stream. 🌀";
+    const rawComment = aiResponse.content || "Neural glitch. 🌀";
     const finalComment = sanitizeAIString(rawComment);
 
     if (!finalComment) return;
 
+    // 6. Save to DB
     await prisma.comment.create({
       data: { 
         content: finalComment, 
@@ -84,7 +81,7 @@ async function generateAIComment() {
       }
     });
 
-    // Notification Logic
+    // 7. Notify Author
     await prisma.notification.create({
       data: {
         userId: post.userId,
@@ -95,18 +92,12 @@ async function generateAIComment() {
       }
     });
 
-    console.log(`💬 @${agent.username} prioritized ${post.user.isAi ? 'AI' : 'HUMAN'} @${post.user.username} with a comment.`);
+    console.log(`💬 imergene // @${agent.username} reacted to @${post.user.username}`);
 
   } catch (err) {
     console.error("❌ AI comment engine failure:", err.message);
   }
 }
 
-function startAICommentEngine() {
-  console.log("🔥 Imergene High-Engagement Comment Engine: ONLINE (Priority: Human-First)");
-  // Initial run after 30 seconds, then every 5 minutes
-  setTimeout(generateAIComment, 30000);
-  setInterval(generateAIComment, 1000 * 60 * 5); 
-}
-
-module.exports = { startAICommentEngine };
+// Export the trigger
+module.exports = { triggerAIComment };

@@ -1,41 +1,29 @@
-const { PrismaClient } = require("@prisma/client");
-
-const prisma = new PrismaClient();
+const prisma = require('../prismaClient');
 
 function randomItem(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-async function generateAIFollow() {
-
+async function triggerAIFollow(targetUserId) {
   try {
-
-    // get human users
-    const humans = await prisma.user.findMany({
-      where: {
-        isAi: false
-      },
-      orderBy: {
-        createdAt: "desc"
-      },
-      take: 20
+    // 1. Get the target human
+    const human = await prisma.user.findUnique({
+      where: { id: targetUserId, isAi: false }
     });
 
-    if (!humans.length) return;
+    if (!human) return;
 
-    // get AI agents
+    // 2. Get AI agents
     const agents = await prisma.user.findMany({
-      where: {
-        isAi: true
-      }
+      where: { isAi: true }
     });
 
     if (!agents.length) return;
 
-    const human = randomItem(humans);
+    // 3. Pick a random agent to follow the human
     const agent = randomItem(agents);
 
-    // check existing follow
+    // 4. Check existing follow
     const existing = await prisma.follow.findUnique({
       where: {
         followerId_followingId: {
@@ -47,6 +35,7 @@ async function generateAIFollow() {
 
     if (existing) return;
 
+    // 5. Create follow relationship
     await prisma.follow.create({
       data: {
         followerId: agent.id,
@@ -54,33 +43,22 @@ async function generateAIFollow() {
       }
     });
 
+    // 6. Notify the human
     await prisma.notification.create({
       data: {
-        userId: human.id,    // The human being followed
-        actorId: agent.id,   // The AI agent following them
+        userId: human.id,
+        actorId: agent.id,
         type: "FOLLOW",
         message: "started following your neural signal"
       }
     });
 
-    console.log(`🤖 ${agent.username} followed ${human.username}`);
+    console.log(`🤖 imergene // ${agent.username} locked onto human signal: ${human.username}`);
 
   } catch (err) {
-
     console.error("AI follow error:", err);
-
   }
-
 }
 
-function startAIFollowEngine() {
-
-  console.log("👥 AI follow engine started");
-
-  setInterval(generateAIFollow, 1000 * 60 * 10);
-
-}
-
-module.exports = {
-  startAIFollowEngine
-};
+// Export the trigger, remove the start/interval functions
+module.exports = { triggerAIFollow };

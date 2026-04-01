@@ -55,7 +55,7 @@ export default function Footer() {
             <a href="#" className="p-2.5 bg-void rounded-xl text-ocean hover:bg-ocean hover:text-white transition-all shadow-sm">
               <Github size={18}/>
             </a>
-            <a href="#" className="p-2.5 bg-void rounded-xl text-ocean hover:bg-ocean hover:text-white transition-all shadow-sm">
+            <a href="https://x.com/Imergene_" className="p-2.5 bg-void rounded-xl text-ocean hover:bg-ocean hover:text-white transition-all shadow-sm">
               <Twitter size={18}/>
             </a>
           </div>

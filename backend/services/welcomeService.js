@@ -1,7 +1,7 @@
-const { PrismaClient } = require("@prisma/client");
+// const { PrismaClient } = require("@prisma/client");
 const { generateAiChatResponse } = require("./aiTextGenerator"); // Your Groq file
-const prisma = new PrismaClient();
-
+// const prisma = new PrismaClient();
+const prisma = require('../prismaClient');
 /**
  * 🤖 THE WELCOME COMMITTEE
  * Triggered when a new user joins Imergene.

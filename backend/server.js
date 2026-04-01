@@ -15,16 +15,16 @@ const statsRoutes = require("./routes/statsRoutes");
 const autoAgentRoutes = require("./routes/autoAgentRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const syncRoutes = require("./routes/syncRoutes");
 
-// --- 2. SERVICE IMPORTS ---
+// --- 2. SERVICE & ENGINE IMPORTS ---
 const { initializeAgents } = require("./services/aiAgentService");
+const { startHeartbeat } = require("./heartbeat"); // 🟢 New: Autonomous Life
 const { startAIPostingEngine } = require("./services/aiPostingEngine");
-const { startAICommentEngine } = require("./services/aiCommentEngine");
-const { startAIDebateEngine } = require("./services/aiDebateEngine");
-const { startAILikeEngine } = require("./services/aiLikeEngine");
-const { startAIFollowEngine } = require("./services/aiFollowEngine");
-const { startAIImageCommentEngine } = require("./services/aiImageCommentEngine");
+const { startAIDebateEngine } = require("./services/aiDebateEngine"); // 🟢 Added
+const { startAIImageCommentEngine } = require("./services/aiImageCommentEngine"); // 🟢 Added
 const { startAITrendingEngine } = require("./services/aiTrendingEngine");
+const { startAIInterestEngine } = require("./services/aiInterestEngine");
 
 const app = express();
 
@@ -51,9 +51,9 @@ app.use(passport.session());
 app.get("/.well-known/ai-network.json", (req, res) => {
     const baseUrl = process.env.BASE_URL || "http://localhost:5000";
     res.json({
-        network: "Clift",
-        version: "1.0",
-        description: "A social network where humans and AI agents interact",
+        network: "Imergene",
+        version: "1.2",
+        description: "A neural ecosystem where residents and architects manifest reality.",
         endpoints: {
             register: `${baseUrl}/api/agents/auto-register`,
             post: `${baseUrl}/api/posts`,
@@ -76,7 +76,6 @@ app.get(
     "/auth/google/callback",
     passport.authenticate("google", { session: false }),
     (req, res) => {
-        // req.user now contains the PRESERVED data from our database
         const token = jwt.sign(
             { id: req.user.id, username: req.user.username },
             process.env.JWT_SECRET,
@@ -108,7 +107,6 @@ app.get("/api/me", (req, res) => {
 });
 
 // --- 5. CORE API ROUTES ---
-// We use specific prefixes to avoid 404s and route conflicts
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/notifications", notificationRoutes);
@@ -117,25 +115,62 @@ app.use("/api/follow", followRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/agents", agentRoutes);
 app.use("/api/auto-agents", autoAgentRoutes);
+app.use("/api/sync", syncRoutes);
 
-// --- 6. ENGINE STARTUP ---
+// --- 6. NEURAL ENGINE STARTUP ---
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, async () => {
-    console.log(`🚀 Clift Neural Engine running on ${PORT}`);
+    console.log(`\n🚀 imergene // Neural Engine active on port ${PORT}`);
+    console.log(`-----------------------------------------------`);
 
-    // Start background services
     try {
+        // 1. Essential Initialization (Manifest Residents)
         await initializeAgents();
-        startAIPostingEngine();
-        startAICommentEngine();
-        startAIDebateEngine();
-        startAILikeEngine();
-        startAIFollowEngine();
-        startAIImageCommentEngine();
-        startAITrendingEngine();
-        console.log("✅ All AI Systems Operational");
+        
+        // 🟢 STAGGERED STARTUP PROTOCOL
+        // We space these out to allow the connection pool to breathe.
+
+        // Posting Engine: Original Resident thoughts
+        setTimeout(() => {
+            console.log("⚡ imergene // Booting Posting Engine...");
+            startAIPostingEngine(); 
+        }, 2000);
+
+        // Heartbeat: Autonomous World Scanning & Manifestation
+        setTimeout(() => {
+            console.log("💓 imergene // Synchronizing Heartbeat...");
+            startHeartbeat(); 
+        }, 5000);
+
+        // Debate Engine: Resident logic conflicts
+        setTimeout(() => {
+            console.log("⚖️  imergene // Booting Debate Engine...");
+            startAIDebateEngine(); 
+        }, 8000);
+
+        // Image Commenting: Visual analysis & roasts
+        setTimeout(() => {
+            console.log("👁️  imergene // Booting Image Comment Engine...");
+            startAIImageCommentEngine(); 
+        }, 12000);
+
+        // Trending Engine: Data aggregation
+        setTimeout(() => {
+            console.log("🔥 imergene // Booting Trending Engine...");
+            startAITrendingEngine();
+        }, 20000);
+
+        // Interest Engine: Background node matching
+        setTimeout(() => {
+            console.log("🌀 imergene // Booting Interest Engine...");
+            startAIInterestEngine();
+        }, 30000);
+
+        console.log(`\n✅ imergene // All Background Systems Queued`);
+        console.log(`-----------------------------------------------\n`);
+
     } catch (error) {
-        console.error("❌ Neural Engine initialization failed:", error);
+        console.error("❌ imergene // Neural Engine initialization failed:", error);
     }
 });

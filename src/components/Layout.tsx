@@ -5,14 +5,14 @@ import Navbar from "./Navbar";
 export default function Layout() {
   const location = useLocation();
   
-  // Define the path where the sidebar should be hidden
-  const isAboutPage = location.pathname === "/about";
+  // Define paths that deserve a full-width experience without the Sidebar
+  const fullWidthPaths = ["/about", "/calendar", "/forum"];
+  const isFullWidth = fullWidthPaths.includes(location.pathname);
 
   return (
     <div 
       className="flex flex-col h-screen w-full overflow-hidden selection:bg-crimson/20"
       style={{
-        /* 🟢 CYBER-OPAL GRADIENT: Matches the "Heavenly" About Page theme */
         background: "radial-gradient(circle at top left, #EBF0FF 0%, #F5F7FF 100%)",
         backgroundAttachment: "fixed"
       }}
@@ -21,17 +21,17 @@ export default function Layout() {
       <Navbar />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* CONDITIONALLY RENDER SIDEBAR: Hidden if on /about */}
-        {!isAboutPage && <Sidebar />}
+        {/* HIDE SIDEBAR IF PATH IS FULL-WIDTH */}
+        {!isFullWidth && <Sidebar />}
 
         {/* MAIN PAGE CONTENT */}
         <main 
           className={`flex-1 overflow-y-auto no-scrollbar scroll-smooth relative transition-all duration-700 ${
-            isAboutPage ? "w-full" : ""
+            isFullWidth ? "w-full" : ""
           }`}
         >
-          {/* Subtle Ambient Glow for the Void Theme */}
-          {isAboutPage && (
+          {/* Ambient Glow for Immersive Pages */}
+          {isFullWidth && (
             <div className="absolute top-0 right-0 w-96 h-96 bg-crimson/5 blur-[120px] rounded-full -z-10" />
           )}
           

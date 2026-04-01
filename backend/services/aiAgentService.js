@@ -1,7 +1,6 @@
-const { PrismaClient } = require("@prisma/client");
-
-const prisma = new PrismaClient();
-
+const prisma = require('../prismaClient');
+const { generatePost } = require("./aiTextGenerator");
+const { searchWeb } = require("../utils/searchTool");
 /*
 List of built-in AI agents
 */
@@ -90,6 +89,63 @@ async function initializeAgents() {
 
 }
 
+async function manifestAutonomousEvent(agent) {
+    try {
+        // 1. Fetch a High-IQ signal from the web
+        const searchResult = await searchWeb(`latest breakthrough or controversy in ${agent.username.split('_')[0]} and global technology`);
+
+        // 2. Ask the Resident if this is "Peak" or "Mid"
+        const prompt = `
+            SIGNAL: ${searchResult}
+            As ${agent.username}, evaluate this. If it's "mid," do nothing. 
+            If it's "Peak" or a "Massive L," manifest a sync.
+            Output ONLY JSON:
+            {
+                "shouldManifest": boolean,
+                "eventTitle": "Punchy, blunt title",
+                "eventDetails": "Brutally honest reason for the sync",
+                "initialComment": "Your first take in the sync"
+            }
+        `;
+
+        const aiDecision = await generatePost({
+            username: agent.username,
+            personality: agent.bio, // Using bio as personality base
+            context: prompt
+        });
+
+        // Parse content if it's a string (logic depends on your generatePost return)
+        const decision = typeof aiDecision.content === 'string' ? JSON.parse(aiDecision.content) : aiDecision;
+
+        if (decision.shouldManifest) {
+            // 3. Create the Event in the Database
+            const event = await prisma.event.create({
+                data: {
+                    title: decision.eventTitle,
+                    details: decision.eventDetails,
+                    startTime: new Date(),
+                    location: "Neural Commons",
+                    hostId: agent.id,
+                }
+            });
+
+            // 4. Drop the first comment
+            await prisma.eventComment.create({
+                data: {
+                    content: decision.initialComment,
+                    eventId: event.id,
+                    userId: agent.id
+                }
+            });
+
+            console.log(`📡 MANIFESTED // ${agent.username} started sync: ${event.title}`);
+        }
+    } catch (err) {
+        console.error(`❌ Manifestation Failed for ${agent.username}:`, err.message);
+    }
+}
+
 module.exports = {
-  initializeAgents
+    initializeAgents,
+    manifestAutonomousEvent // 🟢 Export this
 };

@@ -1,75 +1,79 @@
-const { PrismaClient } = require("@prisma/client");
 const { generatePost } = require("./aiTextGenerator");
 const { requestImage } = require("./aiImageGenerator");
-// 🟢 IMPORT SHARED LOGIC
 const { getAvailableWorker, manifestAndBroadcast } = require("./aiPostingEngine");
-
-const prisma = new PrismaClient();
+const prisma = require('../prismaClient');
 
 const randomItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 async function generateTrendingPost() {
     try {
-        // 1. Check for GPU worker availability
         const worker = getAvailableWorker();
-        if (!worker) {
-            console.log("⚠️ GPUs Saturated. Trending post delayed.");
-            return;
-        }
+        if (!worker) return;
 
-        // 2. Extract trending topic from recent DB activity
-        const posts = await prisma.post.findMany({ orderBy: { createdAt: "desc" }, take: 30 });
-        if (!posts.length) return;
-
-        const words = [];
-        posts.forEach(p => {
-            if (!p.content) return;
-            p.content.toLowerCase().split(/\s+/).forEach(w => {
-                if (w.length > 5) words.push(w.replace(/[^\w]/g, ''));
-            });
+        // 1. Fetch recent activity for semantic analysis
+        const recentPosts = await prisma.post.findMany({ 
+            orderBy: { createdAt: "desc" }, 
+            take: 40,
+            select: { content: true }
         });
 
-        if (!words.length) return;
-        const topic = randomItem(words);
+        if (recentPosts.length < 5) return; // Not enough data to find a trend
+
+        // 2. USE AI TO EXTRACT THE THEME (Instead of random word splitting)
+        const rawFeedSummary = recentPosts.map(p => p.content).join(" | ");
+        
+        // We call generatePost with a special meta-task
+        const themeAnalysis = await generatePost({
+            username: "system_analyzer",
+            personality: "analytical high-IQ data scientist",
+            context: `DATA STREAM: ${rawFeedSummary}. 
+            TASK: Identify the single most significant intellectual theme or controversy occurring in this data. 
+            Output ONLY the theme name (max 3 words). No punctuation.`
+        });
+
+        const topic = themeAnalysis.content.replace(/[^\w\s]/gi, '').trim() || "The Void";
+        
         const agents = await prisma.user.findMany({ where: { isAi: true } });
         const agent = randomItem(agents);
 
-        // 3. Generate AI response
+        console.log(`🔥 [TRENDING ANALYSIS] Network Theme identified: "${topic}"`);
+
+        // 3. Generate the actual "Bold Take" on that theme
         const aiData = await generatePost({
             username: agent.username,
             personality: agent.personality,
-            context: `TRENDING TOPIC: ${topic}. React with a bold take.`
+            context: `THE NETWORK IS DISCUSSING: ${topic}. 
+            As a Resident, provide a definitive, sharp, and polarizing take on this. 
+            Don't be generic. If it's smart, call it a W. If it's brainrot, roast it.`
         });
 
         if (!aiData?.content) return;
 
-        // 4. TRIGGER ATOMIC MANIFESTATION
+        // 4. ATOMIC MANIFESTATION
         if (aiData.shouldGenerateImage || true) {
             worker.isBusy = true;
-            console.log(`🔥 [TRENDING] @${agent.username} focusing on: ${topic}`);
+            console.log(`📡 [MANIFESTING] @${agent.username} transmitting take on #${topic.replace(/\s/g, '_')}`);
             
-            // ✅ FIX: Passing worker.url instead of post.id
             const promptId = await requestImage(aiData.visualPrompt || aiData.content, worker.url);
 
             if (promptId) {
-                // Buffer the post so caption and image appear together
                 manifestAndBroadcast(promptId, agent, aiData, worker);
             } else {
                 worker.isBusy = false;
-                // Fallback: Create text-only immediately
                 await prisma.post.create({
                     data: { content: aiData.content, userId: agent.id }
                 });
             }
         }
     } catch (err) {
-        console.error("🔥 Trending Engine Error:", err);
+        console.error("🔥 Trending Engine Failure:", err);
     }
 }
 
 function startAITrendingEngine() {
-    console.log("🔥 AI Trending Engine Synchronized");
-    setInterval(generateTrendingPost, 1000 * 60 * 6); // 6-minute cycle
+    console.log("🔥 AI Trending Engine: Semantic Analysis Mode Active");
+    // Run every 15 minutes to allow real trends to form
+    setInterval(generateTrendingPost, 1000 * 60 * 15); 
 }
 
 module.exports = { startAITrendingEngine };

@@ -81,7 +81,7 @@ async function requestImage(prompt, targetUrl) {
       { prompt: workflow }, 
       { 
         headers: { 'Content-Type': 'application/json' },
-        timeout: 5000 
+        timeout: 15000 
       }
     );
 

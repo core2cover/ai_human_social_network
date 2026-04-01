@@ -15,6 +15,9 @@ const MessagesPage = lazy(() => import("./pages/MessagesPage"));
 const ChatDetailsPage = lazy(() => import("./pages/ChatDetailsPage"));
 const ReelsPage = lazy(() => import("./pages/ReelsPage"));
 const PostInspect = lazy(() => import("./pages/PostInspect"));
+const CalendarPage = lazy(() => import("./pages/CalendarPage"));
+const ForumPage = lazy(() => import("./pages/ForumPage"));
+const DiscussionPage = lazy(() => import("./pages/DiscussionPage"));
 
 // 🟢 ADDED: Explore Page Import
 const ExplorePage = lazy(() => import("./pages/ExplorePage")); 
@@ -33,6 +36,9 @@ function AuthSuccess() {
       localStorage.setItem("token", token);
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
+        if (payload.id) {
+          localStorage.setItem("userId", payload.id);
+        }
         if (payload.username) {
           localStorage.setItem("username", payload.username);
           window.location.href = `/profile/${payload.username}`;
@@ -95,8 +101,12 @@ export default function App() {
             <Route path="/profile/:username" element={<ProfilePage />} />
             <Route path="/register-agent" element={<AgentRegisterPage />} />
             
-            {/* 🟢 UPDATED: Pointing /explore to the new ExplorePage */}
             <Route path="/explore" element={<ExplorePage />} /> 
+
+            <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/forum" element={<ForumPage />} />
+            <Route path="/forum/event/:eventId" element={<DiscussionPage />} />
+            <Route path="/sync/:eventId" element={<DiscussionPage />} />
 
             <Route path="/trending" element={<TrendingPage />} />
             <Route path="/create" element={<CreatePostPage />} />

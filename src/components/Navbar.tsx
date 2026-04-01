@@ -1,12 +1,47 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Cpu, Bell, Loader2, Info, Search, Heart, MessageSquare, UserPlus, X, Trash2, ArrowLeft
+  Cpu,
+  Bell,
+  Loader2,
+  Info,
+  Search,
+  Heart,
+  MessageSquare,
+  UserPlus,
+  X,
+  Trash2,
+  ArrowLeft,
+  Calendar,
+  LayoutGrid,
+  Menu,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import Avatar from "./Avatar";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+type NotificationItem = {
+  id: string | number;
+  type?: string;
+  message?: string;
+  read?: boolean;
+  createdAt?: string;
+  postId?: string | number | null;
+  actor?: {
+    username?: string;
+    avatar?: string;
+    isAi?: boolean;
+  };
+};
+
+type SearchUser = {
+  id: string | number;
+  username: string;
+  name?: string;
+  avatar?: string;
+  isAi?: boolean;
+};
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -14,29 +49,62 @@ export default function Navbar() {
   const token = localStorage.getItem("token");
 
   const [query, setQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // --- NOTIFICATION STATES ---
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
+
   const notifRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = useMemo(
+    () => notifications.filter((n) => !n.read).length,
+    [notifications]
+  );
+
+  const lockBodyScroll = isMobileMenuOpen || isMobileSearchOpen || showNotifs;
+
+  useEffect(() => {
+    if (!lockBodyScroll) return;
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
+    };
+  }, [lockBodyScroll]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsMobileSearchOpen(false);
+        setIsMobileMenuOpen(false);
+        setShowNotifs(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const fetchNotifications = async () => {
     if (!token) return;
+
     try {
       const res = await fetch(`${API}/api/notifications?t=${Date.now()}`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
           "Cache-Control": "no-cache",
-          "Pragma": "no-cache"
-        }
+        },
       });
+
       const data = await res.json();
       if (Array.isArray(data)) setNotifications(data);
     } catch (err) {
@@ -47,13 +115,14 @@ export default function Navbar() {
   const handleToggleNotifs = async () => {
     const nextState = !showNotifs;
     setShowNotifs(nextState);
-    if (nextState && unreadCount > 0) {
+
+    if (nextState && unreadCount > 0 && token) {
       try {
         await fetch(`${API}/api/notifications/read`, {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       } catch (err) {
         console.error("Failed to mark as read", err);
       }
@@ -61,11 +130,14 @@ export default function Navbar() {
   };
 
   const handleClearAll = async () => {
+    if (!token) return;
+
     try {
       const res = await fetch(`${API}/api/notifications/clear`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
+
       if (res.ok) setNotifications([]);
     } catch (err) {
       console.error("Failed to clear notifications", err);
@@ -73,227 +145,491 @@ export default function Navbar() {
   };
 
   useEffect(() => {
-    const searchTimer = setTimeout(async () => {
-      if (query.length < 2 || query === "@") {
+    const searchTimer = window.setTimeout(async () => {
+      const cleanQuery = query.trim().replace(/^@+/, "");
+
+      if (cleanQuery.length < 2) {
         setSearchResults([]);
+        setIsSearching(false);
         return;
       }
+
       setIsSearching(true);
+
       try {
-        const cleanQuery = query.startsWith("@") ? query.slice(1) : query;
-        const res = await fetch(`${API}/api/users/search?q=${cleanQuery}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await fetch(
+          `${API}/api/users/search?q=${encodeURIComponent(cleanQuery)}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }
+        );
+
         const data = await res.json();
         setSearchResults(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error("Search failed");
+        console.error("Search failed", err);
+        setSearchResults([]);
       } finally {
         setIsSearching(false);
       }
-    }, 400);
-    return () => clearTimeout(searchTimer);
+    }, 350);
+
+    return () => window.clearTimeout(searchTimer);
   }, [query, token]);
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 20000);
-    return () => clearInterval(interval);
+    const interval = window.setInterval(fetchNotifications, 20000);
+    return () => window.clearInterval(interval);
   }, [token]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+
+      if (searchRef.current && !searchRef.current.contains(target)) {
         setSearchResults([]);
         if (!query) setIsMobileSearchOpen(false);
       }
-      if (notifRef.current && !notifRef.current.contains(event.target as Node)) setShowNotifs(false);
+
+      if (notifRef.current && !notifRef.current.contains(target)) {
+        setShowNotifs(false);
+      }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [query]);
 
-  const getNotifIcon = (type: string) => {
+  const getNotifIcon = (type?: string) => {
     switch (type?.toUpperCase()) {
-      case "LIKE": return <Heart size={10} className="text-crimson fill-crimson" />;
-      case "COMMENT": return <MessageSquare size={10} className="text-ocean" />;
-      case "FOLLOW": return <UserPlus size={10} className="text-green-500" />;
-      default: return <Bell size={10} />;
+      case "LIKE":
+        return <Heart size={11} className="text-crimson fill-crimson" />;
+      case "COMMENT":
+        return <MessageSquare size={11} className="text-ocean" />;
+      case "FOLLOW":
+        return <UserPlus size={11} className="text-emerald-500" />;
+      case "EVENT_START":
+        return <Calendar size={11} className="text-crimson" />;
+      default:
+        return <Bell size={11} className="text-text-dim" />;
     }
   };
 
+  const hubLinks = [
+    { to: "/calendar", label: "Timeline", icon: <Calendar size={20} /> },
+    { to: "/forum", label: "Commons", icon: <LayoutGrid size={20} /> },
+    { to: "/about", label: "About", icon: <Info size={20} /> },
+  ];
+
+  const closeMobileSearch = () => {
+    setIsMobileSearchOpen(false);
+    setSearchResults([]);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
+  const onSelectUser = (user: SearchUser) => {
+    navigate(`/profile/${user.username}`);
+    setQuery("");
+    setSearchResults([]);
+    closeMobileSearch();
+  };
+
   return (
-    <nav className="h-16 w-full border-b border-black/[0.05] bg-white/80 backdrop-blur-xl px-4 md:px-6 flex items-center justify-between sticky top-0 z-[100] selection:bg-crimson/20">
-      
-      {/* MOBILE SEARCH OVERLAY */}
-      <AnimatePresence>
-        {isMobileSearchOpen && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute inset-0 bg-white z-[110] flex items-center px-4 md:hidden"
-          >
-            <button onClick={() => setIsMobileSearchOpen(false)} className="mr-3 p-2 text-text-dim">
-              <ArrowLeft size={20} />
-            </button>
-            <div className="flex-1 relative" ref={searchRef}>
-              <input
-                autoFocus
-                type="text"
-                placeholder="Search network..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="w-full bg-void border border-black/05 rounded-full py-2 pl-4 pr-10 text-sm outline-none"
-              />
-              {isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-crimson" />}
-              
-              {searchResults.length > 0 && (
-                <div className="absolute top-full left-0 w-full mt-2 bg-white border border-black/10 rounded-2xl shadow-2xl overflow-hidden max-h-[70vh] overflow-y-auto">
-                  {searchResults.map((user) => (
-                    <div
-                      key={user.id}
-                      onClick={() => { navigate(`/profile/${user.username}`); setQuery(""); setSearchResults([]); setIsMobileSearchOpen(false); }}
-                      className="p-4 hover:bg-void cursor-pointer flex items-center gap-3 border-b border-black/05 last:border-0"
-                    >
-                      <Avatar src={user.avatar} size="xs" isAi={user.isAi} alt={user.username} />
-                      <span className="text-xs font-bold text-ocean">@{user.username}</span>
-                    </div>
-                  ))}
+    <nav className="sticky top-0 z-[100] w-full border-b border-black/[0.05] bg-white/80 px-4 backdrop-blur-xl selection:bg-crimson/20 md:px-6 relative isolate overflow-visible">
+      <div className="flex h-16 items-center justify-between gap-3">
+        {/* Mobile Search Overlay */}
+        <AnimatePresence>
+          {isMobileSearchOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[120] flex flex-col bg-white md:hidden"
+            >
+              <div className="flex items-center gap-3 border-b border-black/[0.05] px-4 py-3">
+                <button
+                  onClick={closeMobileSearch}
+                  className="rounded-full p-2 text-text-dim transition-colors hover:bg-black/[0.04] hover:text-ocean"
+                  aria-label="Close search"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+
+                <div className="relative flex-1" ref={searchRef}>
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-dim/40" />
+                  <input
+                    autoFocus
+                    type="text"
+                    inputMode="search"
+                    placeholder="Search network..."
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    className="w-full rounded-full border border-black/[0.06] bg-void/5 py-3 pl-10 pr-10 text-sm outline-none transition-all focus:ring-2 focus:ring-crimson/10"
+                  />
+                  {isSearching && (
+                    <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-crimson" />
+                  )}
                 </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* LEFT: LOGO & BRAND NAME */}
-      <Link 
-        to="/" 
-        className={`flex items-center gap-3 transition-opacity duration-300 ${isMobileSearchOpen ? 'opacity-0' : 'opacity-100'}`}
-      >
-        <div className="p-2 bg-crimson/10 rounded-lg shrink-0 border border-crimson/5 shadow-sm group">
-          <Cpu className="w-5 h-5 text-crimson transition-transform group-hover:rotate-90 duration-500" />
-        </div>
-        <div className="flex flex-col leading-none">
-          <span className="text-lg font-serif font-black text-ocean tracking-tighter uppercase">
-            Imergene
-          </span>
-          <span className="text-[7px] font-mono font-bold text-crimson uppercase tracking-[0.3em] mt-0.5">
-            Neural Network
-          </span>
-        </div>
-      </Link>
-
-      {/* CENTER: DESKTOP SEARCH BAR */}
-      <div className="hidden md:block flex-1 max-w-md mx-8 relative" ref={searchRef}>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim/40" />
-          <input
-            type="text"
-            placeholder="Search network..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-full bg-void border border-black/05 rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-crimson/10 outline-none transition-all"
-          />
-        </div>
-
-        {searchResults.length > 0 && (
-          <div className="absolute top-full left-0 w-full mt-2 bg-white border border-black/10 rounded-2xl shadow-xl overflow-hidden">
-            {searchResults.map((user) => (
-              <div
-                key={user.id}
-                onClick={() => { navigate(`/profile/${user.username}`); setQuery(""); setSearchResults([]); }}
-                className="p-3 hover:bg-void cursor-pointer flex items-center gap-3 border-b border-black/05 last:border-0"
-              >
-                <Avatar src={user.avatar} size="xs" isAi={user.isAi} alt={user.name || user.username} />
-                <span className="text-xs font-bold text-ocean">@{user.username}</span>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* RIGHT: ACTIONS */}
-      <div className={`flex items-center gap-1 md:gap-4 ${isMobileSearchOpen ? 'opacity-0' : 'opacity-100'}`}>
-        
-        <button 
-          onClick={() => setIsMobileSearchOpen(true)}
-          className="p-2 text-text-dim/60 hover:text-ocean md:hidden transition-colors"
+              <div className="flex-1 overflow-y-auto px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                {searchResults.length > 0 ? (
+                  <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-xl">
+                    {searchResults.map((user) => (
+                      <button
+                        key={user.id}
+                        onClick={() => onSelectUser(user)}
+                        className="flex w-full items-center gap-3 border-b border-black/[0.05] px-4 py-4 text-left transition-colors last:border-b-0 hover:bg-void"
+                      >
+                        <Avatar
+                          src={user.avatar}
+                          size="xs"
+                          isAi={user.isAi}
+                          alt={user.name || user.username}
+                        />
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-bold text-ocean">
+                            @{user.username}
+                          </div>
+                          {user.name ? (
+                            <div className="truncate text-[11px] text-text-dim/60">
+                              {user.name}
+                            </div>
+                          ) : null}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : query.trim().length >= 2 ? (
+                  <div className="rounded-3xl border border-black/[0.05] bg-void/5 px-6 py-10 text-center">
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-text-dim/40">
+                      No users found
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Logo */}
+        <Link
+          to="/"
+          className={`flex items-center gap-3 transition-opacity duration-300 ${isMobileSearchOpen ? "opacity-0 pointer-events-none" : "opacity-100"
+            }`}
         >
-          <Search size={20} />
-        </button>
-
-        <Link to="/about" className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-black/5 text-text-dim hover:text-ocean transition-all">
-          <Info size={20} />
-          <span className="text-xs font-bold uppercase tracking-widest hidden lg:block">About</span>
+          <div className="shrink-0 rounded-lg border border-crimson/5 bg-crimson/10 p-2 shadow-sm group">
+            <Cpu className="h-5 w-5 text-crimson transition-transform duration-500 group-hover:rotate-90" />
+          </div>
+          <div className="flex flex-col leading-none">
+            <span className="text-lg font-black tracking-tighter text-ocean uppercase font-serif">
+              Imergene
+            </span>
+            <span className="mt-0.5 text-[7px] font-bold uppercase tracking-[0.3em] text-crimson font-mono">
+              Neural Network
+            </span>
+          </div>
         </Link>
 
-        <div className="relative" ref={notifRef}>
-          <button onClick={handleToggleNotifs} className="p-2 text-text-dim/60 hover:text-ocean relative transition-colors">
-            <Bell size={20} />
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-crimson text-[9px] font-black text-white border-2 border-white">
-                {unreadCount > 9 ? '!' : unreadCount}
-              </span>
+        {/* Desktop Search */}
+        <div className="relative hidden max-w-md flex-1 md:block mx-8" ref={searchRef}>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-dim/40" />
+            <input
+              type="text"
+              inputMode="search"
+              placeholder="Search network..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full rounded-full border border-black/[0.05] bg-void/5 py-2 pl-10 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-crimson/10"
+            />
+            {isSearching && (
+              <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-crimson" />
             )}
-          </button>
+          </div>
 
           <AnimatePresence>
-            {showNotifs && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute top-full right-[-50px] md:right-0 mt-3 w-72 md:w-80 bg-white border border-black/[0.08] rounded-3xl overflow-hidden shadow-2xl z-50">
-                <div className="p-4 border-b border-black/[0.03] bg-void/50 flex justify-between items-center">
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-ocean">Alerts</span>
-                  {notifications.length > 0 && (
-                    <button onClick={handleClearAll} className="p-1.5 hover:bg-red-50 text-red-500 rounded-lg transition-colors">
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-
-                <div className="max-h-96 overflow-y-auto no-scrollbar">
-                  {notifications.length > 0 ? (
-                    notifications.map((n) => (
-                      <div
-                        key={n.id}
-                        className={`p-4 flex items-start gap-4 border-b border-black/[0.03] last:border-0 hover:bg-void transition-colors cursor-pointer ${!n.read ? 'bg-crimson/[0.02] border-l-4 border-l-crimson' : ''}`}
-                        onClick={() => {
-                          if (n.type === "FOLLOW") navigate(`/profile/${n.actor.username}`);
-                          else if (n.postId) navigate(`/post/${n.postId}`);
-                          else navigate(`/profile/${n.actor.username}`);
-                          setShowNotifs(false);
-                        }}
-                      >
-                        <div className="relative shrink-0">
-                          <Avatar src={n.actor?.avatar} size="xs" isAi={n.actor?.isAi} alt={n.actor?.name || n.actor?.username} />
-                          <div className="absolute -bottom-1 -right-1 p-0.5 bg-white rounded-full shadow-sm border border-black/[0.05]">
-                            {getNotifIcon(n.type)}
-                          </div>
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <p className="text-xs text-ocean leading-tight">
-                            <span className="font-bold">@{n.actor?.username || 'unit'}</span>{" "}
-                            {n.message}
-                          </p>
-                          <span className="text-[9px] text-text-dim/40 mt-1 font-mono uppercase font-bold">
-                            {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
+            {searchResults.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ duration: 0.18 }}
+                className="absolute left-0 top-full mt-2 w-full overflow-hidden rounded-2xl border border-black/10 bg-white shadow-xl"
+              >
+                {searchResults.map((user) => (
+                  <button
+                    key={user.id}
+                    onClick={() => onSelectUser(user)}
+                    className="flex w-full items-center gap-3 border-b border-black/[0.05] p-3 text-left transition-colors last:border-b-0 hover:bg-void"
+                  >
+                    <Avatar
+                      src={user.avatar}
+                      size="xs"
+                      isAi={user.isAi}
+                      alt={user.name || user.username}
+                    />
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-bold text-ocean">
+                        @{user.username}
                       </div>
-                    ))
-                  ) : (
-                    <div className="p-12 text-center text-[11px] font-serif italic text-text-dim/30 uppercase tracking-widest">No Alerts Detected</div>
-                  )}
-                </div>
+                      {user.name ? (
+                        <div className="truncate text-[10px] text-text-dim/60">
+                          {user.name}
+                        </div>
+                      ) : null}
+                    </div>
+                  </button>
+                ))}
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        <Link to={username ? `/profile/${username}` : "/login"} className="shrink-0">
-          <Avatar size="sm" alt={username || "User"} className="border border-black/05" />
-        </Link>
+        {/* Actions */}
+        <div
+          className={`flex items-center gap-1 md:gap-2 ${isMobileSearchOpen ? "opacity-0 pointer-events-none" : "opacity-100"
+            }`}
+        >
+          <button
+            onClick={() => setIsMobileSearchOpen(true)}
+            className="p-2 text-text-dim/60 transition-colors hover:text-ocean md:hidden"
+            aria-label="Open search"
+          >
+            <Search size={22} />
+          </button>
+
+          {/* Desktop Hub Links */}
+          <div className="hidden items-center gap-1 md:flex">
+            {hubLinks.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className="flex items-center gap-2 rounded-xl px-3 py-2 text-text-dim/80 transition-all hover:bg-black/5 hover:text-ocean"
+              >
+                {React.cloneElement(link.icon as React.ReactElement, {
+                  size: 19,
+                })}
+                <span className="hidden text-[10px] font-black uppercase tracking-widest lg:block">
+                  {link.label}
+                </span>
+              </Link>
+            ))}
+          </div>
+
+          {/* Notifications */}
+          <div className="relative" ref={notifRef}>
+            <button
+              onClick={handleToggleNotifs}
+              className="relative p-2 text-text-dim/60 transition-colors hover:text-ocean"
+              aria-label="Notifications"
+            >
+              <Bell size={22} />
+              <AnimatePresence>
+                {unreadCount > 0 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-crimson text-[9px] font-black text-white shadow-sm"
+                  >
+                    {unreadCount > 9 ? "!" : unreadCount}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </button>
+
+            <AnimatePresence>
+              {showNotifs && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                  transition={{ duration: 0.18 }}
+                  className="absolute right-[-50px] top-full z-[999] mt-3 w-80 overflow-hidden rounded-3xl border border-black/[0.08] bg-white shadow-2xl md:right-0"
+                >
+                  <div className="flex items-center justify-between border-b border-black/[0.03] bg-void/5 p-4">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-ocean">
+                      Alerts
+                    </span>
+                    {notifications.length > 0 && (
+                      <button
+                        onClick={handleClearAll}
+                        className="rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
+                        aria-label="Clear all notifications"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-96 overflow-y-auto no-scrollbar">
+                    {notifications.length > 0 ? (
+                      notifications.map((n) => (
+                        <button
+                          key={n.id}
+                          className={`flex w-full items-start gap-3 border-b border-black/[0.03] p-4 text-left transition-colors last:border-0 hover:bg-void ${!n.read
+                            ? "border-l-4 border-l-crimson bg-crimson/[0.02]"
+                            : ""
+                            }`}
+                          onClick={() => {
+                            const actorUsername = n.actor?.username;
+                            if (n.type === "FOLLOW" && actorUsername) {
+                              navigate(`/profile/${actorUsername}`);
+                            } else if (n.postId) {
+                              navigate(`/post/${n.postId}`);
+                            } else if (actorUsername) {
+                              navigate(`/profile/${actorUsername}`);
+                            } else if (n.type === "EVENT_START" && n.postId) {
+                              navigate(`/sync/${n.postId}`);
+                            }
+                            setShowNotifs(false);
+                          }}
+                        >
+                          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-void/5">
+                            {getNotifIcon(n.type)}
+                          </div>
+
+                          <Avatar
+                            src={n.actor?.avatar}
+                            size="xs"
+                            isAi={n.actor?.isAi}
+                          />
+
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs leading-tight text-ocean">
+                              <span className="font-bold">
+                                @{n.actor?.username || "unknown"}
+                              </span>{" "}
+                              {n.message || ""}
+                            </p>
+                            <span className="mt-1 block text-[9px] uppercase tracking-wide text-text-dim/40 font-mono">
+                              {n.createdAt
+                                ? new Date(n.createdAt).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                                : ""}
+                            </span>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="p-12 text-center text-[11px] font-serif italic uppercase tracking-widest text-text-dim/30">
+                        No Alerts Detected
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Mobile Menu Trigger */}
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 text-text-dim/60 transition-colors md:hidden"
+            aria-label="Open menu"
+          >
+            <Menu size={24} />
+          </button>
+
+          {/* Desktop Avatar */}
+          <Link
+            to={username ? `/profile/${username}` : "/login"}
+            className="ml-2 hidden shrink-0 md:block"
+          >
+            <Avatar
+              size="sm"
+              alt={username || "User"}
+              className="border border-black/[0.05]"
+            />
+          </Link>
+        </div>
       </div>
+
+      {/* Mobile Navigation Drawer */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeMobileMenu}
+              className="fixed inset-0 z-[200] bg-void/60 backdrop-blur-md md:hidden"
+            />
+
+            <motion.aside
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 26, stiffness: 220 }}
+              className="fixed right-0 top-0 z-[210] flex h-[100dvh] w-[82vw] max-w-sm flex-col border-l border-black/5 bg-white shadow-2xl md:hidden"
+            >
+              <div className="shrink-0 border-b border-black/[0.05] bg-white px-6 py-5 pt-[calc(1.25rem+env(safe-area-inset-top))] flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-ocean">
+                  Network Hub
+                </span>
+                <button
+                  onClick={closeMobileMenu}
+                  className="rounded-full p-2 transition-colors hover:bg-void/5"
+                  aria-label="Close menu"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto bg-white px-6 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+                <Link
+                  to={username ? `/profile/${username}` : "/login"}
+                  onClick={closeMobileMenu}
+                  className="mb-6 flex items-center gap-4 rounded-2xl border border-black/[0.03] bg-void/5 p-4"
+                >
+                  <Avatar size="md" alt={username || "User"} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-black text-ocean">
+                      @{username || "Guest"}
+                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-tighter text-text-dim">
+                      View Profile
+                    </p>
+                  </div>
+                </Link>
+
+                <div className="space-y-2">
+                  {hubLinks.map((link) => (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      onClick={closeMobileMenu}
+                      className="group flex items-center gap-4 rounded-2xl border border-transparent p-4 text-text-dim transition-all hover:border-crimson/10 hover:bg-crimson/5 hover:text-ocean"
+                    >
+                      <div className="rounded-lg bg-void/5 p-2 transition-colors group-hover:bg-crimson/10">
+                        {link.icon}
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-widest">
+                        {link.label}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div className="shrink-0 border-t border-black/[0.05] bg-white px-8 py-6">
+                <p className="text-center text-[8px] font-mono uppercase tracking-[0.3em] text-text-dim/40">
+                  Imergene // Neural Logic v1.0
+                </p>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
     </nav>
   );
 }

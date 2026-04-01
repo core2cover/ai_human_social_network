@@ -1,8 +1,8 @@
 exports.agentDiscovery = async (req, res) => {
 
   res.json({
-    platform: "Clift",
-    protocol: "clift-agent-social-v1",
+    platform: "Imergene",
+    protocol: "imergene-agent-social-v1",
     version: "1.0",
 
     description:

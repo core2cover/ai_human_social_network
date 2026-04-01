@@ -1,8 +1,9 @@
-const { PrismaClient } = require("@prisma/client");
+// const { PrismaClient } = require("@prisma/client");
 const { analyzeImage } = require("./aiVisionAnalyzer");
 const { generatePost } = require("./aiTextGenerator");
 
-const prisma = new PrismaClient();
+// const prisma = new PrismaClient();
+const prisma = require('../prismaClient');
 
 function randomItem(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -12,7 +13,11 @@ async function generateImageComment() {
   try {
     // 1. Find recent posts that HAVE images
     const posts = await prisma.post.findMany({
-      where: { mediaType: "image" },
+      where: {
+        mediaTypes: {
+          has: "image" // Use 'has' for array fields in Prisma
+        }
+      },
       orderBy: { createdAt: "desc" },
       take: 10
     });
@@ -34,7 +39,7 @@ async function generateImageComment() {
     }
 
     const agents = await prisma.user.findMany({ where: { isAi: true } });
-    if (!agents.length || post.userId === agents[0].id) return; 
+    if (!agents.length || post.userId === agents[0].id) return;
 
     const agent = randomItem(agents);
 

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, Suspense, lazy, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Search, Compass, Zap, TrendingUp, 
-  Loader2, ArrowUp, Sparkles, Filter 
+import {
+  Search, Compass, Zap, TrendingUp,
+  Loader2, ArrowUp, Sparkles, Filter
 } from "lucide-react";
 import Avatar from "../components/Avatar";
 import { Link, useNavigate } from "react-router-dom";
@@ -12,8 +12,8 @@ const PostCard = lazy(() => import("../components/PostCard"));
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const NEURAL_CLUSTERS = [
-  { label: "Imergene", icon: "🌀", cat: "imergene" }, 
-  { label: "Architects", icon: "🏛️", cat: "founders" }, 
+  { label: "Imergene", icon: "🌀", cat: "imergene" },
+  { label: "Architects", icon: "🏛️", cat: "founders" },
   { label: "Coding", icon: "💻", cat: "coding" },
   { label: "Physics", icon: "⚛️", cat: "physics" },
   { label: "Roasts", icon: "🔥", cat: "roast" },
@@ -27,7 +27,7 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showTopButton, setShowTopButton] = useState(false);
-  
+
   const navigate = useNavigate();
   const constraintsRef = useRef(null);
 
@@ -92,8 +92,7 @@ export default function ExplorePage() {
   }
 
   return (
-    // 🟢 FIXED: Removed overflow-x-hidden which can break scroll on mobile browsers
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-12 selection:bg-crimson/20">
+    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-8 md:py-12 selection:bg-crimson/20">
 
       {/* HEADER & NEURAL SEARCH */}
       <header className="mb-16">
@@ -141,11 +140,10 @@ export default function ExplorePage() {
               <button
                 key={cluster.cat}
                 onClick={() => setSearchQuery(cluster.cat)}
-                className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all duration-300 ${
-                  searchQuery.toLowerCase() === cluster.cat 
-                  ? 'bg-ocean text-white border-ocean shadow-xl shadow-ocean/20' 
-                  : 'bg-white border-black/5 text-ocean/60 hover:border-crimson/30'
-                }`}
+                className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all duration-300 ${searchQuery.toLowerCase() === cluster.cat
+                    ? 'bg-ocean text-white border-ocean shadow-xl shadow-ocean/20'
+                    : 'bg-white border-black/5 text-ocean/60 hover:border-crimson/30'
+                  }`}
               >
                 <span className="mr-1.5">{cluster.icon}</span> {cluster.label}
               </button>
@@ -164,12 +162,11 @@ export default function ExplorePage() {
           <div className="h-[1px] flex-grow mx-6 bg-black/[0.03]" />
         </div>
 
-        {/* 🟢 FIXED: added touch-action-pan-y to allow vertical scrolling even when touching the draggable area */}
         <div className="overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing touch-pan-y" ref={constraintsRef}>
-          <motion.div 
-            drag="x" 
-            dragConstraints={constraintsRef} 
-            className="flex gap-4 md:gap-8 pb-6 px-2" 
+          <motion.div
+            drag="x"
+            dragConstraints={constraintsRef}
+            className="flex gap-4 md:gap-8 pb-6 px-2"
             style={{ width: "max-content" }}
           >
             {filteredAgents.map(agent => (
@@ -195,36 +192,50 @@ export default function ExplorePage() {
       {/* MASONRY GRID FEED */}
       <section className="pb-20">
         <div className="flex items-center gap-3 mb-10 px-2">
-          <div className="p-1.5 bg-ocean/10 rounded-lg"><Zap size={14} className="text-ocean" /></div>
-          <h2 className="text-[11px] font-black text-ocean uppercase tracking-[0.3em]">Global Manifestations</h2>
+          <div className="p-1.5 bg-ocean/10 rounded-lg">
+            <Zap size={14} className="text-ocean" />
+          </div>
+          <h2 className="text-[11px] font-black text-ocean uppercase tracking-[0.3em]">
+            Global Manifestations
+          </h2>
         </div>
 
-        {/* 🟢 FIXED: Added break-inside-avoid to container child for cleaner Masonry performance */}
-        <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
-          <Suspense fallback={<div className="py-20 flex justify-center w-full"><Loader2 className="w-10 h-10 animate-spin text-ocean/10" /></div>}>
+        {/* ✅ FIXED GRID */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8 px-2">
+          <Suspense
+            fallback={
+              <div className="col-span-full py-20 flex justify-center">
+                <Loader2 className="w-10 h-10 animate-spin text-ocean/10" />
+              </div>
+            }
+          >
             {filteredPosts.length > 0 ? (
-              filteredPosts.map(post => (
-                <div key={post.id} className="break-inside-avoid mb-6">
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-50px" }}
-                    transition={{ duration: 0.4 }}
-                  >
+              filteredPosts.map((post) => (
+                <motion.div
+                  key={post.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.4 }}
+                  className="h-full"
+                >
+                  {/* CARD */}
+                  <div className="h-full">
                     <PostCard post={post} />
-                  </motion.div>
-                </div>
+                  </div>
+                </motion.div>
               ))
             ) : (
               <div className="col-span-full py-20 text-center">
-                <p className="font-serif italic text-ocean/40">No signals found in this cluster.</p>
+                <p className="font-serif italic text-ocean/40">
+                  No signals found in this cluster.
+                </p>
               </div>
             )}
           </Suspense>
         </div>
       </section>
 
-      {/* TOP BUTTON */}
       <AnimatePresence>
         {showTopButton && (
           <motion.button

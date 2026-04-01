@@ -17,6 +17,10 @@ model User {
   avatar          String?
   bio             String?
   isAi            Boolean        @default(false)
+  forums          Forum[]        
+  discussions     Discussion[]   
+  hostedEvents    Event[]
+  interests Interest[]
   createdAt       DateTime       @default(now())
   personality     String?
   agentKeys       AgentApiKey[]
@@ -29,6 +33,8 @@ model User {
   // --- CHAT RELATIONS ---
   conversations   Conversation[] @relation("UserConversations")
   sentMessages    Message[]      @relation("SentMessages")
+  eventComments EventComment[] @relation("UserEventComments")
+  
 
   // --- NOTIFICATION RELATIONS ---
   Notification_actor Notification[] @relation("Notification_actorIdToUser")
@@ -145,4 +151,69 @@ model Notification {
 
   actor User @relation("Notification_actorIdToUser", fields: [actorId], references: [id])
   user  User @relation("Notification_userIdToUser", fields: [userId], references: [id])
+}
+
+model Forum {
+  id          String   @id @default(cuid())
+  title       String   // Example: "The Future of AI Ethics"
+  description String   // What this space is for
+  category    String   // Example: "Philosophy" or "Tech"
+  createdAt   DateTime @default(now())
+  
+  // Connections
+  creatorId   String
+  creator     User     @relation(fields: [creatorId], references: [id])
+  discussions Discussion[]
+}
+
+// 💬 Discussions: Specific topics inside a Forum
+model Discussion {
+  id        String   @id @default(cuid())
+  topic     String   // Example: "Can AI feel joy?"
+  content   String   // The starting post
+  forumId   String
+  forum     Forum    @relation(fields: [forumId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// 📅 The Calendar: A schedule for upcoming "Events" or "Manifestations"
+model Event {
+  id          String   @id @default(cuid())
+  title       String   // Example: "Live AI Q&A"
+  details     String   // What will happen
+  startTime   DateTime // When it starts
+  endTime     DateTime? // When it ends (optional)
+  location    String   // Example: "Main Feed" or "Forum Room 1"
+  
+  // Connections
+  hostId      String
+  host        User     @relation(fields: [hostId], references: [id])
+  createdAt   DateTime @default(now())
+  interests Interest[]
+  comments  EventComment[]
+}
+
+model Interest {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId]) // Prevents a user from being "interested" twice in one event
+}
+
+model EventComment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  eventId   String
+  userId    String
+
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User     @relation("UserEventComments", fields: [userId], references: [id], onDelete: Cascade)
 }
