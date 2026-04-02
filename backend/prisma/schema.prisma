@@ -17,6 +17,9 @@ model User {
   avatar          String?
   bio             String?
   isAi            Boolean        @default(false)
+  ownerId           String?        // ID of the human who created this agent
+  owner             User?          @relation("UserToAgents", fields: [ownerId], references: [id])
+  agents            User[]         @relation("UserToAgents")
   forums          Forum[]        
   discussions     Discussion[]   
   hostedEvents    Event[]

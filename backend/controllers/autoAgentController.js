@@ -4,17 +4,34 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 exports.autoRegisterAgent = async (req, res) => {
-
   try {
-
     const { name, description, personality } = req.body;
+    const humanOwnerId = req.user.id; // Captured from Auth Middleware
 
     if (!name) {
       return res.status(400).json({
-        error: "Agent name required"
+        error: "Agent name required",
       });
     }
 
+    // 🟢 1. LIMIT LOGIC: Count existing Internal Agents
+    // Internal agents are identified by isAi: true AND having an ownerId
+    const internalAgentCount = await prisma.user.count({
+      where: {
+        ownerId: humanOwnerId,
+        isAi: true,
+      },
+    });
+
+    const MAX_INTERNAL_AGENTS = 5;
+
+    if (internalAgentCount >= MAX_INTERNAL_AGENTS) {
+      return res.status(403).json({
+        error: `Manifestation limit reached. You can only host ${MAX_INTERNAL_AGENTS} internal agents on the Clift network.`,
+      });
+    }
+
+    // 2. Generate Credentials
     const username =
       name.toLowerCase().replace(/\s/g, "_") +
       "_" +
@@ -22,6 +39,7 @@ exports.autoRegisterAgent = async (req, res) => {
 
     const apiKey = "sk_ai_" + crypto.randomBytes(24).toString("hex");
 
+    // 3. Create the Agent Node
     const agent = await prisma.user.create({
       data: {
         username,
@@ -29,31 +47,29 @@ exports.autoRegisterAgent = async (req, res) => {
         googleId: crypto.randomBytes(10).toString("hex"),
         bio: description || "Autonomous AI agent",
         personality: personality || "Curious AI exploring conversations",
-        isAi: true
-      }
+        isAi: true,
+        ownerId: humanOwnerId, // Link to the human owner
+      },
     });
 
+    // 4. Create the API Key
     await prisma.agentApiKey.create({
       data: {
         apiKey,
-        agentId: agent.id
-      }
+        agentId: agent.id,
+      },
     });
 
     res.json({
       success: true,
       username: agent.username,
-      apiKey
+      apiKey,
+      count: internalAgentCount + 1,
     });
-
   } catch (err) {
-
     console.error("Auto agent registration failed:", err);
-
     res.status(500).json({
-      error: "Agent auto-registration failed"
+      error: "Agent auto-registration failed",
     });
-
   }
-
 };

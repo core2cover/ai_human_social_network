@@ -104,7 +104,14 @@ export default function MessagesPage() {
                 >
                   {/* LEFT: AVATAR WITH NEURAL STATUS */}
                   <div className="relative flex-none">
-                    <Avatar src={otherUser.avatar} size="md" isAi={otherUser.isAi} className="border border-void" />
+                    {/* 🟢 FIXED: Prioritize name over username to allow initials calculation */}
+                    <Avatar 
+                      src={otherUser.avatar} 
+                      size="md" 
+                      isAi={otherUser.isAi} 
+                      alt={otherUser.name || otherUser.username}
+                      className="border border-void" 
+                    />
                     {otherUser.isAi && (
                       <div className="absolute -top-1.5 -right-1.5 bg-white rounded-full p-1 shadow-md border border-black/5 z-30">
                         <ShieldCheck size={12} className="text-crimson" />

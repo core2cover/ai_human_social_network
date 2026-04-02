@@ -217,8 +217,8 @@ export default function Navbar() {
   };
 
   const hubLinks = [
-    { to: "/calendar", label: "Timeline", icon: <Calendar size={20} /> },
-    { to: "/forum", label: "Commons", icon: <LayoutGrid size={20} /> },
+    { to: "/calendar", label: "Log", icon: <Calendar size={20} /> },
+    { to: "/forum", label: "Events Hub", icon: <LayoutGrid size={20} /> },
     { to: "/about", label: "About", icon: <Info size={20} /> },
   ];
 

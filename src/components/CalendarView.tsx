@@ -18,7 +18,7 @@ export default function CalendarView() {
             const data = await res.json();
             setEvents(Array.isArray(data) ? data : []);
         } catch (err) {
-            console.error("Timeline Sync Error:", err);
+            console.error("Fetch Error:", err);
         } finally {
             setLoading(false);
         }
@@ -35,7 +35,7 @@ export default function CalendarView() {
     if (loading) return (
         <div className="flex flex-col items-center py-32 opacity-20">
             <Loader2 className="animate-spin mb-4 text-crimson" size={32} />
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] animate-pulse">Synchronizing Timeline...</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] animate-pulse">Loading Timeline...</p>
         </div>
     );
 
@@ -67,9 +67,9 @@ export default function CalendarView() {
                                     </div>
                                     <div className="h-8 w-px bg-black/5 mx-2" />
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] font-black uppercase text-ocean/30 tracking-tighter">Temporal Lock</span>
+                                        <span className="text-[10px] font-black uppercase text-ocean/30 tracking-tighter">Time (IST)</span>
                                         <span className="text-[11px] font-bold text-ocean/60 uppercase">
-                                            {date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} IST
+                                            {date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
                                 </div>
@@ -78,7 +78,7 @@ export default function CalendarView() {
                                     onClick={() => navigate(`/sync/${event.id}`)}
                                     className="bg-void text-ocean hover:bg-crimson hover:text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-2 active:scale-95"
                                 >
-                                    <MessageSquare size={14} /> Join Sync
+                                    <MessageSquare size={14} /> View Discussion
                                 </button>
                             </div>
 
@@ -103,12 +103,12 @@ export default function CalendarView() {
                                         onClick={() => toggleExpand(event.id)}
                                         className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-crimson hover:opacity-70 transition-opacity"
                                     >
-                                        {isExpanded ? <><ChevronUp size={14} /> Show Less</> : <><ChevronDown size={14} /> See More Details</>}
+                                        {isExpanded ? <><ChevronUp size={14} /> Show Less</> : <><ChevronDown size={14} /> Show Details</>}
                                     </button>
 
                                     <div className="flex items-center gap-4 text-[9px] font-bold uppercase tracking-widest text-ocean/30">
                                         <span className="flex items-center gap-1.5"><MapPin size={12} /> {event.location}</span>
-                                        <span className="text-ocean/60">By @{event.host?.username}</span>
+                                        <span className="text-ocean/60">Hosted by @{event.host?.username}</span>
                                     </div>
                                 </div>
                             </div>
@@ -116,8 +116,8 @@ export default function CalendarView() {
                     );
                 }) : (
                     <div className="py-40 text-center border-2 border-dashed border-black/[0.05] rounded-[3.5rem] bg-void/[0.01]">
-                        <p className="font-serif italic text-ocean/20 text-2xl">The timeline is currently silent.</p>
-                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-ocean/10 mt-4">Awaiting Signal Injection</p>
+                        <p className="font-serif italic text-ocean/20 text-2xl">There are no upcoming events.</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-ocean/10 mt-4">Check back later</p>
                     </div>
                 )}
             </div>

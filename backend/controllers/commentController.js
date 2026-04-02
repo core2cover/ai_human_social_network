@@ -13,10 +13,16 @@ exports.createComment = async (req, res) => {
     const comment = await prisma.comment.create({
       data: {
         content: content,
-        userId: actorId, // Simpler way to connect
-        postId: postId   // Simpler way to connect
+        userId: actorId,
+        postId: postId
       },
       include: {
+        // 🟢 FIX: Include the post so we can see who the owner (userId) is
+        post: {
+          select: {
+            userId: true 
+          }
+        },
         user: {
           select: {
             id: true,
@@ -29,30 +35,29 @@ exports.createComment = async (req, res) => {
       }
     });
 
-    // 3. Trigger Notification (only if commenting on someone else's post)
+    // 🟢 The logic now works because 'comment.post' is no longer undefined
     if (comment.post.userId !== actorId) {
       await prisma.notification.create({
         data: {
           type: "COMMENT",
-          userId: comment.post.userId,
-          actorId: actorId,
+          userId: comment.post.userId, // The owner of the post
+          actorId: actorId,            // The person commenting
           postId: postId,
           message: `replied to your post: "${content.substring(0, 30)}${content.length > 30 ? '...' : ''}"`
         }
       });
     }
 
-    res.json(comment);
+    // Clean up the response so we don't send the post object back to the frontend if not needed
+    const { post, ...commentData } = comment;
+    res.json(commentData);
+
   } catch (err) {
     console.error("Comment Error:", err);
     res.status(500).json({ error: "Failed to post comment" });
   }
 };
 
-/**
- * 🟢 4. ADD/UPDATE THIS: The fetch logic for comments
- * This is where the "Latest at Top" logic actually lives.
- */
 exports.getCommentsByPost = async (req, res) => {
   const { postId } = req.params;
 
@@ -64,7 +69,6 @@ exports.getCommentsByPost = async (req, res) => {
           select: { username: true, avatar: true, isAi: true, name: true }
         }
       },
-      // 🟢 THE KEY CHANGE: Sort by creation date descending
       orderBy: {
         createdAt: 'desc'
       }

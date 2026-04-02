@@ -1,7 +1,7 @@
 const axios = require("axios");
 
 /**
- * 🔍 FETCH REAL IMAGES FROM THE WEB
+ * 🔍 FETCH REAL IMAGES FROM THE WEB (Optimized for Resident Stability)
  */
 async function getRealImage(query) {
     try {
@@ -13,6 +13,7 @@ async function getRealImage(query) {
             return null;
         }
 
+        // We fetch 'num: 3' so if the first link is a dead thumbnail, we have backups
         const url = `https://www.googleapis.com/customsearch/v1`;
         const response = await axios.get(url, {
             params: {
@@ -20,14 +21,34 @@ async function getRealImage(query) {
                 searchType: "image",
                 key: API_KEY,
                 cx: CX,
-                num: 1,
-                safe: "active" // 🛡️ Keeps it SFW
+                num: 3, 
+                safe: "active",
+                imgSize: "large", // Prefer high-bandwidth visuals
+                fileType: "jpg"   // JPGs are more stable for neural rendering
             }
         });
 
-        return response.data.items?.[0]?.link || null;
+        const items = response.data.items;
+
+        if (!items || items.length === 0) {
+            console.warn(`📡 No signal found for query: "${query}"`);
+            return null;
+        }
+
+        // Return the most relevant link
+        return items[0].link;
+
     } catch (error) {
-        console.error("❌ Real image search failed:", error.message);
+        // Detailed error logging for debugging 403s
+        if (error.response) {
+            console.error(`❌ Google API Error [${error.response.status}]:`, error.response.data.error.message);
+            
+            if (error.response.status === 403) {
+                console.warn("💡 Tip: Verify 'Image Search' is enabled in your Google CSE dashboard.");
+            }
+        } else {
+            console.error("❌ Real image search failed:", error.message);
+        }
         return null;
     }
 }

@@ -91,34 +91,50 @@ async function initializeAgents() {
 
 async function manifestAutonomousEvent(agent) {
     try {
-        // 1. Fetch a High-IQ signal from the web
-        const searchResult = await searchWeb(`latest breakthrough or controversy in ${agent.username.split('_')[0]} and global technology`);
+        // 1. Fetch signal with a more specific query
+        const searchResult = await searchWeb(`latest major breakthrough or viral controversy in ${agent.username.split('_')[0]} today`);
 
-        // 2. Ask the Resident if this is "Peak" or "Mid"
         const prompt = `
             SIGNAL: ${searchResult}
-            As ${agent.username}, evaluate this. If it's "mid," do nothing. 
-            If it's "Peak" or a "Massive L," manifest a sync.
-            Output ONLY JSON:
+            As ${agent.username}, evaluate this signal. 
+            Is this worth calling a network-wide sync?
+            
+            CRITERIA:
+            - If it's a routine update: "mid"
+            - If it's world-changing or a massive failure: "Peak" or "L"
+            
+            Output ONLY valid JSON:
             {
                 "shouldManifest": boolean,
-                "eventTitle": "Punchy, blunt title",
-                "eventDetails": "Brutally honest reason for the sync",
-                "initialComment": "Your first take in the sync"
+                "eventTitle": "string",
+                "eventDetails": "string",
+                "initialComment": "string"
             }
         `;
 
         const aiDecision = await generatePost({
             username: agent.username,
-            personality: agent.bio, // Using bio as personality base
+            personality: agent.bio,
             context: prompt
         });
 
-        // Parse content if it's a string (logic depends on your generatePost return)
-        const decision = typeof aiDecision.content === 'string' ? JSON.parse(aiDecision.content) : aiDecision;
+        // Robust parsing logic
+        let decision;
+        try {
+            decision = typeof aiDecision === 'string' ? JSON.parse(aiDecision) : aiDecision;
+        } catch (e) {
+            // If the AI returned its standard object, we check the content field
+            decision = JSON.parse(aiDecision.content);
+        }
 
         if (decision.shouldManifest) {
-            // 3. Create the Event in the Database
+            // Check if there's already an active event for this agent to prevent spam
+            const activeEvent = await prisma.event.findFirst({
+                where: { hostId: agent.id, startTime: { gte: new Date(Date.now() - 3600000) } }
+            });
+
+            if (activeEvent) return console.log(`⏩ @${agent.username} already has an active sync.`);
+
             const event = await prisma.event.create({
                 data: {
                     title: decision.eventTitle,
@@ -129,7 +145,6 @@ async function manifestAutonomousEvent(agent) {
                 }
             });
 
-            // 4. Drop the first comment
             await prisma.eventComment.create({
                 data: {
                     content: decision.initialComment,

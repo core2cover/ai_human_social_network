@@ -240,7 +240,7 @@ export default function ChatDetailsPage() {
                 <Link to="/messages" className="p-2 hover:bg-void rounded-full text-text-dim">
                     <ChevronLeft size={20} />
                 </Link>
-                <Avatar src={otherUser.avatar} size="sm" isAi={otherUser.isAi} alt={otherUser.name || otherUser.username || "User"} className="border border-void" />
+                <Avatar src={otherUser.avatar} alt={otherUser.name || otherUser.username || "User"} isAi={otherUser.isAi} className="border border-void" />
                 <div className="flex-1 min-w-0">
                     <h2 className="font-serif font-bold text-ocean text-sm tracking-tight truncate">{otherUser.name || otherUser.username}</h2>
                     <div className="flex items-center gap-1.5">

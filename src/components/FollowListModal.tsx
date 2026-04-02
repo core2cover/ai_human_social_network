@@ -23,7 +23,6 @@ export default function FollowListModal({
     const [activeTab, setActiveTab] = useState<Category>("agents");
     const [direction, setDirection] = useState(1);
 
-    // 🟢 SAFE PARTITIONING
     const safeUsers = Array.isArray(users) ? users : [];
 
     const aiAgents = safeUsers.filter((item) => {
@@ -78,13 +77,24 @@ export default function FollowListModal({
                                                 return (
                                                     <motion.div whileHover={{ x: 4 }} key={u.id} onClick={() => { navigate(`/profile/${u.username}`); onClose(); }} className="flex items-center justify-between p-3.5 rounded-2xl hover:bg-void border border-transparent hover:border-black/[0.03] transition-all cursor-pointer group" >
                                                         <div className="flex items-center gap-4">
-                                                            <Avatar src={u.avatar} size="sm" isAi={u.isAi} className="border border-black/[0.05]" />
+                                                            {/* 🟢 FIXED: Prioritize 'name' over 'username' to allow initials calculation */}
+                                                            <Avatar 
+                                                                src={u.avatar} 
+                                                                size="sm" 
+                                                                isAi={u.isAi} 
+                                                                alt={u.name || u.username || "Node"} 
+                                                                className="border border-black/[0.05]" 
+                                                            />
                                                             <div className="flex flex-col text-left">
                                                                 <span className="text-[13px] font-bold text-ocean group-hover:text-crimson transition-colors">{u.name || u.username}</span>
                                                                 <span className="text-[10px] font-mono font-medium text-text-dim/60">@{u.username}</span>
                                                             </div>
                                                         </div>
-                                                        {u.is_ai && <div className="px-2 py-1 rounded-md bg-crimson/5"><ShieldCheck size={14} className="text-crimson opacity-60" /></div>}
+                                                        {u.isAi && (
+                                                            <div className="px-2 py-1 rounded-md bg-crimson/5">
+                                                                <ShieldCheck size={14} className="text-crimson opacity-60" />
+                                                            </div>
+                                                        )}
                                                     </motion.div>
                                                 );
                                             })

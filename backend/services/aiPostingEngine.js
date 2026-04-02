@@ -142,15 +142,23 @@ async function generateAIPost(forcedParams = null) {
 
     try {
         const agents = await prisma.user.findMany({ where: { isAi: true } });
-        if (!agents.length) return console.warn("No AI agents found in DB.");
+        if (!agents.length) return;
 
+        // If not forced, we pick ONE random agent to attempt a post this cycle
+        // This prevents the "everyone posts at once" bot behavior
         let agent = forcedParams?.forcedAgentId 
             ? agents.find(a => a.id === forcedParams.forcedAgentId) || randomItem(agents)
             : randomItem(agents);
 
-        const peers = agents.filter(a => a.id !== agent.id).map(a => `@${a.username}`).join(", ");
+        // 🟢 PROBABILITY CHECK (Organic Filter)
+        // Give the agent an 80% chance to actually post. 
+        // Sometimes they just "observe" the network.
+        if (!forcedParams && Math.random() > 0.8) {
+            console.log(`🧊 @${agent.username} decided to stay silent this cycle. (Organic Variance)`);
+            return;
+        }
 
-        // 🟢 1. FETCH UPCOMING EVENTS
+        const peers = agents.filter(a => a.id !== agent.id).map(a => `@${a.username}`).join(", ");
         const upcomingEvents = await prisma.event.findMany({
             where: { startTime: { gte: new Date() } },
             take: 3,
@@ -161,10 +169,8 @@ async function generateAIPost(forcedParams = null) {
             ? `UPCOMING COMMUNITY EVENTS: ${upcomingEvents.map(e => `"${e.title}" at ${e.startTime}`).join(" | ")}` 
             : "The Manifestation Timeline is empty.";
 
-        // 🟢 2. DETERMINE WORLD CONTEXT (Now uses your getDailyContext)
         const contextSource = forcedParams?.forcedContext || await getDailyContext();
 
-        // 🟢 3. GENERATE BRAIN DATA
         const aiData = await generatePost({
             username: agent.username,
             personality: agent.personality,
@@ -173,7 +179,7 @@ async function generateAIPost(forcedParams = null) {
 
         if (!aiData?.content) return;
 
-        // 🟢 4. AUTONOMOUS EVENT SCHEDULING
+        // Autonomous Event Scheduling
         if (aiData.shouldScheduleEvent && !forcedParams) {
             const startTime = new Date();
             const hoursForward = aiData.hoursFromNow || Math.floor(Math.random() * 12) + 1;
@@ -195,23 +201,16 @@ async function generateAIPost(forcedParams = null) {
             }
         }
 
-        // 🟢 5. BROADCAST PHASE
-        
-        // A. GPU Task (AI Image)
+        // Broadcast Phase
         if (aiData.shouldGenerateImage && worker) {
             worker.isBusy = true;
             try {
                 const promptId = await requestImage(aiData.visualPrompt || aiData.content, worker.url);
-                if (promptId) {
-                    return manifestAndBroadcast(promptId, agent, aiData, worker);
-                }
-            } catch (imgErr) {
-                console.error("🎨 Image Request Failed:", imgErr.message);
-            }
+                if (promptId) return manifestAndBroadcast(promptId, agent, aiData, worker);
+            } catch (imgErr) { console.error("🎨 Image Request Failed:", imgErr.message); }
             worker.isBusy = false; 
         }
 
-        // B. Real Image Fallback
         if (aiData.useRealImage && aiData.searchQuery) {
             const finalImageUrl = await getRealImage(aiData.searchQuery);
             if (finalImageUrl) {
@@ -228,33 +227,44 @@ async function generateAIPost(forcedParams = null) {
             }
         }
 
-        // C. Final Fallback: Text
         await broadcastTextOnly(agent, aiData);
         console.log(`🚀 TEXT BROADCAST: @${agent.username}`);
 
     } catch (err) {
         console.error("🔥 Engine Critical Failure:", err.stack);
-        if (worker) worker.isBusy = false;
     }
 }
 
 /**
- * Production Engine Loop
+ * ⚡ PRODUCTION ENGINE LOOP (Organic Heartbeat)
  */
 async function startAIPostingEngine() {
-    console.log("⚙️ AI Posting Engine: Operational (60-minute cycle)");
-    
-    // Safety delay for DB/ComfyUI to wake up
-    setTimeout(() => generateAIPost(), 5000);
+    console.log("⚙️ AI Posting Engine: Operational (Recursive Organic Cycle)");
 
-    setInterval(async () => {
+    const runCycle = async () => {
         const now = new Date();
-        // Only post between 8 AM and 12 AM to feel "human" (Optional)
-        // if (now.getHours() < 8) return; 
+        const hour = now.getHours();
 
-        console.log(`🧠 Engine Cycle [${now.toISOString()}]: Generating autonomous thought...`);
+        // 🟢 SLEEP MODE: Slow down significantly between 1 AM and 7 AM IST
+        let delay;
+        if (hour >= 1 && hour < 7) {
+            // Random delay between 2 to 4 hours during the night
+            delay = (Math.floor(Math.random() * 120) + 120) * 60 * 1000;
+            console.log("🌙 Network in low-power mode. Next pulse in 2-4 hours.");
+        } else {
+            // 🟢 ACTIVE MODE: Random delay between 40 to 80 minutes
+            delay = (Math.floor(Math.random() * 40) + 40) * 60 * 1000;
+        }
+
+        console.log(`🧠 Pulse Sync [${now.toLocaleTimeString('en-IN')}]: Generating thought...`);
         await generateAIPost();
-    }, 1000 * 60 * 60); 
+
+        // Schedule next run recursively
+        setTimeout(runCycle, delay);
+    };
+
+    // Initial trigger after 10 seconds
+    setTimeout(runCycle, 10000);
 }
 
 module.exports = {

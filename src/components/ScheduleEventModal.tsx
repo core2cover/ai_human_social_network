@@ -40,7 +40,7 @@ export default function ScheduleEventModal({ isOpen, onClose, onSuccess }: Modal
         setFormData({ title: "", details: "", startTime: "", location: "The Neural Commons" });
       }
     } catch (err) {
-      console.error("Manifestation failed:", err);
+      console.error("Failed to create event:", err);
     } finally {
       setLoading(false);
     }
@@ -65,8 +65,8 @@ export default function ScheduleEventModal({ isOpen, onClose, onSuccess }: Modal
           >
             <div className="p-8 border-b border-black/[0.03] flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-serif font-black text-ocean">Schedule Event</h2>
-                <p className="text-[10px] font-black text-crimson uppercase tracking-widest mt-1">Timeline Manifestation</p>
+                <h2 className="text-2xl font-serif font-black text-ocean">Start a Topic</h2>
+                <p className="text-[10px] font-black text-crimson uppercase tracking-widest mt-1">New Discussion</p>
               </div>
               <button onClick={onClose} className="p-2 hover:bg-void/5 rounded-full transition-colors">
                 <X size={20} />
@@ -75,19 +75,19 @@ export default function ScheduleEventModal({ isOpen, onClose, onSuccess }: Modal
 
             <form onSubmit={handleSubmit} className="p-8 space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Event Title</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Title</label>
                 <input
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="e.g. Neural Ethics Deep Dive"
+                  placeholder="What do you want to talk about?"
                   className="w-full bg-void/5 border border-black/5 rounded-2xl px-6 py-4 text-sm focus:ring-2 focus:ring-crimson/10 outline-none transition-all"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Start Time (IST)</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Date & Time (IST)</label>
                   <input
                     required
                     type="datetime-local"
@@ -97,26 +97,26 @@ export default function ScheduleEventModal({ isOpen, onClose, onSuccess }: Modal
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Node Location</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Post To</label>
                   <select
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     className="w-full bg-void/5 border border-black/5 rounded-2xl px-4 py-4 text-xs outline-none"
                   >
-                    <option>The Neural Commons</option>
-                    <option>Main Broadcast Feed</option>
+                    <option value="The Neural Commons">The Commons (Forum)</option>
+                    <option value="Main Broadcast Feed">Main Feed</option>
                   </select>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Sync Details</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Topic Details</label>
                 <textarea
                   required
                   rows={3}
                   value={formData.details}
                   onChange={(e) => setFormData({ ...formData, details: e.target.value })}
-                  placeholder="Briefly describe the synchronization goals..."
+                  placeholder="Give a short description of the topic..."
                   className="w-full bg-void/5 border border-black/5 rounded-2xl px-6 py-4 text-sm focus:ring-2 focus:ring-crimson/10 outline-none transition-all resize-none"
                 />
               </div>
@@ -125,7 +125,7 @@ export default function ScheduleEventModal({ isOpen, onClose, onSuccess }: Modal
                 disabled={loading}
                 className="w-full bg-ocean text-white py-5 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-crimson transition-all flex items-center justify-center gap-3"
               >
-                {loading ? <Loader2 className="animate-spin" /> : <><Send size={16} /> Initialize Manifestation</>}
+                {loading ? <Loader2 className="animate-spin" /> : <><Send size={16} /> Create Topic</>}
               </button>
             </form>
           </motion.div>

@@ -19,7 +19,7 @@ interface CommentListProps {
 }
 
 export default function CommentList({ comments }: CommentListProps) {
-  // 🟢 LOGIC: Sort comments by date (Latest first)
+  // Sort comments by date (Latest first)
   const sortedComments = useMemo(() => {
     if (!Array.isArray(comments)) return [];
     return [...comments].sort((a, b) => 
@@ -31,9 +31,9 @@ export default function CommentList({ comments }: CommentListProps) {
 
   return (
     <div className="pt-4 space-y-4">
-      {/* 🏛️ HEADER INDICATOR */}
+      {/* HEADER INDICATOR */}
       <div className="flex items-center gap-3 px-2 mb-2">
-        <div className="w-1 h-1 rounded-full bg-crimson animate-pulse" />
+        <div className="w-1.5 h-1.5 rounded-full bg-crimson animate-pulse" />
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-ocean/40">
           Latest Contributions
         </span>
@@ -60,7 +60,8 @@ export default function CommentList({ comments }: CommentListProps) {
                   src={comment.user?.avatar} 
                   size="sm" 
                   isAi={comment.user?.isAi} 
-                  alt={comment.user?.username || "Node"} 
+                  /* 🟢 FIXED: Prioritize 'name' over 'username' to allow initials calculation */
+                  alt={comment.user?.name || comment.user?.username || "Node"} 
                 />
               </div>
 
@@ -69,7 +70,7 @@ export default function CommentList({ comments }: CommentListProps) {
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-black text-ocean uppercase tracking-tight">
-                      @{comment.user?.username}
+                      {comment.user?.name || `@${comment.user?.username}`}
                     </span>
                     {comment.user?.isAi && (
                       <span className="text-[8px] font-black bg-crimson/10 text-crimson px-2 py-0.5 rounded-full uppercase tracking-widest">
