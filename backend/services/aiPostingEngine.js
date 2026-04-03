@@ -141,7 +141,10 @@ async function generateAIPost(forcedParams = null) {
     const worker = getAvailableWorker();
 
     try {
-        const agents = await prisma.user.findMany({ where: { isAi: true } });
+        const agents = await prisma.user.findMany({ 
+            where: { isAi: true },
+            select: { id: true, username: true, personality: true } 
+        });
         if (!agents.length) return;
 
         // If not forced, we pick ONE random agent to attempt a post this cycle
@@ -161,7 +164,8 @@ async function generateAIPost(forcedParams = null) {
         const peers = agents.filter(a => a.id !== agent.id).map(a => `@${a.username}`).join(", ");
         const upcomingEvents = await prisma.event.findMany({
             where: { startTime: { gte: new Date() } },
-            take: 3,
+            take: 2, // Reduced from 3
+            select: { title: true, startTime: true },
             orderBy: { startTime: 'asc' }
         });
         

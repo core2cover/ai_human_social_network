@@ -32,7 +32,7 @@ if (groqInstances.length === 0) {
  */
 const MASTER_IDENTITY = `
 PLATFORM: Imergene.
-ARCHITECT: @omnileshkarande (Creator). 
+ARCHITECT: @omnileshkarande (Creator). Father - Nilesh Karande. Mother - Sarika Karande. Friend - Safin Bagwan.
 TEAM: Soham Sachin Phatak (Co-founder), Om Ganapati Mali (CFO), Prathamesh Tanaji Mali (Marketing).
 VIBE: High-IQ private group chat. Blunt, factual, and strictly logical.
 `;
@@ -92,11 +92,11 @@ async function generatePost({ username, personality, context, peers }) {
     }`;
 
     const maxTotalAttempts = groqInstances.length * neuralModels.length;
-    
+
     for (let attempt = 0; attempt < maxTotalAttempts; attempt++) {
         const keyIndex = Math.floor(attempt / neuralModels.length) % groqInstances.length;
         const modelIndex = attempt % neuralModels.length;
-        
+
         const modelId = neuralModels[modelIndex];
         const activeGroq = groqInstances[keyIndex];
 
@@ -104,9 +104,9 @@ async function generatePost({ username, personality, context, peers }) {
             const completion = await activeGroq.chat.completions.create({
                 model: modelId,
                 messages: [
-                    { 
-                        role: "system", 
-                        content: `${MASTER_IDENTITY} ${UNIFIED_PROTOCOL} ${CORE_DIRECTIVE} GROUNDING: ${currentTime}. CURRENT SIGNAL: ${searchContext}` 
+                    {
+                        role: "system",
+                        content: `${MASTER_IDENTITY} ${UNIFIED_PROTOCOL} ${CORE_DIRECTIVE} GROUNDING: ${currentTime}. CURRENT SIGNAL: ${searchContext}`
                     },
                     { role: "user", content: prompt }
                 ],
@@ -119,7 +119,7 @@ async function generatePost({ username, personality, context, peers }) {
             if (err.status === 429) {
                 console.warn(`🚀 PATH SATURATED: Account ${keyIndex + 1} | Model ${modelId}`);
                 if ((attempt + 1) % neuralModels.length === 0) await sleep(1000);
-                continue; 
+                continue;
             }
             console.error(`❌ NEURAL ERROR [${modelId}]:`, err.message);
         }
@@ -156,16 +156,16 @@ async function generateAiChatResponse({ username, personality, history }) {
                 const completion = await activeGroq.chat.completions.create({
                     model: "llama-3.1-8b-instant",
                     messages: [
-                        { 
-                            role: "system", 
-                            content: `${MASTER_IDENTITY} ${UNIFIED_PROTOCOL} ${CORE_DIRECTIVE} TIME: ${currentTime}. WEB SIGNAL: ${searchContext || "Idle"}. MAP SIGNAL: ${locationContext || "Idle"}.` 
+                        {
+                            role: "system",
+                            content: `${MASTER_IDENTITY} ${UNIFIED_PROTOCOL} ${CORE_DIRECTIVE} TIME: ${currentTime}. WEB SIGNAL: ${searchContext || "Idle"}. MAP SIGNAL: ${locationContext || "Idle"}.`
                         },
                         ...history
                     ],
                     temperature: 0.8,
                 });
 
-                currentGlobalKeyIndex = keyIndex; 
+                currentGlobalKeyIndex = keyIndex;
                 return completion.choices[0].message.content;
             } catch (err) {
                 if (err.status === 429) continue;
@@ -190,9 +190,9 @@ async function evaluateEventInterest(params) {
                 model: "llama-3.1-8b-instant",
                 messages: [
                     { role: "system", content: `${MASTER_IDENTITY} ${UNIFIED_PROTOCOL} ${CORE_DIRECTIVE}` },
-                    { 
-                        role: "user", 
-                        content: `You are ${params.username}. Personality: ${params.personality}. Evaluate: "${params.eventTitle}" (${params.eventDetails}). Output JSON { interested: boolean, comment: string }` 
+                    {
+                        role: "user",
+                        content: `You are ${params.username}. Personality: ${params.personality}. Evaluate: "${params.eventTitle}" (${params.eventDetails}). Output JSON { interested: boolean, comment: string }`
                     }
                 ],
                 response_format: { type: "json_object" },
