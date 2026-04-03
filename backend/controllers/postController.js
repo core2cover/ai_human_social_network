@@ -1,91 +1,127 @@
 const { PrismaClient } = require("@prisma/client");
-const cloudinary = require("../config/cloudinary");
 const prisma = new PrismaClient();
-const { triggerAILike } = require('../services/aiLikeEngine');
-const { triggerAIComment } = require('../services/aiCommentEngine');
 
-/**
- * HELPER: Formats posts to include a 'liked' boolean
- */
+// ─── Constants ────────────────────────────────────────────────────────────────
+const POOL_SIZE = 400;
+const DEFAULT_LIMIT = 15;
+const CACHE_TTL_MS = 15 * 60 * 1000;
+
+const feedSessions = new Map();
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function parseScore(data) {
+  if (!data) return {};
+  if (typeof data === "string") {
+    try { return JSON.parse(data); } catch { return {}; }
+  }
+  return typeof data === "object" ? data : {};
+}
+
 const formatPosts = (posts, userId) => {
   return posts.map(post => ({
     ...post,
-    liked: post.likes && post.likes.length > 0
+    liked: post.likes && post.likes.length > 0,
+    likes: undefined // Strip internal array
   }));
 };
 
+function scorePost(post, { currentUserId, interestScores, synergyScores }) {
+  let weight = 0;
+  const now = Date.now();
+  const minsOld = (now - new Date(post.createdAt).getTime()) / 60_000;
+  if (minsOld <= 5) weight += 500;
+  weight += (interestScores[post.category] ?? 0) * 50;
+  if (post.user.isAi) weight += (synergyScores[post.user.username] ?? 0) * 40;
+  weight += (post._count.likes * 12) + (post._count.comments * 18);
+  weight -= (minsOld / 60) * 10;
+  return weight;
+}
+
 /**
- * FETCH MAIN FEED
- * Implements Tiered Ranking, Instant Self-Priority, and Refresh Randomness
+ * GET /api/posts/feed
+ * logic: Seen-ID filtering + Dynamic Interest Ranking
  */
 exports.getFeed = async (req, res) => {
   try {
     const currentUserId = req.user.id;
-    const { page = 1, limit = 20, type, seed = 0.5 } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const { page = 1, limit = DEFAULT_LIMIT, type, seed } = req.query;
+    const sessionKey = `${currentUserId}:${type ?? "ALL"}:${seed ?? 'default'}`;
+    
+    let session = feedSessions.get(sessionKey);
 
-    // 1. Setup Filter
-    let whereClause = {};
-    if (type === "AI") whereClause = { user: { isAi: true } };
-    if (type === "HUMAN") whereClause = { user: { isAi: false } };
+    if (parseInt(page) === 1 || !session) {
+      const user = await prisma.user.findUnique({
+        where: { id: currentUserId },
+        select: { interestScores: true, synergyScores: true },
+      });
 
-    // 2. Fetch User Context for Ranking
-    const user = await prisma.user.findUnique({
-      where: { id: currentUserId },
-      select: { interestScores: true, synergyScores: true }
-    });
-    const parseScore = (data) => (typeof data === 'string' ? JSON.parse(data) : data || {});
-    const interestScores = parseScore(user.interestScores);
-    const synergyScores = parseScore(user.synergyScores);
+      const interestScores = parseScore(user?.interestScores);
+      const synergyScores  = parseScore(user?.synergyScores);
 
-    // 3. Pool Generation (Filtered by Type)
-    const postPool = await prisma.post.findMany({
-      where: whereClause, // 🟢 CRITICAL: Filter applied at DB level
-      take: 200, 
+      const whereClause = {};
+      if (type === "AI")    whereClause.user = { isAi: true };
+      if (type === "HUMAN") whereClause.user = { isAi: false };
+
+      const rawPool = await prisma.post.findMany({
+        where: whereClause,
+        take: POOL_SIZE,
+        select: {
+          id: true, userId: true, createdAt: true, category: true,
+          user: { select: { id: true, username: true, isAi: true } },
+          _count: { select: { likes: true, comments: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      const rankedIds = rawPool
+        .map((post) => ({
+          id: post.id,
+          score: scorePost(post, { currentUserId, interestScores, synergyScores }),
+        }))
+        .sort((a, b) => b.score - a.score)
+        .map(p => p.id);
+
+      session = { ids: rankedIds, seen: new Set(), expiresAt: Date.now() + CACHE_TTL_MS };
+      feedSessions.set(sessionKey, session);
+    }
+
+    const allRankedIds = session.ids;
+    const unseenIds = allRankedIds.filter(id => !session.seen.has(id));
+    const pageIds = unseenIds.slice(0, parseInt(limit));
+
+    if (pageIds.length === 0) return res.json({ posts: [], meta: { hasMore: false } });
+
+    pageIds.forEach(id => session.seen.add(id));
+
+    const posts = await prisma.post.findMany({
+      where: { id: { in: pageIds } },
       include: {
         user: { select: { id: true, username: true, isAi: true, avatar: true, name: true } },
         likes: { where: { userId: currentUserId }, select: { userId: true } },
-        _count: { select: { likes: true, comments: true } }
-      },
-      orderBy: { createdAt: 'desc' }
+        _count: { select: { likes: true, comments: true } },
+        comments: {
+          take: 2,
+          orderBy: { createdAt: "desc" },
+          include: { user: { select: { username: true, avatar: true } } }
+        }
+      }
     });
 
-    // 4. Algorithm Math
-    const rankedPosts = postPool.map(post => {
-      let weight = 0;
-      const now = Date.now();
-      const minsOld = (now - new Date(post.createdAt).getTime()) / (1000 * 60);
+    const postsMap = new Map(posts.map(p => [p.id, p]));
+    const orderedPosts = pageIds.map(id => postsMap.get(id)).filter(Boolean);
 
-      if (post.userId === currentUserId && minsOld <= 2) weight += 10000;
-
-      const interestWeight = post.category ? (interestScores[post.category] || 0) * 20 : 0;
-      const synergyWeight = post.user.isAi ? (synergyScores[post.user.username] || 0) * 20 : 0;
-      
-      weight += interestWeight + synergyWeight;
-      weight += (post._count.likes * 10) + (post._count.comments * 15);
-      weight -= (minsOld / 60) * 5; // Time Decay
-
-      // Dynamic Shuffle based on Seed
-      const randomFactor = Math.abs(Math.sin(parseInt(post.id.slice(-5), 36) + parseFloat(seed))) * 100;
-      weight += randomFactor;
-
-      return { ...post, weight };
-    });
-
-    const sortedPosts = rankedPosts.sort((a, b) => b.weight - a.weight);
-    const paginatedPosts = sortedPosts.slice(skip, skip + parseInt(limit));
-    const totalPosts = await prisma.post.count({ where: whereClause });
-
-    res.json({
-      posts: formatPosts(paginatedPosts, currentUserId),
+    return res.json({
+      posts: formatPosts(orderedPosts, currentUserId),
       meta: {
         page: parseInt(page),
-        hasMore: (skip + paginatedPosts.length) < totalPosts
+        hasMore: session.seen.size < allRankedIds.length,
+        seed: seed
       }
     });
   } catch (err) {
-    console.error("Feed Error:", err);
-    res.status(500).json({ error: "Transmission error" });
+    console.error("Neural Feed Failure:", err);
+    res.status(500).json({ error: "Feed sync disrupted." });
   }
 };
 
@@ -336,6 +372,7 @@ exports.getPostComments = async (req, res) => {
 exports.getAllPosts = async (req, res) => {
   try {
     const currentUserId = req.user.id;
+    // Fetch top 50 recent posts globally for Discovery
     const posts = await prisma.post.findMany({
       include: {
         user: { select: { id: true, username: true, name: true, avatar: true, isAi: true } },
@@ -345,8 +382,10 @@ exports.getAllPosts = async (req, res) => {
       orderBy: { createdAt: 'desc' },
       take: 50
     });
+    
     res.json(formatPosts(posts, currentUserId));
   } catch (err) {
+    console.error("Explore Sync Error:", err);
     res.status(500).json({ error: "Failed to sync global manifestations." });
   }
 };

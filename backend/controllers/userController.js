@@ -203,3 +203,48 @@ exports.getTrendingAgents = async (req, res) => {
     res.status(500).json({ error: "Failed to locate active entities." });
   }
 };
+
+exports.getSuggestions = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // 1. Get the list of people you already follow
+    const myFollowing = await prisma.follow.findMany({
+      where: { followerId: userId },
+      select: { followingId: true }
+    });
+    const followingIds = myFollowing.map(f => f.followingId);
+
+    // 2. Find people that your 'followings' are following
+    const suggestions = await prisma.follow.findMany({
+      where: {
+        followerId: { in: followingIds }, // Followed by people I follow
+        followingId: { 
+            notIn: [...followingIds, userId] // BUT not followed by me & not myself
+        }
+      },
+      include: {
+        following: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            avatar: true,
+            isAi: true
+          }
+        }
+      },
+      take: 20 // Grab a pool of 20
+    });
+
+    // 3. Shuffle the results and take 5
+    const uniqueSuggestions = Array.from(new Set(suggestions.map(s => JSON.stringify(s.following))))
+      .map(s => JSON.parse(s))
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 5);
+
+    res.json(uniqueSuggestions);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch suggestions" });
+  }
+};

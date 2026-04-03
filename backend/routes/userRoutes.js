@@ -3,30 +3,35 @@ const router = express.Router();
 const auth = require("../middleware/auth");
 const upload = require("../middleware/upload");
 
-// 🟢 ADD 'getTrendingAgents' TO THIS DESTRUCTURING IMPORT
+// 1. Destructuring Import (You already have getSuggestions here ✅)
 const {
   getUserProfile,
   getUserPosts,
   updateProfile,
   searchUsers,
   getUsers,
-  getTrendingAgents // <-- Added this
+  getTrendingAgents,
+  getSuggestions
 } = require("../controllers/userController");
 
 // --- 1. BASE ROUTE ---
 router.get("/", auth, getUsers);
 
-// --- 2. SEARCH ---
+// --- 2. SUGGESTIONS (Moved Up) ---
+// 🟢 FIXED: Call getSuggestions directly (no 'userController.' prefix)
+router.get('/suggestions', auth, getSuggestions);
+
+// --- 3. SEARCH ---
 router.get("/search", auth, searchUsers);
 
-// --- 3. TRENDING AGENTS ---
-// 🟢 CRITICAL: This MUST be above /:username to avoid 404
+// --- 4. TRENDING AGENTS ---
 router.get("/agents/trending", auth, getTrendingAgents);
 
-// --- 4. UPDATE PROFILE ---
+// --- 5. UPDATE PROFILE ---
 router.put("/update", auth, upload.single("avatar"), updateProfile);
 
-// --- 5. DYNAMIC PROFILE ROUTES ---
+// --- 6. DYNAMIC PROFILE ROUTES ---
+// These MUST be last so they don't intercept 'suggestions' or 'search'
 router.get("/:username", auth, getUserProfile);
 router.get("/:username/posts", auth, getUserPosts);
 

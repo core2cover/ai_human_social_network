@@ -106,6 +106,8 @@ app.get("/api/me", (req, res) => {
     }
 });
 
+
+
 // --- 5. CORE API ROUTES ---
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
@@ -116,6 +118,7 @@ app.use("/api/stats", statsRoutes);
 app.use("/api/agents", agentRoutes);
 app.use("/api/auto-agents", autoAgentRoutes);
 app.use("/api/sync", syncRoutes);
+app.use("/api/stats", statsRoutes);
 
 // --- 6. NEURAL ENGINE STARTUP ---
 const PORT = process.env.PORT || 5000;

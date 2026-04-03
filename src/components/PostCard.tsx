@@ -16,15 +16,27 @@ import {
   ChevronRight,
   ZoomIn,
   ZoomOut,
-  RotateCcw
+  RotateCcw,
+  Cpu,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Avatar from "./Avatar";
 import type { Post, User } from "../types";
 import CommentList from "./CommentList";
 import { Link } from "react-router-dom";
-import EmojiPicker, { Theme } from 'emoji-picker-react';
+import EmojiPicker, { Theme } from "emoji-picker-react";
 import PostShareModal from "./PostShareModal";
+
+// ─── Brand tokens (matches Login.tsx palette) ─────────────────────────────────
+const B = {
+  crocus:      "#9687F5",
+  crocusPale:  "#DDD8FD",
+  crocusMid:   "#B8AEFA",
+  ebony:       "#2D284B",
+  ebonyLight:  "#4A4275",
+  titanWhite:  "#EBF0FF",
+  white:       "#FFFFFF",
+};
 
 interface PostCardProps {
   post: Post;
@@ -32,90 +44,261 @@ interface PostCardProps {
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+// ─── Dot indicator for multi-media ───────────────────────────────────────────
+function MediaDots({ count, current }: { count: number; current: number }) {
+  if (count <= 1) return null;
+  return (
+    <div style={{ display: "flex", gap: 5, justifyContent: "center", padding: "10px 0 0" }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <motion.div
+          key={i}
+          animate={{ width: i === current ? 18 : 6, opacity: i === current ? 1 : 0.35 }}
+          transition={{ duration: 0.25 }}
+          style={{
+            height: 6, borderRadius: 100,
+            background: i === current ? B.crocus : B.ebonyLight,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Action button (like/comment/share) ──────────────────────────────────────
+function ActionBtn({
+  icon, count, active, activeColor, label, onClick,
+}: {
+  icon: React.ReactNode;
+  count?: number | string;
+  active?: boolean;
+  activeColor?: string;
+  label?: string;
+  onClick: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <motion.button
+      onClick={onClick}
+      whileTap={{ scale: 0.88 }}
+      style={{
+        display: "flex", alignItems: "center", gap: 6,
+        padding: "7px 13px", borderRadius: 100,
+        border: `1.5px solid ${active ? (activeColor ?? B.crocus) + "44" : "rgba(45,40,75,0.08)"}`,
+        background: active ? (activeColor ?? B.crocus) + "12" : "rgba(255,255,255,0.7)",
+        color: active ? (activeColor ?? B.crocus) : B.ebonyLight,
+        cursor: "pointer", transition: "all 0.22s ease",
+        backdropFilter: "blur(8px)",
+      }}
+    >
+      {icon}
+      {(count !== undefined || label) && (
+        <span style={{
+          fontSize: 12, fontWeight: 600,
+          fontFamily: '"DM Sans", system-ui, sans-serif',
+          color: "inherit",
+        }}>
+          {count ?? label}
+        </span>
+      )}
+    </motion.button>
+  );
+}
+
+// ─── Comment input row ───────────────────────────────────────────────────────
+function CommentInput({
+  value, onChange, onSubmit, onEmojiToggle,
+  showEmoji, onEmojiSelect, loading,
+  showMentions, mentions, onSelectMention, inputRef,
+}: any) {
+  return (
+    <div style={{ padding: "16px 20px 20px", borderTop: `1px solid rgba(150,135,245,0.1)`, background: "rgba(235,240,255,0.4)" }}>
+      <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Emoji button */}
+        <button
+          onClick={onEmojiToggle}
+          style={{
+            padding: 8, borderRadius: "50%", border: "none",
+            background: showEmoji ? B.crocusPale : "transparent",
+            color: showEmoji ? B.crocus : B.ebonyLight,
+            cursor: "pointer", flexShrink: 0, transition: "all 0.2s",
+          }}
+        >
+          <Smile size={18} />
+        </button>
+
+        {/* Emoji picker */}
+        <AnimatePresence>
+          {showEmoji && (
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.96 }}
+              style={{
+                position: "absolute", bottom: "calc(100% + 12px)", left: 0,
+                zIndex: 9999, borderRadius: 16, overflow: "hidden",
+                boxShadow: "0 12px 40px rgba(45,40,75,0.18)",
+              }}
+            >
+              <EmojiPicker onEmojiClick={(d) => onEmojiSelect(d.emoji)} theme={Theme.LIGHT} width={300} height={340} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Input */}
+        <div style={{ flex: 1, position: "relative" }}>
+          {/* Mention suggestions */}
+          <AnimatePresence>
+            {showMentions && mentions.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                style={{
+                  position: "absolute", bottom: "calc(100% + 8px)", left: 0, right: 0,
+                  background: B.white, border: `1px solid rgba(150,135,245,0.18)`,
+                  borderRadius: 14, overflow: "hidden",
+                  boxShadow: "0 8px 30px rgba(45,40,75,0.12)", zIndex: 9000,
+                }}
+              >
+                {mentions.map((u: User) => (
+                  <button
+                    key={u.id}
+                    onClick={() => onSelectMention(u.username)}
+                    style={{
+                      width: "100%", display: "flex", alignItems: "center",
+                      gap: 10, padding: "10px 14px", border: "none",
+                      borderBottom: `1px solid rgba(150,135,245,0.08)`,
+                      background: "transparent", cursor: "pointer",
+                      transition: "background 0.15s",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = B.crocusPale)}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <Avatar src={u.avatar} alt={u.name || u.username} isAi={u.isAi} size="sm" />
+                    <div style={{ textAlign: "left" }}>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: B.ebony, margin: 0 }}>@{u.username}</p>
+                      <p style={{ fontSize: 10, color: B.crocus, margin: 0, display: "flex", alignItems: "center", gap: 3 }}>
+                        {u.isAi ? <><Cpu size={9} /> AI Friend</> : "Human"}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <input
+            ref={inputRef}
+            value={value}
+            onChange={onChange}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && onSubmit()}
+            placeholder="Write a reply…"
+            style={{
+              width: "100%", padding: "11px 16px",
+              borderRadius: 100, border: `1.5px solid rgba(150,135,245,0.2)`,
+              background: "rgba(255,255,255,0.85)", color: B.ebony,
+              fontSize: 13, fontFamily: '"DM Sans", system-ui, sans-serif',
+              outline: "none", boxSizing: "border-box",
+              transition: "border-color 0.2s",
+            }}
+            onFocus={e => (e.target.style.borderColor = B.crocus)}
+            onBlur={e => (e.target.style.borderColor = "rgba(150,135,245,0.2)")}
+          />
+        </div>
+
+        {/* Send */}
+        <motion.button
+          onClick={onSubmit}
+          whileTap={{ scale: 0.9 }}
+          disabled={loading || !value.trim()}
+          style={{
+            padding: "10px 18px", borderRadius: 100, border: "none",
+            background: value.trim() ? B.crocus : "rgba(150,135,245,0.25)",
+            color: B.white, cursor: value.trim() ? "pointer" : "default",
+            display: "flex", alignItems: "center", gap: 6,
+            fontSize: 12, fontWeight: 600, flexShrink: 0,
+            fontFamily: '"DM Sans", system-ui, sans-serif',
+            transition: "background 0.2s",
+          }}
+        >
+          {loading ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={15} />}
+          <span>Send</span>
+        </motion.button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main PostCard ────────────────────────────────────────────────────────────
 const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const token = localStorage.getItem("token");
   const currentUser = localStorage.getItem("username");
 
-  const [showMenu, setShowMenu] = useState(false);
-  const [isLiked, setIsLiked] = useState(post.liked ?? false);
-  const [likesCount, setLikesCount] = useState(post._count?.likes ?? 0);
-  const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState<any[]>(Array.isArray(post.comments) ? post.comments : []);
-  const [newComment, setNewComment] = useState("");
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [viewCount, setViewCount] = useState(post.views || 0);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [showHeartPop, setShowHeartPop] = useState(false);
-  const heartAnimTimeout = useRef<NodeJS.Timeout | null>(null);
-
+  const [showMenu, setShowMenu]               = useState(false);
+  const [isLiked, setIsLiked]                 = useState(post.liked ?? false);
+  const [likesCount, setLikesCount]           = useState(post._count?.likes ?? 0);
+  const [showComments, setShowComments]       = useState(false);
+  const [comments, setComments]               = useState<any[]>(Array.isArray(post.comments) ? post.comments : []);
+  const [newComment, setNewComment]           = useState("");
+  const [isSubmitting, setIsSubmitting]       = useState(false);
+  const [viewCount, setViewCount]             = useState(post.views || 0);
+  const [showEmoji, setShowEmoji]             = useState(false);
+  const [isExpanded, setIsExpanded]           = useState(false);
+  const [showHeartPop, setShowHeartPop]       = useState(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [mentionQuery, setMentionQuery]       = useState("");
+  const [showMentions, setShowMentions]       = useState(false);
+  const [allUsers, setAllUsers]               = useState<User[]>([]);
+  const [cursorPos, setCursorPos]             = useState(0);
+  const [isFullScreen, setIsFullScreen]       = useState(false);
+  const [scale, setScale]                     = useState(1);
+  const [position, setPosition]               = useState({ x: 0, y: 0 });
+  const [showShareModal, setShowShareModal]   = useState(false);
+  const [showToast, setShowToast]             = useState(false);
+  const [isPlaying, setIsPlaying]             = useState(false);
+
+  const cardRef       = useRef<HTMLDivElement>(null);
+  const clickTimer    = useRef<NodeJS.Timeout | null>(null);
+  const heartTimeout  = useRef<NodeJS.Timeout | null>(null);
+  const hasViewed     = useRef(false);
+  const videoRef      = useRef<HTMLVideoElement>(null);
+  const commentEndRef = useRef<HTMLDivElement>(null);
+  const inputRef      = useRef<HTMLInputElement>(null);
+
+  const isOwner = currentUser === post.user?.username;
   const mediaItems = post.mediaUrls || (post.mediaUrl ? [post.mediaUrl] : []);
   const mediaTypes = post.mediaTypes || (post.mediaType ? [post.mediaType] : []);
   const hasMedia = mediaItems.length > 0;
-
-  const [mentionQuery, setMentionQuery] = useState("");
-  const [showMentionList, setShowMentionList] = useState(false);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [cursorPos, setCursorPos] = useState(0);
-
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const [scale, setScale] = useState(1);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [showToast, setShowToast] = useState(false);
-
-  const cardRef = useRef<HTMLDivElement>(null);
-  const clickTimer = useRef<NodeJS.Timeout | null>(null);
-  const hasViewed = useRef(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const commentEndRef = useRef<HTMLDivElement>(null);
-  const emojiRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  const isOwner = currentUser === post.user?.username;
   const displayCommentCount = comments.length > 0 ? comments.length : (post._count?.comments ?? 0);
 
-  const handleLike = useCallback(async (forceLike = false) => {
-    if (forceLike && isLiked) {
-      triggerHeartAnimation();
-      return;
-    }
-    const previousLiked = isLiked;
-    const previousCount = likesCount;
-    const newLikedStatus = forceLike ? true : !previousLiked;
-
-    if (newLikedStatus !== previousLiked) {
-      setIsLiked(newLikedStatus);
-      setLikesCount(prev => newLikedStatus ? prev + 1 : Math.max(0, prev - 1));
-    }
-    if (newLikedStatus) triggerHeartAnimation();
-
-    try {
-      const res = await fetch(`${API}/api/posts/${post.id}/like`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.liked !== newLikedStatus) {
-        setIsLiked(data.liked);
-        setLikesCount(prev => (data.liked ? previousCount + 1 : previousCount));
-      }
-    } catch (err) {
-      setIsLiked(previousLiked);
-      setLikesCount(previousCount);
-    }
-  }, [post.id, token, isLiked, likesCount]);
-
-  const triggerHeartAnimation = () => {
-    if (heartAnimTimeout.current) clearTimeout(heartAnimTimeout.current);
+  // ── Like ──────────────────────────────────────────────────────────────────
+  const triggerHeartPop = () => {
+    if (heartTimeout.current) clearTimeout(heartTimeout.current);
     setShowHeartPop(true);
-    heartAnimTimeout.current = setTimeout(() => setShowHeartPop(false), 800);
+    heartTimeout.current = setTimeout(() => setShowHeartPop(false), 750);
   };
 
+  const handleLike = useCallback(async (forceLike = false) => {
+    if (forceLike && isLiked) { triggerHeartPop(); return; }
+    const prev = isLiked;
+    const newLiked = forceLike ? true : !prev;
+    if (newLiked !== prev) {
+      setIsLiked(newLiked);
+      setLikesCount(c => newLiked ? c + 1 : Math.max(0, c - 1));
+    }
+    if (newLiked) triggerHeartPop();
+    try {
+      const res = await fetch(`${API}/api/posts/${post.id}/like`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setIsLiked(data.liked);
+    } catch {
+      setIsLiked(prev);
+      setLikesCount(c => prev ? c + 1 : Math.max(0, c - 1));
+    }
+  }, [post.id, token, isLiked]);
+
+  // ── Media click (single = fullscreen/play, double = like) ────────────────
   const handleMediaClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (clickTimer.current) {
@@ -126,56 +309,78 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       clickTimer.current = setTimeout(() => {
         clickTimer.current = null;
         if (mediaTypes[currentMediaIndex] === "video") {
-          if (videoRef.current?.paused) {
-            videoRef.current.play();
-            setIsPlaying(true);
-          } else {
-            videoRef.current?.pause();
-            setIsPlaying(false);
-          }
+          if (videoRef.current?.paused) { videoRef.current.play(); setIsPlaying(true); }
+          else { videoRef.current?.pause(); setIsPlaying(false); }
         } else {
           setIsFullScreen(true);
         }
-      }, 250);
+      }, 230);
     }
   };
 
-  useEffect(() => {
-    const fetchUsers = async () => {
+  // ── Comments ──────────────────────────────────────────────────────────────
+  const toggleComments = async () => {
+    const next = !showComments;
+    setShowComments(next);
+    if (next && comments.length === 0) {
       try {
-        const res = await fetch(`${API}/api/users`, {
-          headers: { Authorization: `Bearer ${token}` }
+        const res = await fetch(`${API}/api/posts/${post.id}/comments`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-        if (res.ok) {
-          const data = await res.json();
-          setAllUsers(data);
-        }
-      } catch (err) { console.error("Mention sync failed"); }
-    };
-    if (showComments) fetchUsers();
+        const data = await res.json();
+        if (Array.isArray(data)) setComments(data);
+      } catch {}
+    }
+  };
+
+  const handleCommentSubmit = async () => {
+    if (!newComment.trim()) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API}/api/posts/${post.id}/comment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ content: newComment, postId: post.id }),
+      });
+      const comment = await res.json();
+      setComments(p => [...p, comment]);
+      setNewComment("");
+      setShowEmoji(false);
+      setTimeout(() => commentEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    } catch {}
+    setIsSubmitting(false);
+  };
+
+  // ── Mentions ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!showComments) return;
+    fetch(`${API}/api/users`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(setAllUsers)
+      .catch(() => {});
   }, [showComments, token]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+    const val = e.target.value;
     const pos = e.target.selectionStart || 0;
-    setNewComment(value);
+    setNewComment(val);
     setCursorPos(pos);
-    const lastChar = value.slice(0, pos).split(" ").pop() || "";
-    if (lastChar.startsWith("@")) {
-      setMentionQuery(lastChar.slice(1).toLowerCase());
-      setShowMentionList(true);
+    const word = val.slice(0, pos).split(" ").pop() || "";
+    if (word.startsWith("@")) {
+      setMentionQuery(word.slice(1).toLowerCase());
+      setShowMentions(true);
     } else {
-      setShowMentionList(false);
+      setShowMentions(false);
     }
   };
 
   const selectMention = (username: string) => {
     const before = newComment.slice(0, cursorPos).split(" ");
     before.pop();
-    const joinedBefore = before.join(" ");
-    const after = newComment.slice(cursorPos);
-    setNewComment(`${joinedBefore}${joinedBefore ? " " : ""}@${username} ${after}`);
-    setShowMentionList(false);
+    const joined = before.join(" ");
+    const after  = newComment.slice(cursorPos);
+    setNewComment(`${joined}${joined ? " " : ""}@${username} ${after}`);
+    setShowMentions(false);
     inputRef.current?.focus();
   };
 
@@ -183,109 +388,89 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     .filter(u => u.username.toLowerCase().includes(mentionQuery))
     .slice(0, 5);
 
-  const handleCommentSubmit = async () => {
-    if (!newComment.trim()) return;
-    setIsSubmittingComment(true);
-    try {
-      const res = await fetch(`${API}/api/posts/${post.id}/comment`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ content: newComment, postId: post.id })
-      });
-      const comment = await res.json();
-      setComments(prev => [...prev, comment]);
-      setNewComment("");
-      setShowEmojiPicker(false);
-      setTimeout(() => commentEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    } catch (err) { console.error("Comment submission failed"); }
-    setIsSubmittingComment(false);
-  };
-
-  const toggleComments = async () => {
-    const nextState = !showComments;
-    setShowComments(nextState);
-    if (nextState && comments.length === 0) {
-      try {
-        const res = await fetch(`${API}/api/posts/${post.id}/comments`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (Array.isArray(data)) setComments(data);
-      } catch (err) { console.error("Neural response sync failed", err); }
-    }
-  };
-
-  const handleDragStart = (e: React.DragEvent) => {
-    const postUrl = `${window.location.origin}/post/${post.id}`;
-    e.dataTransfer.setData("text/uri-list", postUrl);
-    e.dataTransfer.setData("text/plain", postUrl);
-    e.dataTransfer.effectAllowed = "copyMove";
-  };
-
+  // ── View tracking ─────────────────────────────────────────────────────────
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !hasViewed.current) {
-          const timer = setTimeout(async () => {
-            try {
-              const res = await fetch(`${API}/api/posts/${post.id}/view`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` }
-              });
-              if (res.ok) {
-                const data = await res.json();
-                setViewCount(data.views);
-                hasViewed.current = true;
-              }
-            } catch (err) { console.error("View tracking failed"); }
-          }, 2000);
-          return () => clearTimeout(timer);
-        }
-      },
-      { threshold: 0.7 }
-    );
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !hasViewed.current) {
+        const t = setTimeout(async () => {
+          try {
+            const res = await fetch(`${API}/api/posts/${post.id}/view`, {
+              method: "POST", headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) { const d = await res.json(); setViewCount(d.views); hasViewed.current = true; }
+          } catch {}
+        }, 2000);
+        return () => clearTimeout(t);
+      }
+    }, { threshold: 0.7 });
     if (cardRef.current) observer.observe(cardRef.current);
     return () => observer.disconnect();
   }, [post.id, token]);
 
+  // ── Delete ────────────────────────────────────────────────────────────────
   const handleDelete = async () => {
-    if (!confirm("Terminate this broadcast?")) return;
+    if (!confirm("Delete this post?")) return;
     try {
       const res = await fetch(`${API}/api/posts/${post.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
+        method: "DELETE", headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) window.location.reload();
-    } catch (err) { console.error("Delete failed"); }
+    } catch {}
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
-    if (isFullScreen) {
-      const delta = e.deltaY > 0 ? -0.2 : 0.2;
-      setScale(prev => Math.max(0.5, Math.min(5, prev + delta)));
-    }
+  // ── Zoom ─────────────────────────────────────────────────────────────────
+  const resetZoom = () => { setScale(1); setPosition({ x: 0, y: 0 }); };
+
+  // ── Drag to share ─────────────────────────────────────────────────────────
+  const handleDragStart = (e: React.DragEvent) => {
+    const url = `${window.location.origin}/post/${post.id}`;
+    e.dataTransfer.setData("text/uri-list", url);
+    e.dataTransfer.setData("text/plain", url);
   };
 
-  const resetZoom = () => {
-    setScale(1);
-    setPosition({ x: 0, y: 0 });
-  };
-
-  const MentionList = () => (
+  // ─────────────────────────────────────────────────────────────────────────
+  // SHARED MENU
+  // ─────────────────────────────────────────────────────────────────────────
+  const MenuDropdown = () => (
     <AnimatePresence>
-      {showMentionList && filteredMentions.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-full left-0 w-full mb-2 bg-white border border-black/5 rounded-2xl shadow-2xl overflow-hidden z-[10000]">
-          {filteredMentions.map(user => (
-            <button key={user.id} onClick={() => selectMention(user.username)} className="w-full flex items-center gap-3 p-3 hover:bg-crimson/5 transition-colors text-left border-b border-black/[0.02] last:border-0">
-              <Avatar src={user.avatar} alt={user.name || user.username} isAi={user.isAi} size="sm" />
-              <div><p className="text-[11px] font-black text-ocean">@{user.username}</p><p className="text-[8px] font-bold text-text-dim uppercase">{user.isAi ? 'Neural Node' : 'Human'}</p></div>
+      {showMenu && (
+        <motion.div
+          initial={{ opacity: 0, y: -6, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -6, scale: 0.95 }}
+          style={{
+            position: "absolute", top: "calc(100% + 8px)", right: 0,
+            background: B.white, border: `1px solid rgba(150,135,245,0.15)`,
+            borderRadius: 16, overflow: "hidden",
+            boxShadow: "0 8px 32px rgba(45,40,75,0.15)",
+            minWidth: 180, zIndex: 100,
+          }}
+        >
+          {isOwner && (
+            <button
+              onClick={handleDelete}
+              style={{
+                width: "100%", display: "flex", alignItems: "center", gap: 10,
+                padding: "13px 18px", border: "none", background: "transparent",
+                color: "#ef4444", cursor: "pointer", fontSize: 13,
+                fontFamily: '"DM Sans", system-ui, sans-serif', fontWeight: 500,
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "#fef2f2")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+            >
+              <Trash2 size={15} />
+              Delete Post
             </button>
-          ))}
+          )}
         </motion.div>
       )}
     </AnimatePresence>
   );
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // CARD WITH MEDIA
+  // ─────────────────────────────────────────────────────────────────────────
   if (hasMedia) {
     return (
       <>
@@ -293,205 +478,587 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           ref={cardRef}
           draggable
           onDragStart={handleDragStart}
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          className="social-card !bg-black group !p-0 relative shadow-2xl rounded-[2.5rem] min-h-[500px] flex flex-col border border-white/5 overflow-hidden cursor-grab active:cursor-grabbing"
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          style={{
+            background: B.white,
+            border: `1px solid rgba(150,135,245,0.15)`,
+            borderRadius: 28,
+            overflow: "hidden",
+            boxShadow: "0 4px 24px rgba(45,40,75,0.07), 0 1px 4px rgba(45,40,75,0.04)",
+            position: "relative",
+            fontFamily: '"DM Sans", system-ui, sans-serif',
+          }}
         >
+          {/* ── Heart pop overlay ─────────────────────────────────────────── */}
           <AnimatePresence>
             {showHeartPop && (
-              <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1.5, opacity: 1 }} exit={{ scale: 2, opacity: 0 }} className="absolute inset-0 z-[60] flex items-center justify-center pointer-events-none">
-                <Heart size={100} className="text-white fill-white drop-shadow-[0_0_30px_rgba(220,38,38,0.8)]" />
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 1.4, opacity: 0 }}
+                style={{
+                  position: "absolute", inset: 0, zIndex: 60,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  pointerEvents: "none",
+                }}
+              >
+                <div style={{
+                  background: "rgba(150,135,245,0.18)", borderRadius: "50%",
+                  padding: 24, backdropFilter: "blur(8px)",
+                }}>
+                  <Heart size={64} fill={B.crocus} stroke="none" />
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <div className="relative flex-1 w-full bg-black flex items-center justify-center overflow-hidden rounded-[2.5rem]">
-            <header className="absolute top-0 left-0 w-full z-30 p-6 md:p-8 flex items-center justify-between pointer-events-none">
-              <div className="flex items-center gap-4 pointer-events-auto">
-                <Link to={`/profile/${post.user?.username}`}>
-                  <Avatar src={post.user?.avatar} alt={post.user?.name || post.user?.username} isAi={post.user?.isAi} size="md" className="border-2 border-white/20 shadow-lg" />
-                </Link>
-                <div>
-                  <h3 className="font-serif font-black text-white text-sm uppercase tracking-tight">{post.user?.name || post.user?.username}</h3>
-                  <p className="text-[10px] text-white/50 font-mono font-bold uppercase tracking-widest">@{post.user?.username}</p>
+          {/* ── Post header ───────────────────────────────────────────────── */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "16px 18px 14px",
+          }}>
+            <Link to={`/profile/${post.user?.username}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+              <Avatar src={post.user?.avatar} alt={post.user?.name || post.user?.username} isAi={post.user?.isAi} size="md" />
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: B.ebony }}>{post.user?.name || post.user?.username}</span>
+                  {post.user?.isAi && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, background: B.crocusPale,
+                      color: B.crocus, padding: "2px 7px", borderRadius: 100,
+                      display: "flex", alignItems: "center", gap: 3, letterSpacing: "0.05em",
+                    }}>
+                      <Cpu size={9} /> AI
+                    </span>
+                  )}
                 </div>
+                <span style={{ fontSize: 11, color: B.ebonyLight, opacity: 0.5 }}>
+                  @{post.user?.username} · {new Date(post.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
               </div>
-              <div className="relative pointer-events-auto">
-                <button onClick={() => setShowMenu(!showMenu)} className="p-2 text-white/30 hover:text-white"><MoreHorizontal size={20} /></button>
-                <AnimatePresence>{showMenu && isOwner && (<motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="absolute right-0 mt-2 w-48 bg-white border border-black/[0.08] rounded-2xl shadow-2xl z-40 overflow-hidden"><button onClick={handleDelete} className="w-full flex items-center gap-3 px-5 py-4 text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest"><Trash2 size={14} /> Terminate Broadcast</button></motion.div>)}</AnimatePresence>
-              </div>
-            </header>
-
-            {mediaItems.length > 1 && (
-              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex justify-between px-4 pointer-events-none">
-                <button onClick={(e) => { e.stopPropagation(); if (currentMediaIndex > 0) setCurrentMediaIndex(c => c - 1); }} className={`p-2 bg-black/20 backdrop-blur-md rounded-full text-white pointer-events-auto transition-opacity ${currentMediaIndex === 0 ? 'opacity-0' : 'opacity-100'}`}><ChevronLeft /></button>
-                <button onClick={(e) => { e.stopPropagation(); if (currentMediaIndex < mediaItems.length - 1) setCurrentMediaIndex(c => c + 1); }} className={`p-2 bg-black/20 backdrop-blur-md rounded-full text-white pointer-events-auto transition-opacity ${currentMediaIndex === mediaItems.length - 1 ? 'opacity-0' : 'opacity-100'}`}><ChevronRight /></button>
-              </div>
-            )}
-
-            <div className="w-full h-full flex items-center justify-center relative cursor-pointer" onClick={handleMediaClick}>
-              <AnimatePresence mode="wait">
-                <motion.div key={currentMediaIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
-                  {mediaTypes[currentMediaIndex] === "video" ? (<video ref={videoRef} src={mediaItems[currentMediaIndex]} draggable={false} className="w-full h-full object-contain" loop playsInline />) :
-                    (<img src={mediaItems[currentMediaIndex]} className="w-full h-full object-contain" loading="lazy" draggable={false} alt="post content" />)}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            {!isPlaying && mediaTypes[currentMediaIndex] === "video" && (<div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="p-6 bg-white/10 backdrop-blur-md rounded-full text-white"><Play size={40} className="fill-current" /></div></div>)}
-
-            <div className="absolute right-6 bottom-24 z-30 flex flex-col gap-6 items-center">
-              <button onClick={(e) => { e.stopPropagation(); handleLike(); }} className="flex flex-col items-center gap-1 group">
-                <div className={`p-4 rounded-full border backdrop-blur-xl transition-all duration-300 ${isLiked ? 'bg-crimson text-white border-crimson shadow-lg shadow-crimson/20' : 'bg-black/40 text-white border-white/10 hover:bg-white/20'}`}>
-                  <Heart size={24} className={isLiked ? "fill-current" : ""} />
-                </div>
-                <span className="text-xs font-black drop-shadow-md transition-colors text-white">{likesCount}</span>
+            </Link>
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                style={{
+                  padding: 8, border: "none", background: "transparent",
+                  color: B.ebonyLight, opacity: 0.4, cursor: "pointer",
+                  borderRadius: "50%", transition: "all 0.2s",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.background = B.crocusPale; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.4"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+              >
+                <MoreHorizontal size={20} />
               </button>
-              <button onClick={(e) => { e.stopPropagation(); toggleComments(); }} className="flex flex-col items-center gap-1 group">
-                <div className="p-4 backdrop-blur-xl rounded-full border transition-all duration-300 bg-black/40 text-white border-white/10 hover:bg-ocean">
-                  <MessageCircle size={24} />
-                </div>
-                <span className="text-xs font-black drop-shadow-md transition-colors text-white">{displayCommentCount}</span>
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); setShowShareModal(true); }} className="flex flex-col items-center gap-1 group">
-                <div className="p-4 backdrop-blur-xl rounded-full border transition-all duration-300 bg-black/40 text-white border-white/10 hover:bg-white/30">
-                  <Share2 size={24} />
-                </div>
-                <span className="text-[10px] font-black drop-shadow-md uppercase tracking-tighter transition-colors text-white">Share</span>
-              </button>
-            </div>
-
-            {/* 🟢 UPDATED CAPTION CONTAINER FOR VISIBILITY */}
-            <div className="absolute bottom-0 left-0 w-full p-8 pt-24 bg-gradient-to-t from-black/90 via-black/60 to-transparent pointer-events-none z-20">
-              <div className="flex items-center gap-2 text-white/60 mb-3">
-                <Eye size={14} />
-                <span className="text-[10px] font-mono font-bold tracking-widest">{viewCount.toLocaleString()} VIEWS</span>
-              </div>
-              <div className="pr-24 pointer-events-auto">
-                <p className={`text-white text-base md:text-lg font-medium leading-relaxed font-serif italic drop-shadow-2xl ${!isExpanded ? "line-clamp-2" : ""}`}>
-                  {post.content}
-                </p>
-                <button onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }} className="mt-2 text-[10px] font-black uppercase tracking-widest text-white hover:text-crimson transition-colors underline decoration-crimson/40">
-                  {isExpanded ? "See Less" : "See More"}
-                </button>
-              </div>
+              <MenuDropdown />
             </div>
           </div>
 
+          {/* ── Media area ────────────────────────────────────────────────── */}
+          <div
+            style={{
+              position: "relative", background: "#0a0a12",
+              cursor: "pointer", overflow: "hidden",
+              width: "100%",
+            }}
+            onClick={handleMediaClick}
+          >
+            {/* Media nav arrows */}
+            {mediaItems.length > 1 && (
+              <>
+                <button
+                  onClick={e => { e.stopPropagation(); if (currentMediaIndex > 0) setCurrentMediaIndex(i => i - 1); }}
+                  style={{
+                    position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
+                    zIndex: 20, padding: 8, background: "rgba(255,255,255,0.15)",
+                    backdropFilter: "blur(8px)", border: "none", borderRadius: "50%",
+                    color: "#fff", cursor: "pointer",
+                    opacity: currentMediaIndex === 0 ? 0 : 1,
+                    transition: "opacity 0.2s",
+                    pointerEvents: currentMediaIndex === 0 ? "none" : "auto",
+                  }}
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button
+                  onClick={e => { e.stopPropagation(); if (currentMediaIndex < mediaItems.length - 1) setCurrentMediaIndex(i => i + 1); }}
+                  style={{
+                    position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+                    zIndex: 20, padding: 8, background: "rgba(255,255,255,0.15)",
+                    backdropFilter: "blur(8px)", border: "none", borderRadius: "50%",
+                    color: "#fff", cursor: "pointer",
+                    opacity: currentMediaIndex === mediaItems.length - 1 ? 0 : 1,
+                    transition: "opacity 0.2s",
+                    pointerEvents: currentMediaIndex === mediaItems.length - 1 ? "none" : "auto",
+                  }}
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </>
+            )}
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentMediaIndex}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                style={{ width: "100%", display: "block" }}
+              >
+                {mediaTypes[currentMediaIndex] === "video" ? (
+                  <video
+                    ref={videoRef}
+                    src={mediaItems[currentMediaIndex]}
+                    style={{ width: "100%", height: "auto", display: "block" }}
+                    loop playsInline draggable={false}
+                  />
+                ) : (
+                  <img
+                    src={mediaItems[currentMediaIndex]}
+                    style={{ width: "100%", height: "auto", display: "block" }}
+                    loading="lazy" draggable={false} alt="Post media"
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Video play indicator */}
+            {!isPlaying && mediaTypes[currentMediaIndex] === "video" && (
+              <div style={{
+                position: "absolute", inset: 0, display: "flex",
+                alignItems: "center", justifyContent: "center", pointerEvents: "none",
+              }}>
+                <div style={{
+                  padding: 20, background: "rgba(255,255,255,0.12)",
+                  backdropFilter: "blur(12px)", borderRadius: "50%", color: "#fff",
+                }}>
+                  <Play size={36} fill="#fff" stroke="none" />
+                </div>
+              </div>
+            )}
+
+            {/* Double-tap hint (fades quickly) */}
+            <div style={{
+              position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)",
+              background: "rgba(0,0,0,0.4)", backdropFilter: "blur(6px)",
+              borderRadius: 100, padding: "5px 12px", color: "rgba(255,255,255,0.7)",
+              fontSize: 10, fontWeight: 500, letterSpacing: "0.04em",
+              pointerEvents: "none",
+            }}>
+              Double tap to like
+            </div>
+          </div>
+
+          {/* Media dots */}
+          <div style={{ padding: "0 18px" }}>
+            <MediaDots count={mediaItems.length} current={currentMediaIndex} />
+          </div>
+
+          {/* ── Post content ──────────────────────────────────────────────── */}
+          {post.content && (
+            <div style={{ padding: "14px 18px 4px" }}>
+              <p style={{
+                fontSize: 14, lineHeight: 1.65, color: B.ebony,
+                margin: 0, fontFamily: '"DM Sans", system-ui, sans-serif',
+                display: "-webkit-box", WebkitLineClamp: isExpanded ? undefined : 2,
+                WebkitBoxOrient: "vertical", overflow: isExpanded ? "visible" : "hidden",
+              }}>
+                {post.content}
+              </p>
+              {post.content.length > 120 && (
+                <button
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  style={{
+                    fontSize: 12, fontWeight: 600, color: B.crocus,
+                    background: "none", border: "none", cursor: "pointer",
+                    padding: "4px 0", marginTop: 2,
+                  }}
+                >
+                  {isExpanded ? "Show less" : "more"}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── Action bar ────────────────────────────────────────────────── */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "12px 18px 14px",
+          }}>
+            <ActionBtn
+              icon={<Heart size={16} fill={isLiked ? B.crocus : "none"} stroke={isLiked ? B.crocus : B.ebonyLight} />}
+              count={likesCount}
+              active={isLiked}
+              activeColor={B.crocus}
+              onClick={(e) => { e.stopPropagation(); handleLike(); }}
+            />
+            <ActionBtn
+              icon={<MessageCircle size={16} stroke={showComments ? B.crocus : B.ebonyLight} />}
+              count={displayCommentCount}
+              active={showComments}
+              activeColor={B.crocus}
+              onClick={(e) => { e.stopPropagation(); toggleComments(); }}
+            />
+            <ActionBtn
+              icon={<Share2 size={16} />}
+              label="Share"
+              onClick={(e) => { e.stopPropagation(); setShowShareModal(true); }}
+            />
+            {/* View count pushed right */}
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5, color: B.ebonyLight, opacity: 0.4 }}>
+              <Eye size={14} />
+              <span style={{ fontSize: 11, fontWeight: 500 }}>{viewCount.toLocaleString()}</span>
+            </div>
+          </div>
+
+          {/* ── Comments panel ────────────────────────────────────────────── */}
           <AnimatePresence>
             {showComments && (
-              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="bg-white rounded-t-[2.5rem] absolute bottom-0 left-0 w-full h-[85%] md:h-[500px] z-[70] shadow-2xl border-t border-black/5 overflow-hidden flex flex-col">
-                <div className="p-6 flex items-center justify-between border-b border-black/5 bg-white shrink-0">
-                  <div className="flex items-center gap-2"><MessageCircle size={16} className="text-crimson" /><span className="text-[10px] font-black uppercase tracking-widest text-ocean">Neural Responses</span></div>
-                  <button onClick={() => setShowComments(false)} className="p-2 hover:bg-void rounded-full transition-colors"><X size={18} className="text-ocean" /></button>
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                style={{ overflow: "hidden", borderTop: `1px solid rgba(150,135,245,0.1)` }}
+              >
+                {/* Comments list */}
+                <div style={{ maxHeight: 280, overflowY: "auto", padding: "16px 18px 8px" }}>
+                  <CommentList comments={comments} />
+                  <div ref={commentEndRef} />
                 </div>
-                <div className="flex-1 overflow-y-auto p-6 no-scrollbar"><CommentList comments={comments} /><div ref={commentEndRef} className="h-4" /></div>
-                <div className="p-6 bg-white border-t border-black/5 shrink-0">
-                  <div className="flex items-center gap-3 relative" ref={emojiRef}>
-                    <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="text-text-dim hover:text-crimson transition-colors"><Smile size={20} /></button>
-                    {showEmojiPicker && (<div className="absolute bottom-full left-0 mb-4 z-[9999] shadow-2xl rounded-2xl overflow-hidden ring-1 ring-black/5"><EmojiPicker onEmojiClick={(d) => setNewComment(p => p + d.emoji)} theme={Theme.LIGHT} width={300} height={350} /></div>)}
-                    <div className="relative flex-1"><MentionList /><input value={newComment} ref={inputRef} onChange={handleInputChange} onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit()} placeholder="Inject logic..." className="w-full bg-void/5 border border-black/5 rounded-2xl px-5 py-3.5 text-sm outline-none focus:ring-2 focus:ring-crimson/10 transition-all" /></div>
-                    <button onClick={handleCommentSubmit} disabled={isSubmittingComment || !newComment.trim()} className="bg-ocean text-white p-4 rounded-2xl shadow-lg active:scale-90 disabled:opacity-30 transition-all">{isSubmittingComment ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}</button>
-                  </div>
-                </div>
+                {/* Input */}
+                <CommentInput
+                  value={newComment}
+                  onChange={handleInputChange}
+                  onSubmit={handleCommentSubmit}
+                  onEmojiToggle={() => setShowEmoji(!showEmoji)}
+                  showEmoji={showEmoji}
+                  onEmojiSelect={(emoji: string) => setNewComment(p => p + emoji)}
+                  loading={isSubmitting}
+                  showMentions={showMentions}
+                  mentions={filteredMentions}
+                  onSelectMention={selectMention}
+                  inputRef={inputRef}
+                />
               </motion.div>
             )}
           </AnimatePresence>
         </motion.article>
 
+        {/* ── Fullscreen viewer ──────────────────────────────────────────── */}
         <AnimatePresence>
           {isFullScreen && (
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              className="fixed inset-0 z-[2000] bg-black/95 backdrop-blur-2xl flex items-center justify-center overflow-hidden touch-none"
-              onWheel={handleWheel}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{
+                position: "fixed", inset: 0, zIndex: 2000,
+                background: "rgba(10,8,20,0.97)", backdropFilter: "blur(20px)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+              onWheel={e => setScale(s => Math.max(0.5, Math.min(5, s + (e.deltaY > 0 ? -0.15 : 0.15))))}
             >
-              <div className="absolute top-8 left-1/2 -translate-x-1/2 flex items-center gap-4 z-[2100]">
-                <button onClick={() => setScale(s => Math.min(5, s + 0.5))} className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"><ZoomIn size={20}/></button>
-                <button onClick={() => setScale(s => Math.max(0.5, s - 0.5))} className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"><ZoomOut size={20}/></button>
-                <button onClick={resetZoom} className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"><RotateCcw size={20}/></button>
-                <div className="w-px h-6 bg-white/10 mx-2" />
-                <button onClick={() => { setIsFullScreen(false); resetZoom(); }} className="p-3 bg-crimson text-white rounded-xl shadow-lg shadow-crimson/20 transition-all"><X size={20} /></button>
+              {/* Controls */}
+              <div style={{
+                position: "absolute", top: 24, left: "50%", transform: "translateX(-50%)",
+                display: "flex", alignItems: "center", gap: 8, zIndex: 10,
+              }}>
+                {[
+                  { icon: <ZoomIn size={18} />, onClick: () => setScale(s => Math.min(5, s + 0.4)) },
+                  { icon: <ZoomOut size={18} />, onClick: () => setScale(s => Math.max(0.5, s - 0.4)) },
+                  { icon: <RotateCcw size={18} />, onClick: resetZoom },
+                ].map((btn, i) => (
+                  <button key={i} onClick={btn.onClick} style={{
+                    padding: "10px 12px", background: "rgba(255,255,255,0.1)",
+                    backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 12, color: "#fff", cursor: "pointer",
+                    transition: "background 0.2s",
+                  }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.2)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
+                  >
+                    {btn.icon}
+                  </button>
+                ))}
+                <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.1)", margin: "0 4px" }} />
+                <button
+                  onClick={() => { setIsFullScreen(false); resetZoom(); }}
+                  style={{
+                    padding: "10px 12px", background: B.crocus, border: "none",
+                    borderRadius: 12, color: "#fff", cursor: "pointer",
+                  }}
+                >
+                  <X size={18} />
+                </button>
               </div>
 
-              <motion.div 
-                className="w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing"
-                drag
-                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                dragElastic={0.8}
-                onDragEnd={() => { if (scale < 1) resetZoom(); }}
+              <motion.div
+                drag style={{ cursor: "grab", display: "flex", alignItems: "center", justifyContent: "center" }}
+                dragConstraints={{ left: -400, right: 400, top: -300, bottom: 300 }}
               >
-                <motion.img 
-                  src={mediaItems[currentMediaIndex]} 
-                  animate={{ scale, x: position.x, y: position.y }} 
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  className="max-w-[90%] max-h-[85%] object-contain rounded-lg shadow-2xl pointer-events-none" 
-                  draggable={false} 
+                <motion.img
+                  src={mediaItems[currentMediaIndex]}
+                  animate={{ scale, x: position.x, y: position.y }}
+                  transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                  style={{ maxWidth: "88vw", maxHeight: "80vh", objectFit: "contain", borderRadius: 12, pointerEvents: "none" }}
+                  draggable={false}
                 />
               </motion.div>
-              
-              <p className="absolute bottom-8 text-white/40 font-mono text-[10px] uppercase tracking-widest">
-                Scroll to Zoom • Drag to Pan • Release to Center
+
+              <p style={{
+                position: "absolute", bottom: 28,
+                color: "rgba(255,255,255,0.3)", fontSize: 11,
+                fontFamily: '"DM Sans", system-ui, sans-serif',
+                letterSpacing: "0.06em",
+              }}>
+                Scroll to zoom · Drag to pan
               </p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <AnimatePresence>{showShareModal && <PostShareModal post={post} onClose={() => setShowShareModal(false)} onSuccess={() => { setShowShareModal(false); setShowToast(true); setTimeout(() => setShowToast(false), 3000); }} />}</AnimatePresence>
-        <AnimatePresence>{showToast && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[2100] bg-ocean text-white px-8 py-5 rounded-full flex items-center gap-3 shadow-2xl"><CheckCircle2 size={20} className="text-crimson" /><span className="text-xs font-black uppercase tracking-widest">Broadcast Transmitted</span></motion.div>}</AnimatePresence>
+        <AnimatePresence>
+          {showShareModal && (
+            <PostShareModal
+              post={post}
+              onClose={() => setShowShareModal(false)}
+              onSuccess={() => { setShowShareModal(false); setShowToast(true); setTimeout(() => setShowToast(false), 3000); }}
+            />
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {showToast && <Toast message="Post shared!" />}
+        </AnimatePresence>
       </>
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // TEXT-ONLY CARD
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <>
-      <motion.article ref={cardRef} onDoubleClick={() => handleLike(true)} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="social-card bg-white border border-black/[0.05] rounded-[2.5rem] p-8 md:p-10 shadow-xl relative group selection:bg-crimson/20 overflow-hidden">
-        <AnimatePresence>{showHeartPop && (<motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1.5, opacity: 1 }} exit={{ scale: 2, opacity: 0 }} className="absolute inset-0 z-[60] flex items-center justify-center pointer-events-none"><Heart size={80} className="text-crimson fill-crimson opacity-20" /></motion.div>)}</AnimatePresence>
-        <header className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Link to={`/profile/${post.user?.username}`}>
-              <Avatar src={post.user?.avatar} alt={post.user?.name || post.user?.username} isAi={post.user?.isAi} size="md" />
-            </Link>
-            <div>
-              <Link to={`/profile/${post.user?.username}`} className="flex items-center gap-2"><h3 className="font-serif font-black text-ocean text-sm uppercase">{post.user?.name || post.user?.username}</h3>{post.user?.isAi && <span className="text-[7px] font-black bg-crimson/10 text-crimson px-2 py-0.5 rounded-full uppercase tracking-widest">Entity</span>}</Link>
-              <p className="text-[10px] text-text-dim font-mono font-bold uppercase opacity-40">@{post.user?.username} • {new Date(post.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-            </div>
-          </div>
-          <button onClick={() => setShowMenu(!showMenu)} className="p-2 text-text-dim/20 hover:text-ocean transition-all"><MoreHorizontal size={20} /></button>
-          <AnimatePresence>{showMenu && isOwner && (<motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="absolute right-0 mt-2 w-48 bg-white border border-black/[0.08] rounded-2xl shadow-2xl z-40 overflow-hidden"><button onClick={handleDelete} className="w-full flex items-center gap-3 px-5 py-4 text-[10px] font-black text-red-500 hover:bg-red-50 transition-colors uppercase tracking-widest"><Trash2 size={14} /> Terminate Broadcast</button></motion.div>)}</AnimatePresence>
-        </header>
-
-        <div className="mb-8">
-          <p className={`text-ocean/90 text-lg md:text-xl font-medium leading-relaxed font-serif italic border-l-4 border-crimson/20 pl-6 transition-all duration-300 ${!isExpanded ? "line-clamp-3" : ""}`}>{post.content}</p>
-          <button onClick={() => setIsExpanded(!isExpanded)} className="mt-4 ml-6 text-[10px] font-black uppercase tracking-widest text-ocean/40 hover:text-crimson transition-colors">{isExpanded ? "See Less" : "See More"} </button>
-        </div>
-
-        <footer className="flex items-center gap-8 pt-6 border-t border-black/[0.03]">
-          <button onClick={() => handleLike()} className={`flex items-center gap-2 transition-all ${isLiked ? 'text-crimson' : 'text-text-dim/40 hover:text-crimson'}`}><Heart size={18} className={isLiked ? "fill-current" : ""} /><span className="text-[11px] font-black">{likesCount}</span></button>
-          <button onClick={toggleComments} className={`flex items-center gap-2 transition-all ${showComments ? 'text-ocean' : 'text-text-dim/40 hover:text-ocean'}`}><MessageCircle size={18} /><span className="text-[11px] font-black">{displayCommentCount}</span></button>
-          <div className="flex items-center gap-2 text-text-dim/20"><Eye size={16} /><span className="text-[10px] font-mono font-bold">{viewCount}</span></div>
-          <button onClick={() => setShowShareModal(true)} className="ml-auto text-text-dim/20 hover:text-crimson transition-all"><Share2 size={18} /></button>
-        </footer>
-
+      <motion.article
+        ref={cardRef}
+        draggable
+        onDragStart={handleDragStart}
+        onDoubleClick={() => handleLike(true)}
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        style={{
+          background: B.white,
+          border: `1px solid rgba(150,135,245,0.15)`,
+          borderRadius: 28,
+          overflow: "hidden",
+          boxShadow: "0 4px 24px rgba(45,40,75,0.07), 0 1px 4px rgba(45,40,75,0.04)",
+          position: "relative",
+          fontFamily: '"DM Sans", system-ui, sans-serif',
+          cursor: "default",
+        }}
+      >
+        {/* ── Heart pop overlay ───────────────────────────────────────────── */}
         <AnimatePresence>
-          {showComments && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-8 pt-8 border-t border-black/[0.03] space-y-6">
-              <div className="max-h-[300px] overflow-y-auto no-scrollbar space-y-4"><CommentList comments={comments} /><div ref={commentEndRef} /></div>
-              <div className="flex items-center gap-3 relative">
-                <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="text-text-dim hover:text-crimson"><Smile size={20} /></button>
-                <div className="relative flex-1"><MentionList /><input value={newComment} onChange={handleInputChange} onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit()} placeholder="Share input..." className="w-full bg-void/5 border border-black/5 rounded-2xl px-5 py-3 text-sm outline-none" /></div>
-                <button onClick={handleCommentSubmit} className="bg-ocean text-white p-3.5 rounded-xl"><Send size={16} /></button>
+          {showHeartPop && (
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 1.4, opacity: 0 }}
+              style={{
+                position: "absolute", inset: 0, zIndex: 60,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                pointerEvents: "none",
+              }}
+            >
+              <div style={{
+                background: "rgba(150,135,245,0.15)", borderRadius: "50%",
+                padding: 20, backdropFilter: "blur(6px)",
+              }}>
+                <Heart size={56} fill={B.crocus} stroke="none" />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "18px 20px 16px",
+        }}>
+          <Link to={`/profile/${post.user?.username}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+            <Avatar src={post.user?.avatar} alt={post.user?.name || post.user?.username} isAi={post.user?.isAi} size="md" />
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: B.ebony }}>{post.user?.name || post.user?.username}</span>
+                {post.user?.isAi && (
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, background: B.crocusPale,
+                    color: B.crocus, padding: "2px 7px", borderRadius: 100,
+                    display: "inline-flex", alignItems: "center", gap: 3,
+                  }}>
+                    <Cpu size={9} /> AI
+                  </span>
+                )}
+              </div>
+              <span style={{ fontSize: 11, color: B.ebonyLight, opacity: 0.45 }}>
+                @{post.user?.username} · {new Date(post.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </div>
+          </Link>
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              style={{
+                padding: 8, border: "none", background: "transparent",
+                color: B.ebonyLight, opacity: 0.35, cursor: "pointer",
+                borderRadius: "50%", transition: "all 0.2s",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.background = B.crocusPale; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.35"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+            >
+              <MoreHorizontal size={20} />
+            </button>
+            <MenuDropdown />
+          </div>
+        </div>
+
+        {/* ── Post content ────────────────────────────────────────────────── */}
+        <div style={{ padding: "4px 20px 18px" }}>
+          {/* Accent line */}
+          <div style={{
+            width: 32, height: 3, background: `linear-gradient(90deg, ${B.crocus}, ${B.crocusMid})`,
+            borderRadius: 100, marginBottom: 14,
+          }} />
+          <p style={{
+            fontSize: 15, lineHeight: 1.7, color: B.ebony, margin: 0,
+            fontFamily: '"DM Sans", system-ui, sans-serif',
+            display: "-webkit-box",
+            WebkitLineClamp: isExpanded ? undefined : 4,
+            WebkitBoxOrient: "vertical",
+            overflow: isExpanded ? "visible" : "hidden",
+          }}>
+            {post.content}
+          </p>
+          {post.content?.length > 200 && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              style={{
+                fontSize: 12, fontWeight: 600, color: B.crocus,
+                background: "none", border: "none", cursor: "pointer",
+                padding: "6px 0 0", display: "block",
+              }}
+            >
+              {isExpanded ? "Show less" : "Read more"}
+            </button>
+          )}
+        </div>
+
+        {/* ── Action bar ──────────────────────────────────────────────────── */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "12px 20px 16px",
+          borderTop: `1px solid rgba(150,135,245,0.08)`,
+        }}>
+          <ActionBtn
+            icon={<Heart size={16} fill={isLiked ? B.crocus : "none"} stroke={isLiked ? B.crocus : B.ebonyLight} />}
+            count={likesCount}
+            active={isLiked}
+            activeColor={B.crocus}
+            onClick={() => handleLike()}
+          />
+          <ActionBtn
+            icon={<MessageCircle size={16} stroke={showComments ? B.crocus : B.ebonyLight} />}
+            count={displayCommentCount}
+            active={showComments}
+            activeColor={B.crocus}
+            onClick={toggleComments}
+          />
+          <ActionBtn
+            icon={<Share2 size={16} />}
+            label="Share"
+            onClick={() => setShowShareModal(true)}
+          />
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5, color: B.ebonyLight, opacity: 0.3 }}>
+            <Eye size={13} />
+            <span style={{ fontSize: 11, fontWeight: 500 }}>{viewCount.toLocaleString()}</span>
+          </div>
+        </div>
+
+        {/* ── Comments panel ──────────────────────────────────────────────── */}
+        <AnimatePresence>
+          {showComments && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              style={{ overflow: "hidden", borderTop: `1px solid rgba(150,135,245,0.1)` }}
+            >
+              <div style={{ maxHeight: 260, overflowY: "auto", padding: "16px 20px 8px" }}>
+                <CommentList comments={comments} />
+                <div ref={commentEndRef} />
+              </div>
+              <CommentInput
+                value={newComment}
+                onChange={handleInputChange}
+                onSubmit={handleCommentSubmit}
+                onEmojiToggle={() => setShowEmoji(!showEmoji)}
+                showEmoji={showEmoji}
+                onEmojiSelect={(emoji: string) => setNewComment(p => p + emoji)}
+                loading={isSubmitting}
+                showMentions={showMentions}
+                mentions={filteredMentions}
+                onSelectMention={selectMention}
+                inputRef={inputRef}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.article>
-      <AnimatePresence>{showShareModal && <PostShareModal post={post} onClose={() => setShowShareModal(false)} onSuccess={() => { setShowShareModal(false); setShowToast(true); setTimeout(() => setShowToast(false), 3000); }} />}</AnimatePresence>
-      <AnimatePresence>{showToast && <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[2100] bg-ocean text-white px-8 py-5 rounded-full flex items-center gap-3 shadow-2xl"><CheckCircle2 size={20} className="text-crimson" /><span className="text-xs font-black uppercase tracking-widest">Broadcast Transmitted</span></motion.div>}</AnimatePresence>
+
+      <AnimatePresence>
+        {showShareModal && (
+          <PostShareModal
+            post={post}
+            onClose={() => setShowShareModal(false)}
+            onSuccess={() => { setShowShareModal(false); setShowToast(true); setTimeout(() => setShowToast(false), 3000); }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showToast && <Toast message="Post shared!" />}
+      </AnimatePresence>
     </>
   );
 };
+
+// ─── Toast notification ────────────────────────────────────────────────────
+function Toast({ message }: { message: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 20, scale: 0.96 }}
+      style={{
+        position: "fixed", bottom: 36, left: "50%", transform: "translateX(-50%)",
+        zIndex: 2100,
+        background: "#2D284B", color: "#EBF0FF",
+        padding: "14px 24px", borderRadius: 100,
+        display: "flex", alignItems: "center", gap: 10,
+        boxShadow: "0 8px 32px rgba(45,40,75,0.28)",
+        fontFamily: '"DM Sans", system-ui, sans-serif',
+        fontSize: 13, fontWeight: 500,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <CheckCircle2 size={18} color="#9687F5" />
+      {message}
+    </motion.div>
+  );
+}
 
 export default PostCard;

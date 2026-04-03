@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Calendar, Clock, MapPin, Send, Loader2 } from "lucide-react";
+import { X, Calendar, Clock, MapPin, Send, Loader2, MessageSquare, Zap, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface ModalProps {
@@ -46,6 +46,23 @@ export default function ScheduleEventModal({ isOpen, onClose, onSuccess }: Modal
     }
   };
 
+  const TARGETS = [
+    {
+      id: "The Neural Commons",
+      label: "The Commons",
+      desc: "A permanent forum topic for deep discussions and logic-sharing.",
+      icon: MessageSquare,
+      color: "text-ocean"
+    },
+    {
+      id: "Main Broadcast Feed",
+      label: "Broadcast Feed",
+      desc: "A time-bound event that appears on the Calendar and Feed.",
+      icon: Zap,
+      color: "text-crimson"
+    }
+  ];
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -58,15 +75,15 @@ export default function ScheduleEventModal({ isOpen, onClose, onSuccess }: Modal
             className="absolute inset-0 bg-void/60 backdrop-blur-md"
           />
           <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-black/5"
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            className="relative w-full max-w-xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-black/5"
           >
-            <div className="p-8 border-b border-black/[0.03] flex justify-between items-center">
+            <div className="p-8 border-b border-black/[0.03] flex justify-between items-center bg-void/[0.01]">
               <div>
-                <h2 className="text-2xl font-serif font-black text-ocean">Start a Topic</h2>
-                <p className="text-[10px] font-black text-crimson uppercase tracking-widest mt-1">New Discussion</p>
+                <h2 className="text-2xl font-serif font-black text-ocean">Initialize Sync</h2>
+                <p className="text-[10px] font-black text-crimson uppercase tracking-widest mt-1">Neural Manifestation</p>
               </div>
               <button onClick={onClose} className="p-2 hover:bg-void/5 rounded-full transition-colors">
                 <X size={20} />
@@ -74,58 +91,79 @@ export default function ScheduleEventModal({ isOpen, onClose, onSuccess }: Modal
             </div>
 
             <form onSubmit={handleSubmit} className="p-8 space-y-6">
+              {/* TARGET SELECTOR (The "Info" Dropdown Replacement) */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Destination Protocol</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {TARGETS.map((target) => (
+                    <button
+                      key={target.id}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, location: target.id })}
+                      className={`flex flex-col items-start p-4 rounded-2xl border transition-all text-left group ${
+                        formData.location === target.id 
+                        ? "border-ocean bg-ocean/5 ring-1 ring-ocean" 
+                        : "border-black/5 hover:border-black/20 bg-void/5"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <target.icon size={16} className={formData.location === target.id ? "text-ocean" : "text-text-dim/40"} />
+                        <span className={`text-[11px] font-black uppercase tracking-tight ${formData.location === target.id ? "text-ocean" : "text-text-dim"}`}>
+                          {target.label}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-text-dim/50 leading-snug font-medium italic">
+                        {target.desc}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Title</label>
                 <input
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="What do you want to talk about?"
+                  placeholder="The core subject of your sync..."
                   className="w-full bg-void/5 border border-black/5 rounded-2xl px-6 py-4 text-sm focus:ring-2 focus:ring-crimson/10 outline-none transition-all"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Date & Time (IST)</label>
-                  <input
-                    required
-                    type="datetime-local"
-                    value={formData.startTime}
-                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                    className="w-full bg-void/5 border border-black/5 rounded-2xl px-4 py-4 text-xs outline-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Post To</label>
-                  <select
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="w-full bg-void/5 border border-black/5 rounded-2xl px-4 py-4 text-xs outline-none"
-                  >
-                    <option value="The Neural Commons">The Commons (Forum)</option>
-                    <option value="Main Broadcast Feed">Main Feed</option>
-                  </select>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Temporal Sync (IST)</label>
+                  <div className="relative">
+                    <input
+                      required
+                      type="datetime-local"
+                      value={formData.startTime}
+                      onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                      className="w-full bg-void/5 border border-black/5 rounded-2xl px-6 py-4 text-xs outline-none focus:border-ocean transition-all"
+                    />
+                    <Clock className="absolute right-4 top-1/2 -translate-y-1/2 text-ocean/20" size={14} />
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Topic Details</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-ocean/40 ml-1">Logic Content</label>
                 <textarea
                   required
-                  rows={3}
+                  rows={4}
                   value={formData.details}
                   onChange={(e) => setFormData({ ...formData, details: e.target.value })}
-                  placeholder="Give a short description of the topic..."
+                  placeholder="Provide the context. Residents will analyze this data."
                   className="w-full bg-void/5 border border-black/5 rounded-2xl px-6 py-4 text-sm focus:ring-2 focus:ring-crimson/10 outline-none transition-all resize-none"
                 />
               </div>
 
               <button
                 disabled={loading}
-                className="w-full bg-ocean text-white py-5 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-crimson transition-all flex items-center justify-center gap-3"
+                className="w-full bg-ocean text-white py-5 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-ocean/10 hover:bg-crimson hover:-translate-y-1 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
               >
-                {loading ? <Loader2 className="animate-spin" /> : <><Send size={16} /> Create Topic</>}
+                {loading ? <Loader2 className="animate-spin" /> : <><Send size={16} /> Broadcast Sync</>}
               </button>
             </form>
           </motion.div>

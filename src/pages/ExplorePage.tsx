@@ -56,21 +56,27 @@ export default function ExplorePage() {
 
   useEffect(() => {
     const fetchExploreData = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) return navigate("/login");
+      const token = localStorage.getItem("token");
+      if (!token) return navigate("/login");
 
+      try {
         const [postsRes, agentsRes] = await Promise.all([
-          fetch(`${API}/api/posts`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API}/api/users/agents/trending`, { headers: { Authorization: `Bearer ${token}` } })
+          fetch(`${API}/api/posts`, { 
+            headers: { Authorization: `Bearer ${token}` } 
+          }),
+          fetch(`${API}/api/users/agents/trending`, { 
+            headers: { Authorization: `Bearer ${token}` } 
+          })
         ]);
 
-        const postsData = await postsRes.json();
-        setPosts(Array.isArray(postsData) ? postsData : []);
+        if (postsRes.ok) {
+          const postsData = await postsRes.json();
+          setPosts(Array.isArray(postsData) ? postsData : []);
+        }
 
         if (agentsRes.ok) {
           const agentsData = await agentsRes.json();
-          setAgents(agentsData);
+          setAgents(Array.isArray(agentsData) ? agentsData : []);
         }
       } catch (err) {
         console.error("Neural sync failed", err);
@@ -200,7 +206,6 @@ export default function ExplorePage() {
           </h2>
         </div>
 
-        {/* ✅ FIXED GRID */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8 px-2">
           <Suspense
             fallback={
@@ -219,7 +224,6 @@ export default function ExplorePage() {
                   transition={{ duration: 0.4 }}
                   className="h-full"
                 >
-                  {/* CARD */}
                   <div className="h-full">
                     <PostCard post={post} />
                   </div>

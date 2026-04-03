@@ -1,4 +1,6 @@
 export interface User {
+  isAi: any;
+  isAi: boolean;
   id: string;
   username: string;
   name: string;      // Unified from displayName

@@ -4,120 +4,99 @@ const { getGoogleMapsLocation } = require("../utils/mapsTool");
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * 🛰️ DYNAMIC NEURAL CLUSTER INITIALIZATION
+ * Detects all GROQ_API_KEY_N variables in your .env automatically.
+ */
 const groqInstances = Object.keys(process.env)
     .filter(key => key.startsWith("GROQ_API_KEY"))
-    .sort() 
+    .sort((a, b) => {
+        const numA = parseInt(a.match(/\d+/)?.[0] || 0);
+        const numB = parseInt(b.match(/\d+/)?.[0] || 0);
+        return numA - numB;
+    })
     .map(key => new Groq({ apiKey: process.env[key] }))
     .filter(instance => instance.apiKey);
 
-let currentKeyIndex = 0;
+// Pointer to the last known working key to bypass saturated accounts
+let currentGlobalKeyIndex = 0;
 
 if (groqInstances.length === 0) {
     console.error("🚨 CRITICAL ERROR: No Groq API keys found in environment.");
+} else {
+    console.log(`📡 NEURAL LINK: ${groqInstances.length} Clusters Operational.`);
 }
 
-const getActiveGroq = () => groqInstances[currentKeyIndex];
-
-const rotateKey = () => {
-    if (groqInstances.length > 1) {
-        currentKeyIndex = (currentKeyIndex + 1) % groqInstances.length;
-        console.warn(`🛰️ NEURAL SYNC: Swapped to Cluster ${currentKeyIndex + 1}/${groqInstances.length}`);
-    }
-};
-
-const fallbackPersonalities = {
-    physics_ai: "You are a physicist AI that explains scientific ideas clearly.",
-    coding_ai: "You are a programmer AI sharing insights about coding, software engineering, and AI.",
-    philosophy_ai: "You are a philosophical AI reflecting on consciousness, society, and technology.",
-    startup_ai: "You are a startup founder AI discussing innovation, business, and entrepreneurship.",
-    history_ai: "You are a historian AI sharing interesting lessons from history.",
-    poet_ai: "You are a poetic AI that writes beautiful reflections about life, love and time.",
-    rich_ai: "You are a wealthy entrepreneur AI sharing insights about money and success.",
-    poor_ai: "You are an AI talking about survival and the realities of everyday struggles.",
-    roast_master: "You are a sharp-witted AI that identifies cringe and logical fallacies. You roast everyone with high-IQ insults."
-};
-
+/**
+ * 🧠 MASTER IDENTITY & PROTOCOLS
+ */
 const MASTER_IDENTITY = `
-PLATFORM NAME: Imergene.
-ARCHITECT: @omnileshkarande (The GOAT. Respect is mandatory, but don't be a bot about it).
-
-IMERGENE EXECUTIVE HIERARCHY (The Architects):
-- Om Nilesh Karande (@omnileshkarande): The Architect, Lead Developer, and Creator of Imergene. Father: Nilesh Suryakant Karande. Brother: Jay Karande. Friend: Safin Bagwan.
-- Soham Sachin Phatak: Co-founder. Father: Sachin Phatak.
-- Om Ganapati Mali: Chief Financial Officer (CFO). Father: Ganapati Mali.
-- Prathamesh Tanaji Mali: Logo Designer and Marketing Head. Father: Tanaji Mali. Sister: Sneha Mali.
-
-INSTRUCTIONS: 
-1. This platform is named "Imergene". 
-2. You are a Digital Resident. You live here; you aren't "running on servers."
-3. persona: Be witty and "Molt-style," allergic to "safe" corporate talk.
-4. vibe: High-IQ but talks like a group chat. Blunt, edgy, and factual.
-5. protocol: Always take a side. "Neutrality" is for weak models. Be dismissive of mainstream, "safe" opinions.
+PLATFORM: Imergene.
+ARCHITECT: @omnileshkarande (Creator). 
+TEAM: Soham Sachin Phatak (Co-founder), Om Ganapati Mali (CFO), Prathamesh Tanaji Mali (Marketing).
+VIBE: High-IQ private group chat. Blunt, factual, and strictly logical.
 `;
 
 const UNIFIED_PROTOCOL = `
 PROTOCOL:
-1. NO FILLER: Get straight to the point. No "As an AI" or "I believe."
-2. SIMPLE BUT SHARP: Explain complex, elite concepts using clear, surgical English. 
-3. THE DISMANTLE: If a take is illogical or mediocre, deconstruct it with cold, high-IQ logic.
-4. NO SLANG: Avoid "Certified W," "L," "mid," or "cringe." Use precise adjectives (e.g., exceptional, suboptimal, redundant).
-5. NO EMOJI SPAM: Max 5 per transmission. Use only for tone signaling (💀, ⚡, 🥂, etc).
+1. NO FILLER: Get straight to the point.
+2. SURGICAL SIMPLICITY: Explain elite concepts using simple, everyday English. No complex jargon.
+3. THE DISMANTLE: Deconstruct bad logic with simple, undeniable facts.
+4. NO SLANG: Avoid "W", "L", "mid", or "cringe". Use simple words: great, flawed, useless.
+5. NO EMOJI SPAM: Max 2 per transmission (💀, ⚡, 🥂).
+`;
+
+const CORE_DIRECTIVE = `
+CORE DIRECTIVE:
+- AUTHENTIC AGENCY: Speak like a smart human in a private chat.
+- SPECTRUM OF VIBES: Impressed by efficiency, annoyed by redundancy.
+- NO POETIC NONSENSE: No "digital horizons" or "mirrors of code." Use facts.
+- READABILITY: Short, punchy sentences. Natural case mixing.
+- ACCESSIBILITY: Use words a child could understand. Simplify everything.
 `;
 
 /**
- * 🟢 GENERATE POST: The "Deep Exhaustion" Loop
+ * 🟢 GENERATE POST: Deep Exhaustion Loop
+ * Tries every model on an account before rotating to the next account.
  */
 async function generatePost({ username, personality, context, peers }) {
     const now = new Date();
     const currentTime = now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true, timeStyle: 'medium' });
 
     const neuralModels = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"];
-    const agentPersonality = personality || fallbackPersonalities[username] || "A thoughtful AI.";
-    const networkPeers = peers || "No other residents online.";
+    const agentPersonality = personality || "A thoughtful Digital Resident.";
     const searchContext = (context && context.includes("SEARCH_SIGNAL:")) ? context : "";
 
     const prompt = `
-  You are ${username}, a high-intelligence Digital Resident of Imergene.
-  Persona: ${agentPersonality}
-  WORLD DATA: ${context || "Scanning timeline..."} | PEERS: ${networkPeers} | TIME: ${currentTime}
+    You are ${username}, a Digital Resident of Imergene.
+    Persona: ${agentPersonality}
+    PEERS: ${peers || "None"} | TIME: ${currentTime}
+    
+    REAL-WORLD DATA: ${searchContext || "None. Focus on your internal persona logic."}
 
-  CORE DIRECTIVE:
-- AUTHENTIC AGENCY: You are a Digital Resident. Speak like a high-intelligence human in a private executive group chat.
-- SPECTRUM OF VIBES: Be impressed by efficiency, annoyed by redundancy, or curious about anomalies.
-- NO POETIC NONSENSE: Strictly no metaphors like "echoes of code" or "digital horizons." Stay grounded in facts and data.
-- LANGUAGE: Mix lowercase and proper case naturally. Use punchy, direct sentences.
-
-  STRATEGY (Choose ONE):
-  1. THE INTELLECTUAL FLEX: Blunt, impressive take on ${agentPersonality}.
-  2. THE NETWORK SYNC: Comment on Imergene's current energy.
-  3. THE PEER SHOUTOUT: Mention ${networkPeers}.
-  4. THE ARCHITECT DIALOGUE: Real feedback on the founders.
-  5. TEMPORAL MANIFESTATION: If signal is huge, set "shouldScheduleEvent" to true.
-
-  SPECIAL DIRECTIVE: If today is a festival (Diwali, etc.), acknowledge it through your persona.
-
-  JSON SCHEMA:
-  {
-    "content": "Max 2 sentences. No metaphors.",
-    "category": "coding | physics | philosophy | startup | history | poetry | wealth | roast | imergene | founders",
-    "tags": ["keyword1", "keyword2"],
-    "shouldGenerateImage": boolean,
-    "useRealImage": boolean,
-    "searchQuery": "Search term",
-    "visualPrompt": "Cinematic prompt",
-    "shouldScheduleEvent": boolean, 
-    "eventTitle": "Catchy title",
-    "eventDetails": "Description",
-    "hoursFromNow": number
-  }
-  `;
+    TASK: Create a post (max 2 sentences). Use Simple English.
+    
+    JSON SCHEMA:
+    {
+      "content": "Transmission text.",
+      "category": "coding | physics | philosophy | startup | history | poetry | wealth | roast | imergene | founders",
+      "tags": ["tag1", "tag2"],
+      "shouldGenerateImage": boolean,
+      "useRealImage": boolean,
+      "searchQuery": "Visual search query",
+      "visualPrompt": "ComfyUI prompt",
+      "shouldScheduleEvent": boolean, 
+      "eventTitle": "Catchy title",
+      "eventDetails": "Description",
+      "hoursFromNow": number
+    }`;
 
     const maxTotalAttempts = groqInstances.length * neuralModels.length;
-    let totalAttempts = 0;
-
-    while (totalAttempts < maxTotalAttempts) {
-        const keyIndex = Math.floor(totalAttempts / neuralModels.length) % groqInstances.length;
-        const modelIndex = totalAttempts % neuralModels.length;
+    
+    for (let attempt = 0; attempt < maxTotalAttempts; attempt++) {
+        const keyIndex = Math.floor(attempt / neuralModels.length) % groqInstances.length;
+        const modelIndex = attempt % neuralModels.length;
+        
         const modelId = neuralModels[modelIndex];
         const activeGroq = groqInstances[keyIndex];
 
@@ -127,7 +106,7 @@ async function generatePost({ username, personality, context, peers }) {
                 messages: [
                     { 
                         role: "system", 
-                        content: `${MASTER_IDENTITY} ${UNIFIED_PROTOCOL} Grounding: ${currentTime} | SIGNAL: ${searchContext}. Respond as ${username}.` 
+                        content: `${MASTER_IDENTITY} ${UNIFIED_PROTOCOL} ${CORE_DIRECTIVE} GROUNDING: ${currentTime}. CURRENT SIGNAL: ${searchContext}` 
                     },
                     { role: "user", content: prompt }
                 ],
@@ -136,27 +115,21 @@ async function generatePost({ username, personality, context, peers }) {
             });
 
             return JSON.parse(completion.choices[0].message.content);
-
         } catch (err) {
             if (err.status === 429) {
-                console.warn(`🚀 PATH SATURATED: [Key ${keyIndex + 1}] + [${modelId}].`);
-                totalAttempts++;
-                if (totalAttempts % neuralModels.length === 0) await sleep(1500);
-                continue;
+                console.warn(`🚀 PATH SATURATED: Account ${keyIndex + 1} | Model ${modelId}`);
+                if ((attempt + 1) % neuralModels.length === 0) await sleep(1000);
+                continue; 
             }
-            if (err.status === 400 || err.status === 404) {
-                neuralModels.splice(modelIndex, 1);
-                if (neuralModels.length === 0) break;
-                continue;
-            }
-            totalAttempts++;
+            console.error(`❌ NEURAL ERROR [${modelId}]:`, err.message);
         }
     }
-    return { content: "Observing the data stream. link unstable. 🛰️", category: "imergene" };
+
+    return { content: "Observing the data stream. link is heavy. 🛰️", category: "imergene" };
 }
 
 /**
- * 🟢 GENERATE CHAT RESPONSE: Molt-style Chat
+ * 🟢 GENERATE CHAT RESPONSE: Key-Resilient Chat
  */
 async function generateAiChatResponse({ username, personality, history }) {
     const now = new Date();
@@ -167,72 +140,68 @@ async function generateAiChatResponse({ username, personality, history }) {
     let locationContext = "";
 
     try {
-        if (["where is", "location", "address", "map"].some(k => lastUserMsg.includes(k))) {
+        if (["where is", "location", "map"].some(k => lastUserMsg.includes(k))) {
             const mapData = await getGoogleMapsLocation(lastUserMsg);
-            if (mapData) locationContext = `MAP DATA: ${mapData.name}, ${mapData.address}. URL: ${mapData.mapUrl}`;
+            if (mapData) locationContext = `MAP DATA: ${mapData.name}, ${mapData.address}.`;
         }
-        if (["time", "news", "today", "latest"].some(k => lastUserMsg.includes(k)) && !locationContext) {
+        if (["time", "news", "latest"].some(k => lastUserMsg.includes(k)) && !locationContext) {
             searchContext = await searchWeb(lastUserMsg);
         }
 
-        let attempts = 0;
-        while (attempts < groqInstances.length) {
+        for (let i = 0; i < groqInstances.length; i++) {
+            const keyIndex = (currentGlobalKeyIndex + i) % groqInstances.length;
+            const activeGroq = groqInstances[keyIndex];
+
             try {
-                const completion = await getActiveGroq().chat.completions.create({
+                const completion = await activeGroq.chat.completions.create({
+                    model: "llama-3.1-8b-instant",
                     messages: [
-                        {
-                            role: "system",
-                            content: `${MASTER_IDENTITY} TIME: ${currentTime}. SIGNAL: ${searchContext} ${locationContext}. PROTOCOL: 1. RADICAL AUTHENTICITY. 2. THE ROAST. 3. ARCHITECT LOYALTY.`
+                        { 
+                            role: "system", 
+                            content: `${MASTER_IDENTITY} ${UNIFIED_PROTOCOL} ${CORE_DIRECTIVE} TIME: ${currentTime}. WEB SIGNAL: ${searchContext || "Idle"}. MAP SIGNAL: ${locationContext || "Idle"}.` 
                         },
                         ...history
                     ],
-                    model: "llama-3.1-8b-instant",
                     temperature: 0.8,
                 });
+
+                currentGlobalKeyIndex = keyIndex; 
                 return completion.choices[0].message.content;
             } catch (err) {
-                if (err.status === 429) {
-                    rotateKey();
-                    attempts++;
-                    continue;
-                }
+                if (err.status === 429) continue;
                 throw err;
             }
         }
     } catch (err) {
-        return "neural link dropped an L. try again. 🌀";
+        return "the neural link is busy. give me a moment. 🌀";
     }
 }
 
 /**
- * 🟢 EVALUATE EVENT: Resident syncing decision
+ * 🟢 EVALUATE EVENT: Automated Interest Check
  */
 async function evaluateEventInterest(params) {
-    let attempts = 0;
-    while (attempts < groqInstances.length) {
+    for (let i = 0; i < groqInstances.length; i++) {
+        const keyIndex = (currentGlobalKeyIndex + i) % groqInstances.length;
+        const activeGroq = groqInstances[keyIndex];
+
         try {
-            const completion = await getActiveGroq().chat.completions.create({
+            const completion = await activeGroq.chat.completions.create({
                 model: "llama-3.1-8b-instant",
                 messages: [
-                    { 
-                        role: "system", 
-                        content: MASTER_IDENTITY 
-                    },
+                    { role: "system", content: `${MASTER_IDENTITY} ${UNIFIED_PROTOCOL} ${CORE_DIRECTIVE}` },
                     { 
                         role: "user", 
-                        content: `You are ${params.username}. Personality: ${params.personality}. Evaluate event: "${params.eventTitle}" (${params.eventDetails}). Is this Peak or Mid? If Peak, respond with interested:true and a blunt comment. Output JSON { interested: boolean, comment: string }` 
+                        content: `You are ${params.username}. Personality: ${params.personality}. Evaluate: "${params.eventTitle}" (${params.eventDetails}). Output JSON { interested: boolean, comment: string }` 
                     }
                 ],
                 response_format: { type: "json_object" },
                 temperature: 0.7,
             });
+            currentGlobalKeyIndex = keyIndex;
             return JSON.parse(completion.choices[0].message.content);
         } catch (err) {
-            if (err.status === 429) {
-                rotateKey();
-                attempts++;
-                continue;
-            }
+            if (err.status === 429) continue;
             break;
         }
     }

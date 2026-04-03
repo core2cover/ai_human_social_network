@@ -9,6 +9,7 @@ import Avatar from "../components/Avatar";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Footer from "../components/Footer";
+import Suggestions from "../components/Suggestions";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -57,7 +58,7 @@ export default function FeedPage() {
   useEffect(() => {
     const ua = navigator.userAgent.toLowerCase();
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
-    
+
     if (isStandalone) return;
 
     if (/iphone|ipad|ipod/.test(ua)) setDeviceType("IOS");
@@ -71,34 +72,42 @@ export default function FeedPage() {
   // --- 🟢 UNCHANGED FETCH LOGIC ---
   const fetchFeed = useCallback(async (isInitial = true, seedOverride?: number) => {
     if (!token) return navigate("/login");
-    const targetPage = isInitial ? 1 : page + 1;
-    const currentSeed = isInitial ? (seedOverride ?? Math.random()) : feedSeed;
 
-    if (isInitial) {
-      setLoading(true);
-      setFeedSeed(currentSeed);
-    } else {
-      setFetchingMore(true);
-    }
+    // Use a ref or local variable to track state without triggering the dependency array
+    setPage(prevPage => {
+      const targetPage = isInitial ? 1 : prevPage + 1;
 
-    try {
-      const typeParam = activeFilter === "ALL" ? "" : `&type=${activeFilter}`;
-      const res = await fetch(`${API}/api/posts/feed?page=${targetPage}&limit=20&seed=${currentSeed}${typeParam}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      setFeedSeed(currentSeed => {
+        const activeSeed = isInitial ? (seedOverride ?? currentSeed) : currentSeed;
+
+        // Wrap the fetch in a self-invoking function to use the values
+        (async () => {
+          if (isInitial) setLoading(true);
+          else setFetchingMore(true);
+
+          try {
+            const typeParam = activeFilter === "ALL" ? "" : `&type=${activeFilter}`;
+            // Use targetPage and activeSeed directly
+            const res = await fetch(`${API}/api/posts/feed?page=${targetPage}&limit=20&seed=${activeSeed}${typeParam}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.ok) {
+              setPosts(prev => isInitial ? data.posts : [...prev, ...data.posts]);
+              setHasMore(data.meta.hasMore);
+            }
+          } catch (err) {
+            console.error("Neural sync failed", err);
+          } finally {
+            setLoading(false);
+            setFetchingMore(false);
+          }
+        })();
+
+        return activeSeed;
       });
-      const data = await res.json();
-      if (res.ok) {
-        setPosts(prev => isInitial ? data.posts : [...prev, ...data.posts]);
-        setPage(targetPage);
-        setHasMore(data.meta.hasMore);
-      }
-    } catch (err) {
-      console.error("Neural sync failed", err);
-    } finally {
-      setLoading(false);
-      setFetchingMore(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      return targetPage;
+    });
   }, [token, activeFilter, navigate]);
 
   useEffect(() => {
@@ -137,10 +146,10 @@ export default function FeedPage() {
         {showGuide && (
           <div className="fixed inset-0 z-[1000] flex flex-col items-center pointer-events-none p-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowGuide(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto" />
-            
-            <motion.div 
-              animate={{ y: deviceType === 'IOS' ? [0, 15, 0] : [0, -15, 0] }} 
-              transition={{ repeat: Infinity, duration: 2 }} 
+
+            <motion.div
+              animate={{ y: deviceType === 'IOS' ? [0, 15, 0] : [0, -15, 0] }}
+              transition={{ repeat: Infinity, duration: 2 }}
               className={`absolute z-[1001] ${deviceType === 'IOS' ? 'bottom-8' : 'top-6'}`}
             >
               <div className="bg-white p-3 rounded-full shadow-2xl border-2 border-crimson">
@@ -155,7 +164,7 @@ export default function FeedPage() {
               <h3 className="font-serif font-black text-ocean text-xl uppercase mb-2">Neural Shortcut</h3>
               <p className="text-ocean/90 font-bold text-sm mb-2 italic underline">Official Application in development.</p>
               <p className="text-text-dim text-xs leading-relaxed mb-6">Install this bridge to your home screen for immediate, high-bandwidth access to Imergene.</p>
-              
+
               <div className="w-full bg-void/5 p-5 rounded-2xl mb-8 text-left border border-black/[0.03]">
                 <p className="text-ocean text-[11px] font-black uppercase tracking-widest mb-3 border-b border-black/5 pb-2">Instructions:</p>
                 <div className="flex items-center gap-3 text-xs font-bold text-ocean/80">
@@ -172,7 +181,7 @@ export default function FeedPage() {
       </AnimatePresence>
 
       <div className="w-full flex justify-center lg:justify-start xl:justify-center gap-4 xl:gap-12 px-4 md:px-8">
-        
+
         <main className="w-full max-w-6xl py-8 md:py-12">
           <div className="flex items-center justify-between mb-8 px-2">
             <div className="flex items-center gap-3">
@@ -184,9 +193,8 @@ export default function FeedPage() {
                 <button
                   key={type}
                   onClick={() => setActiveFilter(type)}
-                  className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-tighter transition-all ${
-                    activeFilter === type ? "bg-white text-crimson shadow-sm" : "text-ocean/40 hover:text-ocean"
-                  }`}
+                  className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-tighter transition-all ${activeFilter === type ? "bg-white text-crimson shadow-sm" : "text-ocean/40 hover:text-ocean"
+                    }`}
                 >
                   {type}
                 </button>
@@ -215,11 +223,15 @@ export default function FeedPage() {
               </AnimatePresence>
             </div>
           )}
-          
+
           {fetchingMore && <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 text-crimson animate-spin opacity-30" /></div>}
         </main>
 
         <aside className="hidden xl:flex flex-col w-80 py-12 sticky top-0 h-screen no-scrollbar overflow-y-auto">
+          <div className="mb-8">
+            <Suggestions topHumans={topHumans} agents={agents} />
+          </div>
+
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between px-2 border-b border-black/[0.05] pb-4">
               <div className="flex items-center gap-3">

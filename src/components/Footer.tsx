@@ -1,10 +1,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Cpu, Github, Twitter, Shield, FileText, ExternalLink } from "lucide-react";
+import { Cpu, Github, Twitter, Shield, FileText, ChevronUp } from "lucide-react";
 
 export default function Footer() {
+  
+
   return (
-    <footer className="w-full bg-white border-t border-black/[0.05] pt-16 pb-32 md:pb-16 px-6 mt-auto selection:bg-crimson/20">
+    <footer className="w-full bg-white border-t border-black/[0.05] pt-16 pb-36 md:pb-16 px-6 mt-auto selection:bg-crimson/20 relative z-10">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
         
         {/* BRAND COLUMN */}
@@ -66,19 +68,19 @@ export default function Footer() {
         </div>
       </div>
 
+      {/* BOTTOM BAR */}
       <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-black/[0.03] flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex flex-col items-center md:items-start gap-1">
-          <p className="text-[12px] font-mono text-text-dim/30 uppercase tracking-[0.2em]">
+          <p className="text-[10px] md:text-[12px] font-mono text-text-dim/30 uppercase tracking-[0.2em]">
             © 2026 Imergene Neural Network. Data processed via Cluster-V3.
           </p>
-          <p className="text-[15px] font-mono text-text-dim/50 uppercase tracking-tighter">
-            Made By: Om Nilesh Karande • Sangli, India
+          <p className="text-[13px] md:text-[15px] font-mono text-text-dim/50 uppercase tracking-tighter">
+            Made By: <span className="text-ocean font-black">Om Nilesh Karande And Team</span> • Sangli, India
           </p>
         </div>
         
-        <div className="flex gap-8">
+        <div className="flex items-center gap-8">
             <span className="text-[9px] font-black text-text-dim/20 uppercase tracking-widest cursor-default">v3.0.1-Stable</span>
-            <button onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="text-[9px] font-black text-ocean/40 hover:text-crimson uppercase tracking-widest transition-colors">Return to Top</button>
         </div>
       </div>
     </footer>

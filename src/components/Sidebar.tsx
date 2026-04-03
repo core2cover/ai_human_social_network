@@ -75,19 +75,25 @@ export default function Sidebar() {
     <>
       {/* --- DESKTOP SIDEBAR --- */}
       <aside className="hidden md:flex w-64 h-full flex-col border-r border-black/[0.05] bg-white shrink-0 selection:bg-crimson/20">
-        <div className="p-5 flex-1 overflow-y-auto no-scrollbar">
-          <p className="text-[9px] font-black text-text-dim/30 tracking-[0.4em] uppercase mb-4 ml-2">Neural Directory</p>
 
+        {/* Container for everything */}
+        <div className="p-5 flex flex-col h-full overflow-y-auto no-scrollbar">
+
+          {/* Header Label */}
+          <p className="text-[9px] font-black text-text-dim/30 tracking-[0.4em] uppercase mb-4 ml-2">
+            Neural Directory
+          </p>
+
+          {/* MAIN NAVIGATION */}
           <nav className="flex flex-col gap-1">
             {MENU_ITEMS.map((item) => (
               <NavLink
                 key={item.label}
                 to={item.path}
                 className={({ isActive }) =>
-                  `flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group relative font-serif font-bold text-sm ${
-                    isActive
-                      ? "bg-ocean text-white shadow-md"
-                      : "text-text-dim hover:bg-void hover:text-ocean"
+                  `flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group relative font-serif font-bold text-sm ${isActive
+                    ? "bg-ocean text-white shadow-md"
+                    : "text-text-dim hover:bg-void hover:text-ocean"
                   }`
                 }
               >
@@ -99,16 +105,21 @@ export default function Sidebar() {
               </NavLink>
             ))}
           </nav>
-        </div>
 
-        <div className="p-5 border-t border-black/[0.03]">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-4 px-4 py-2 w-full text-text-dim/40 hover:text-red-500 transition-all font-black text-[10px] uppercase tracking-widest"
-          >
-            <LogOut size={16} />
-            <span>Logout</span>
-          </button>
+          {/* 🟢 LOGOUT SECTION - Moved up with a top margin/border */}
+          <div className="mt-8 pt-6 border-t border-black/[0.03]">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-4 px-4 py-2 w-full text-text-dim/40 hover:text-red-500 transition-all font-black text-[10px] uppercase tracking-widest outline-none group"
+            >
+              <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
+              <span>Logout</span>
+            </button>
+          </div>
+
+          {/* Optional: Add an empty spacer here if you want it to sit 
+              above the very bottom but below the menu */}
+          <div className="flex-1" />
         </div>
       </aside>
 
@@ -148,8 +159,7 @@ export default function Sidebar() {
               key={item.label}
               to={item.path}
               className={({ isActive }) =>
-                `p-3 rounded-2xl transition-all duration-300 relative ${
-                  isActive ? "text-ocean scale-110" : "text-text-dim/40"
+                `p-3 rounded-2xl transition-all duration-300 relative ${isActive ? "text-ocean scale-110" : "text-text-dim/40"
                 }`
               }
             >
@@ -166,9 +176,8 @@ export default function Sidebar() {
 
           <button
             onClick={() => setShowMobileMenu(!showMobileMenu)}
-            className={`p-3 rounded-2xl transition-all duration-300 ${
-              showMobileMenu ? "text-crimson rotate-90" : "text-text-dim/40"
-            }`}
+            className={`p-3 rounded-2xl transition-all duration-300 ${showMobileMenu ? "text-crimson rotate-90" : "text-text-dim/40"
+              }`}
           >
             <LayoutGrid size={24} />
           </button>
