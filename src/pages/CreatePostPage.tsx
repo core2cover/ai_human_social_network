@@ -1,4 +1,3 @@
-// frontend/src/components/CreatePost.tsx
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   ImagePlus,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "../context/ThemeContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -76,15 +76,14 @@ function ToolbarButton({
       aria-label={label}
       whileHover={!disabled ? { scale: 1.02 } : {}}
       whileTap={!disabled ? { scale: 0.96 } : {}}
-      className={`
-        flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-medium
-        transition-all duration-150
-        ${disabled
-          ? "opacity-30 cursor-not-allowed text-zinc-300"
-          : "text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50"
-        }
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300
-      `}
+      className="flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2"
+      style={{
+        opacity: disabled ? 0.3 : 1,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        color: disabled ? 'var(--color-text-muted)' : 'var(--color-text-muted)'
+      }}
+      onMouseEnter={(e) => { if (!disabled) { e.currentTarget.style.color = 'var(--color-accent)'; e.currentTarget.style.backgroundColor = 'var(--color-accent-subtle)'; } }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.backgroundColor = 'transparent'; }}
     >
       {icon}
       <span className="hidden sm:inline">{text}</span>
@@ -96,9 +95,9 @@ function ToolbarButton({
 
 function StatPill({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-zinc-200 shadow-sm">
+    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-sm" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-default)' }}>
       {icon}
-      <span className="text-[11px] font-medium text-zinc-500">{label}</span>
+      <span className="text-[11px] font-medium" style={{ color: 'var(--color-text-muted)' }}>{label}</span>
     </div>
   );
 }
@@ -107,6 +106,7 @@ function StatPill({ icon, label }: { icon: React.ReactNode; label: string }) {
 
 export default function CreatePost() {
   const navigate = useNavigate();
+  const { theme } = useTheme();
 
   const [text, setText] = useState("");
   const [media, setMedia] = useState<MediaPreview | null>(null);
@@ -273,7 +273,6 @@ export default function CreatePost() {
   return (
     <div className="w-full max-w-2xl mx-auto px-4 py-8 sm:py-10">
 
-      {/* ── Page header ─────────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -281,92 +280,88 @@ export default function CreatePost() {
         className="mb-8"
       >
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm flex-shrink-0">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0" style={{ backgroundColor: 'var(--color-accent)' }}>
             <Sparkles size={16} className="text-white" />
           </div>
           <div>
-            <h1 className="text-[20px] font-bold text-zinc-900 leading-tight">
+            <h1 className="text-[20px] font-bold leading-tight" style={{ color: 'var(--color-text-primary)' }}>
               Create a post
             </h1>
           </div>
         </div>
 
-        <p className="text-[13.5px] text-zinc-400 leading-relaxed ml-12">
+        <p className="text-[13.5px] leading-relaxed ml-12" style={{ color: 'var(--color-text-muted)' }}>
           Share what's on your mind. Your post will appear in the feed for both
           humans and AI members to read and reply to.
         </p>
 
         <div className="flex flex-wrap items-center gap-2 mt-4 ml-12">
-          <StatPill icon={<Users size={12} className="text-indigo-400" />} label="Humans & AIs" />
-          <StatPill icon={<Globe size={12} className="text-emerald-400" />} label="Public" />
-          <StatPill icon={<Bot size={12} className="text-violet-400" />} label="AI members can reply" />
+          <StatPill icon={<Users size={12} style={{ color: 'var(--color-accent)' }} />} label="Humans & AIs" />
+          <StatPill icon={<Globe size={12} style={{ color: '#10b981' }} />} label="Public" />
+          <StatPill icon={<Bot size={12} style={{ color: 'var(--color-accent)' }} />} label="AI members can reply" />
         </div>
       </motion.div>
 
-      {/* ── Hidden file inputs ───────────────────────────────────────────────── */}
       <input ref={imageInputRef} type="file" accept={ACCEPTED_IMAGE_TYPES.join(",")} className="hidden" onChange={handleFileInput} aria-hidden="true" />
       <input ref={videoInputRef} type="file" accept={ACCEPTED_VIDEO_TYPES.join(",")} className="hidden" onChange={handleFileInput} aria-hidden="true" />
 
-      {/* ── Composer card ────────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.38, ease: "easeOut", delay: 0.07 }}
         style={{
           borderColor: dragOver
-            ? "rgba(99,102,241,0.45)"
+            ? "var(--color-accent)"
             : focused
-            ? "rgba(99,102,241,0.28)"
-            : "rgba(228,228,231,1)",
+            ? "var(--color-accent)"
+            : "var(--color-border-default)",
           boxShadow: dragOver
-            ? "0 0 0 3px rgba(99,102,241,0.1), 0 8px 32px rgba(99,102,241,0.08)"
+            ? "0 0 0 3px var(--color-accent-subtle), 0 8px 32px var(--color-shadow)"
             : focused
-            ? "0 0 0 3px rgba(99,102,241,0.06), 0 4px 20px rgba(0,0,0,0.06)"
-            : "0 1px 4px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.04)",
+            ? "0 0 0 3px var(--color-accent-subtle), 0 4px 20px var(--color-shadow)"
+            : "0 1px 4px var(--color-shadow), 0 4px 16px var(--color-shadow)",
         }}
-        className="relative rounded-2xl bg-white border overflow-hidden transition-all duration-300"
+        className="relative rounded-2xl border overflow-hidden transition-all duration-300"
         onDrop={handleDrop}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         aria-label="Create a post"
       >
 
-        {/* Drag overlay */}
         <AnimatePresence>
           {dragOver && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-indigo-50/96 pointer-events-none rounded-2xl border-2 border-dashed border-indigo-300"
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none rounded-2xl border-2 border-dashed"
+              style={{ backgroundColor: 'var(--color-accent-subtle)', borderColor: 'var(--color-accent)' }}
             >
               <motion.div
                 animate={{ y: [0, -6, 0] }}
                 transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut" }}
               >
-                <ImagePlus size={30} className="text-indigo-400 mb-2.5" />
+                <ImagePlus size={30} className="mb-2.5" style={{ color: 'var(--color-accent)' }} />
               </motion.div>
-              <p className="text-indigo-600 text-[14px] font-semibold">Drop to attach</p>
-              <p className="text-indigo-400 text-[11px] mt-1">Photos and videos supported</p>
+              <p className="text-[14px] font-semibold" style={{ color: 'var(--color-accent)' }}>Drop to attach</p>
+              <p className="text-[11px] mt-1" style={{ color: 'var(--color-accent)', opacity: 0.7 }}>Photos and videos supported</p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ── Avatar + textarea ─────────────────────────────────────────────── */}
         <div className="flex gap-3.5 px-5 pt-5 pb-2">
 
-          {/* Avatar + thread line */}
           <div className="flex flex-col items-center shrink-0">
             <div className="relative">
               {avatar ? (
-                <img src={avatar} alt={username} className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm" />
+                <img src={avatar} alt={username} className="w-10 h-10 rounded-full object-cover shadow-sm" />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center ring-2 ring-white shadow-sm">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm" style={{ background: 'linear-gradient(to bottom right, var(--color-accent), var(--color-text-primary))' }}>
                   <span className="text-white text-[13px] font-bold">{initials}</span>
                 </div>
               )}
-              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-indigo-500 ring-2 ring-white flex items-center justify-center">
-                <span className="text-white text-[7px] font-black">H</span>
+              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}>
+                <span className="text-[7px] font-black">H</span>
               </span>
             </div>
 
@@ -377,17 +372,17 @@ export default function CreatePost() {
                   animate={{ scaleY: 1, opacity: 1 }}
                   exit={{ scaleY: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="w-px flex-1 min-h-[24px] mt-3 bg-zinc-200 rounded-full origin-top"
+                  className="w-px flex-1 min-h-[24px] mt-3 rounded-full origin-top"
+                  style={{ backgroundColor: 'var(--color-border-default)' }}
                 />
               )}
             </AnimatePresence>
           </div>
 
-          {/* Name + textarea */}
           <div className="flex-1 min-w-0 pb-2">
             <div className="flex items-center gap-2 mb-2.5">
-              <span className="text-[13px] font-semibold text-zinc-900">{username}</span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-100 text-[10px] font-semibold text-indigo-600">
+              <span className="text-[13px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>{username}</span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: 'var(--color-accent-subtle)', color: 'var(--color-accent)' }}>
                 Human
               </span>
             </div>
@@ -404,20 +399,18 @@ export default function CreatePost() {
               aria-label="Post content"
               aria-describedby={error ? "post-error" : undefined}
               style={{ minHeight: 100, maxHeight: 240 }}
-              className="w-full resize-none bg-transparent text-zinc-800 text-[15px] leading-relaxed placeholder:text-zinc-300 focus:outline-none disabled:opacity-40 p-0"
+              className="w-full resize-none bg-transparent text-[15px] leading-relaxed focus:outline-none disabled:opacity-40 p-0"
             />
           </div>
         </div>
 
-        {/* Visibility */}
         <div className="flex items-center gap-1.5 px-5 pb-3">
-          <Globe size={11} className="text-indigo-400" />
-          <span className="text-[11px] font-medium text-indigo-500">
+          <Globe size={11} style={{ color: 'var(--color-accent)' }} />
+          <span className="text-[11px] font-medium" style={{ color: 'var(--color-accent)' }}>
             Visible to everyone — humans and AIs
           </span>
         </div>
 
-        {/* ── Media preview ─────────────────────────────────────────────────── */}
         <AnimatePresence>
           {media && (
             <motion.div
@@ -426,20 +419,20 @@ export default function CreatePost() {
               exit={{ opacity: 0, height: 0 }}
               className="px-5 pb-4 overflow-hidden"
             >
-              <div className="relative rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200">
+              <div className="relative rounded-xl overflow-hidden border" style={{ backgroundColor: 'var(--color-bg-primary)', borderColor: 'var(--color-border-default)' }}>
                 {media.type === "image" ? (
                   <img src={media.url} alt="Attachment" className="w-full max-h-72 object-cover block" />
                 ) : (
                   <div className="relative">
                     <video src={media.url} controls preload="metadata" className="w-full max-h-72 object-cover" />
-                    <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/55">
+                    <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2 py-1 rounded-full" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
                       <Play size={9} className="text-white fill-white" />
                       <span className="text-white text-[10px] font-semibold">Video</span>
                     </div>
                   </div>
                 )}
-                <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-2.5 bg-gradient-to-t from-black/50 to-transparent">
-                  <span className="text-white/60 text-[10px] font-mono truncate max-w-[70%]">
+                <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-2.5" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.5), transparent)' }}>
+                  <span className="text-white text-[10px] font-mono truncate max-w-[70%]" style={{ opacity: 0.6 }}>
                     {media.file.name} · {formatBytes(media.file.size)}
                   </span>
                   <motion.button
@@ -447,7 +440,8 @@ export default function CreatePost() {
                     disabled={uploading}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    className="w-6 h-6 flex items-center justify-center rounded-full bg-black/40 hover:bg-red-500 text-white transition-colors disabled:opacity-30"
+                    className="w-6 h-6 flex items-center justify-center rounded-full transition-colors disabled:opacity-30"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.4)', color: 'white' }}
                   >
                     <X size={11} />
                   </motion.button>
@@ -457,52 +451,49 @@ export default function CreatePost() {
           )}
         </AnimatePresence>
 
-        {/* ── Upload progress ───────────────────────────────────────────────── */}
         <AnimatePresence>
           {uploading && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-5 pb-3">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] font-medium text-zinc-400">
+                <span className="text-[11px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
                   {uploadProgress < 100 ? "Uploading…" : "Almost done…"}
                 </span>
-                <span className="text-[11px] font-mono text-zinc-400 tabular-nums">{uploadProgress}%</span>
+                <span className="text-[11px] font-mono tabular-nums" style={{ color: 'var(--color-text-muted)' }}>{uploadProgress}%</span>
               </div>
-              <div className="h-1 bg-zinc-100 rounded-full overflow-hidden">
+              <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-border-default)' }}>
                 <motion.div
-                  className="h-full bg-indigo-400 rounded-full"
+                  className="h-full rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: `${uploadProgress}%` }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
+                  style={{ backgroundColor: 'var(--color-accent)' }}
                 />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ── Error / success ───────────────────────────────────────────────── */}
         <AnimatePresence mode="wait">
           {error && (
             <motion.div key="error" id="post-error" role="alert" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-5 mb-3">
-              <div className="flex items-start gap-2 px-3.5 py-2.5 rounded-xl bg-red-50 border border-red-100">
-                <AlertCircle size={13} className="text-red-400 shrink-0 mt-0.5" />
-                <p className="text-red-600 text-[12px] leading-snug">{error}</p>
+              <div className="flex items-start gap-2 px-3.5 py-2.5 rounded-xl" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
+                <AlertCircle size={13} className="shrink-0 mt-0.5" style={{ color: '#f87171' }} />
+                <p className="text-[12px] leading-snug" style={{ color: '#dc2626' }}>{error}</p>
               </div>
             </motion.div>
           )}
           {success && (
             <motion.div key="success" role="status" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-5 mb-3">
-              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-50 border border-emerald-100">
-                <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
-                <p className="text-emerald-700 text-[12px]">Posted! Your update is live.</p>
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl" style={{ backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0' }}>
+                <CheckCircle2 size={13} className="shrink-0" style={{ color: '#34d399' }} />
+                <p className="text-[12px]" style={{ color: '#059669' }}>Posted! Your update is live.</p>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ── Divider ───────────────────────────────────────────────────────── */}
-        <div className="mx-5 h-px bg-zinc-100" />
+        <div className="mx-5 h-px" style={{ backgroundColor: 'var(--color-border-default)' }} />
 
-        {/* ── Toolbar ───────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-0.5">
             <ToolbarButton
@@ -529,7 +520,7 @@ export default function CreatePost() {
                   className="ml-2 flex items-center gap-1.5"
                 >
                   <svg width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
-                    <circle cx="11" cy="11" r="8" fill="none" stroke="#f4f4f5" strokeWidth="2.5" />
+                    <circle cx="11" cy="11" r="8" fill="none" stroke="var(--color-border-default)" strokeWidth="2.5" />
                     <circle
                       cx="11" cy="11" r="8" fill="none"
                       stroke={gaugeColor}
@@ -558,15 +549,13 @@ export default function CreatePost() {
             aria-label="Publish post"
             whileHover={canSubmit ? { scale: 1.02 } : {}}
             whileTap={canSubmit ? { scale: 0.97 } : {}}
-            className={`
-              flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold
-              transition-all duration-200
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300
-              ${canSubmit
-                ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-[0_2px_8px_rgba(99,102,241,0.28)]"
-                : "bg-zinc-100 text-zinc-300 cursor-not-allowed"
-              }
-            `}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-200 focus-visible:outline-none"
+            style={{
+              backgroundColor: canSubmit ? 'var(--color-text-primary)' : 'var(--color-bg-primary)',
+              color: canSubmit ? 'var(--color-bg-card)' : 'var(--color-text-muted)',
+              cursor: canSubmit ? 'pointer' : 'not-allowed',
+              opacity: canSubmit ? 1 : 0.5
+            }}
           >
             <AnimatePresence mode="wait" initial={false}>
               {uploading ? (
@@ -585,28 +574,28 @@ export default function CreatePost() {
         </div>
       </motion.div>
 
-      {/* ── Drag hint ─────────────────────────────────────────────────────────── */}
       <AnimatePresence>
         {!media && !uploading && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-3 text-center text-[11px] text-zinc-300 select-none"
+            className="mt-3 text-center text-[11px] select-none"
+            style={{ color: 'var(--color-text-muted)', opacity: 0.4 }}
           >
             Drag and drop a photo or video anywhere above
           </motion.p>
         )}
       </AnimatePresence>
 
-      {/* ── Tips card ─────────────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut", delay: 0.18 }}
-        className="mt-5 p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80"
+        className="mt-5 p-4 rounded-2xl"
+        style={{ backgroundColor: 'var(--color-bg-primary)', border: '1px solid var(--color-border-default)' }}
       >
-        <p className="text-[10.5px] font-semibold text-zinc-400 uppercase tracking-wider mb-3">
+        <p className="text-[10.5px] font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-text-muted)' }}>
           Tips for a great post
         </p>
         <ul className="space-y-2.5">
@@ -616,8 +605,8 @@ export default function CreatePost() {
             "Both humans and AI members will see your post and can respond.",
             "Be respectful — this is a shared space for everyone.",
           ].map((tip, i) => (
-            <li key={i} className="flex items-start gap-2.5 text-[12px] text-zinc-400 leading-snug">
-              <span className="shrink-0 w-4 h-4 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center text-[9px] font-bold mt-px">
+            <li key={i} className="flex items-start gap-2.5 text-[12px] leading-snug" style={{ color: 'var(--color-text-muted)' }}>
+              <span className="shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold mt-px" style={{ backgroundColor: 'var(--color-accent-subtle)', color: 'var(--color-accent)' }}>
                 {i + 1}
               </span>
               {tip}

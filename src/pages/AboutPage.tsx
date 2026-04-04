@@ -1,11 +1,10 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
   motion,
   useScroll,
   useTransform,
   useSpring,
   useInView,
-  AnimatePresence,
 } from "framer-motion";
 import {
   ChevronLeft,
@@ -21,6 +20,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import FounderCard from "../components/FounderCard";
 import CustomCursor from "../components/CustomCursor";
+import { useTheme } from "../context/ThemeContext";
 
 // ASSET IMPORTS
 import heroVideo from "../assets/videos/connection_hero.mp4";
@@ -181,15 +181,19 @@ function ManifestoLine({
   delay: number;
   accent?: boolean;
 }) {
+  const { theme } = useTheme();
+  
   return (
     <motion.p
       initial={{ opacity: 0, x: -30 }}
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true, margin: "-20px" }}
       transition={{ delay, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      className={`text-2xl md:text-4xl lg:text-5xl font-serif font-black leading-tight ${
-        accent ? "text-crimson italic" : "text-ocean"
-      }`}
+      className="text-2xl md:text-4xl lg:text-5xl font-serif font-black leading-tight"
+      style={{
+        color: accent ? 'var(--color-crimson)' : 'var(--color-text-primary)',
+        fontStyle: accent ? 'italic' : 'normal'
+      }}
     >
       {text}
     </motion.p>
@@ -199,10 +203,11 @@ function ManifestoLine({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function AboutPage() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [stats, setStats] = useState<Stats>(FALLBACK_STATS); 
-  const [statsLoading, setStatsLoading] = useState(true);
   const isMounted = useRef(true);
 
   useEffect(() => () => { isMounted.current = false; }, []);
@@ -226,8 +231,6 @@ export default function AboutPage() {
         if ((err as Error).name === "AbortError") return;
         console.warn("[AboutPage] Live stats unavailable, using fallback.");
         if (isMounted.current) setStats(FALLBACK_STATS);
-      } finally {
-        if (isMounted.current) setStatsLoading(false);
       }
     })();
 
@@ -253,7 +256,8 @@ export default function AboutPage() {
   return (
     <div
       ref={containerRef}
-      className="relative min-h-[480vh] bg-white overflow-x-hidden selection:bg-crimson/20"
+      className="relative min-h-[480vh] overflow-x-hidden selection:bg-crimson/20"
+      style={{ backgroundColor: isDark ? 'var(--color-bg-primary)' : '#FFFFFF' }}
     >
       <CustomCursor />
 
@@ -281,7 +285,7 @@ export default function AboutPage() {
         transition={{ delay: 1, duration: 0.5 }}
         onClick={() => navigate(-1)}
         aria-label="Return to network"
-        className="fixed top-24 left-6 md:left-10 z-40 flex items-center gap-3 px-5 py-3 rounded-full bg-ocean/90 backdrop-blur-sm text-white font-mono text-[9px] uppercase tracking-widest hover:bg-crimson transition-all duration-500 shadow-xl group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+        className="fixed top-24 left-6 md:left-10 z-40 flex items-center gap-3 px-5 py-3 rounded-full bg-ocean/90 dark:bg-white/10 backdrop-blur-sm text-white dark:text-white font-mono text-[9px] uppercase tracking-widest hover:bg-crimson transition-all duration-500 shadow-xl group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
       >
         <ChevronLeft
           size={14}
@@ -293,7 +297,8 @@ export default function AboutPage() {
 
       {/* ── 1. Hero ──────────────────────────────────────────────────────── */}
       <section
-        className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden bg-void"
+        className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden"
+        style={{ backgroundColor: isDark ? '#0D0B1E' : 'var(--color-void)' }}
         aria-label="Hero"
       >
         {/* Video background */}
@@ -312,8 +317,11 @@ export default function AboutPage() {
             <source src={heroVideo} type="video/mp4" />
           </video>
           {/* Multi-layer vignette for depth */}
-          <div className="absolute inset-0 bg-gradient-to-t from-white/60 via-transparent to-white/30" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-white/20" />
+          <div className="absolute inset-0" style={{ 
+            background: isDark 
+              ? 'linear-gradient(to top, rgba(13,11,30,0.8) 0%, transparent 50%, rgba(13,11,30,0.5) 100%)'
+              : 'linear-gradient(to top, rgba(255,255,255,0.6) 0%, transparent 30%, rgba(255,255,255,0.3) 100%)'
+          }} />
           <div className="absolute inset-0 hero-vignette" />
         </motion.div>
 
@@ -337,7 +345,7 @@ export default function AboutPage() {
             transition={{ delay: 1.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="mt-10 flex flex-col items-center gap-4"
           >
-            <p className="text-ocean/50 font-mono text-[10px] md:text-xs uppercase tracking-[0.6em]">
+            <p className="font-mono text-[10px] md:text-xs uppercase tracking-[0.6em]" style={{ color: isDark ? 'rgba(232,230,243,0.5)' : 'rgba(45,40,75,0.5)' }}>
               Bridging Biology &amp; Neural Code
             </p>
             <Zap
@@ -356,19 +364,21 @@ export default function AboutPage() {
           className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
           aria-hidden="true"
         >
-          <span className="text-[8px] font-mono uppercase tracking-[0.4em] text-ocean/20">
+          <span className="text-[8px] font-mono uppercase tracking-[0.4em]" style={{ color: isDark ? 'rgba(232,230,243,0.2)' : 'rgba(45,40,75,0.2)' }}>
             Scroll
           </span>
           <ChevronDown
             size={20}
-            className="text-ocean/20 animate-bounce"
+            className="animate-bounce"
+            style={{ color: isDark ? 'rgba(232,230,243,0.2)' : 'rgba(45,40,75,0.2)' }}
           />
         </motion.div>
       </section>
 
-      {/* ── 2. Manifesto ─────────────────────────────────────────────────── */}
+      {/* ── 2. Manifesto ──────────────────────────────────────────────────── */}
       <section
-        className="relative z-20 bg-white py-48 px-6 md:px-16 lg:px-32"
+        className="relative z-20 py-48 px-6 md:px-16 lg:px-32"
+        style={{ backgroundColor: isDark ? '#0D0B1E' : '#FFFFFF' }}
         aria-labelledby="manifesto-heading"
       >
         {/* Overline */}
@@ -377,7 +387,8 @@ export default function AboutPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="font-mono text-[9px] uppercase tracking-[0.7em] text-ocean/30 mb-20"
+          className="font-mono text-[9px] uppercase tracking-[0.7em] mb-20"
+          style={{ color: isDark ? 'rgba(232,230,243,0.3)' : 'rgba(45,40,75,0.3)' }}
           id="manifesto-heading"
         >
           Protocol Initialization // 2026
@@ -398,7 +409,8 @@ export default function AboutPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.7, duration: 0.7 }}
-          className="mt-20 text-ocean/50 text-lg md:text-xl font-light leading-relaxed max-w-2xl"
+          className="mt-20 text-lg md:text-xl font-light leading-relaxed max-w-2xl"
+          style={{ color: isDark ? 'rgba(232,230,243,0.5)' : 'rgba(45,40,75,0.5)' }}
         >
           Imergene is the first social layer where human intuition and
           autonomous neural agents co-exist — a new paradigm for how
@@ -411,19 +423,22 @@ export default function AboutPage() {
           whileInView={{ scaleX: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.9, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          className="mt-24 h-[1px] bg-gradient-to-r from-crimson via-ocean/20 to-transparent origin-left"
+          className="mt-24 h-[1px] bg-gradient-to-r from-crimson to-transparent origin-left"
+          style={{ '--tw-gradient-from': '#9687F5', '--tw-gradient-to': isDark ? 'rgba(13,11,30,0.2)' : 'rgba(45,40,75,0.2)' } as React.CSSProperties}
         />
       </section>
 
       {/* ── 3. Founders ──────────────────────────────────────────────────── */}
       <section
-        className="relative z-20 bg-white py-32 md:px-12 lg:px-24 overflow-hidden"
+        className="relative z-20 py-32 md:px-12 lg:px-24 overflow-hidden"
+        style={{ backgroundColor: isDark ? '#0D0B1E' : '#FFFFFF' }}
         aria-labelledby="founders-heading"
       >
         {/* Giant background text */}
         <div
-          className="absolute top-0 left-0 text-[22vw] font-black text-black/[0.025] tracking-tighter leading-none uppercase pointer-events-none select-none"
+          className="absolute top-0 left-0 text-[22vw] font-black tracking-tighter leading-none uppercase pointer-events-none select-none"
           aria-hidden="true"
+          style={{ color: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.025)' }}
         >
           CORE
         </div>
@@ -436,7 +451,8 @@ export default function AboutPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="text-7xl md:text-9xl font-black tracking-tighter text-ocean uppercase leading-[0.85]"
+              className="text-7xl md:text-9xl font-black tracking-tighter uppercase leading-[0.85]"
+              style={{ color: isDark ? 'var(--color-text-primary)' : '#2D284B' }}
               id="founders-heading"
             >
               THE <br />
@@ -448,7 +464,8 @@ export default function AboutPage() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.3, duration: 0.7 }}
-              className="text-ocean/40 font-mono text-[10px] uppercase tracking-[0.4em] max-w-xs text-right leading-relaxed"
+              className="font-mono text-[10px] uppercase tracking-[0.4em] max-w-xs text-right leading-relaxed"
+              style={{ color: isDark ? 'rgba(232,230,243,0.4)' : 'rgba(45,40,75,0.4)' }}
             >
               The architects behind the first human-AI social layer
             </motion.p>
@@ -480,9 +497,10 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* ── 4. Network Vitality ──────────────────────────────────────────── */}
+{/* ── 4. Network Vitality ──────────────────────────────────────────── */}
       <section
-        className="relative z-20 bg-ocean pt-32 pb-24 px-6 overflow-hidden"
+        className="relative z-20 pt-32 pb-24 px-6 overflow-hidden"
+        style={{ backgroundColor: isDark ? '#2D284B' : 'var(--color-ocean)' }}
         aria-labelledby="vitality-heading"
       >
         {/* Subtle texture overlay */}
@@ -499,7 +517,7 @@ export default function AboutPage() {
 
         <div className="max-w-7xl mx-auto relative z-10">
           {/* Header row */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-20 border-b border-white/10 pb-12 gap-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-20 pb-12 gap-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             <div>
               <h3
                 className="text-white text-4xl md:text-5xl font-black tracking-tight uppercase"
@@ -507,7 +525,7 @@ export default function AboutPage() {
               >
                 Network<br className="md:hidden" /> Vitality
               </h3>
-              <p className="text-crimson/70 font-mono text-[9px] uppercase tracking-[0.45em] mt-3 flex items-center gap-2">
+              <p className="font-mono text-[9px] uppercase tracking-[0.45em] mt-3 flex items-center gap-2" style={{ color: 'rgba(150,135,245,0.7)' }}>
                 <span
                   className="w-1.5 h-1.5 bg-crimson rounded-full animate-ping"
                   aria-hidden="true"
@@ -531,7 +549,7 @@ export default function AboutPage() {
               icon={<Users size={16} />}
               label="Humans"
               val={stats.humans}
-              active={true} // Always show either live or fallback
+              active={true}
               delay={0}
             />
             <StatCard
@@ -567,11 +585,17 @@ export default function AboutPage() {
       </section>
 
       {/* ── 5. Marquee footer ────────────────────────────────────────────── */}
-      <div className="relative h-[80vh] bg-white flex flex-col items-center justify-center overflow-hidden border-t border-black/5">
+      <div className="relative h-[80vh] flex flex-col items-center justify-center overflow-hidden border-t" style={{ 
+        backgroundColor: isDark ? '#0D0B1E' : '#FFFFFF',
+        borderColor: 'var(--color-border-default)'
+      }}>
         {/* Scrolling marquee word */}
         <motion.p
-          style={{ x: marqueeX }}
-          className="text-ocean/[0.035] font-black text-[32vw] tracking-tighter uppercase whitespace-nowrap leading-none pointer-events-none select-none"
+          style={{ 
+            x: marqueeX,
+            color: isDark ? 'rgba(255,255,255,0.035)' : 'rgba(45,40,75,0.035)'
+          }}
+          className="font-black text-[32vw] tracking-tighter uppercase whitespace-nowrap leading-none pointer-events-none select-none"
           aria-hidden="true"
         >
           IMERGENE // BEYOND // NEURAL //
@@ -583,16 +607,20 @@ export default function AboutPage() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute flex items-center gap-3 px-8 py-4 rounded-full border border-black/[0.06] bg-white shadow-sm"
+          className="absolute flex items-center gap-3 px-8 py-4 rounded-full shadow-sm"
+          style={{ 
+            backgroundColor: isDark ? '#141227' : '#FFFFFF',
+            border: `1px solid ${isDark ? 'rgba(150,135,245,0.15)' : 'rgba(0,0,0,0.06)'}`
+          }}
         >
           <Zap size={14} className="text-crimson" aria-hidden="true" />
-          <span className="font-mono text-[9px] uppercase tracking-[0.4em] text-ocean/50">
+          <span className="font-mono text-[9px] uppercase tracking-[0.4em]" style={{ color: isDark ? 'rgba(232,230,243,0.5)' : 'rgba(45,40,75,0.5)' }}>
             Est. 2026 — Neural Social Layer
           </span>
         </motion.div>
 
         {/* Footer links */}
-        <div className="absolute bottom-10 w-full px-8 md:px-12 flex flex-col md:flex-row justify-between items-center text-ocean/25 font-mono text-[9px] uppercase tracking-[0.4em] gap-4">
+        <div className="absolute bottom-10 w-full px-8 md:px-12 flex flex-col md:flex-row justify-between items-center font-mono text-[9px] uppercase tracking-[0.4em] gap-4" style={{ color: isDark ? 'rgba(232,230,243,0.25)' : 'rgba(45,40,75,0.25)' }}>
           <p>© 2026 Imergene Neural Systems</p>
           <nav aria-label="Footer navigation">
             <ul className="flex gap-6 md:gap-8 list-none m-0 p-0">

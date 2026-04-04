@@ -19,6 +19,7 @@ import Avatar from "../components/Avatar";
 import PostCard from "../components/PostCard";
 import FollowListModal from "../components/FollowListModal";
 import Footer from "../components/Footer";
+import { useTheme } from "../context/ThemeContext";
 
 interface VisiblePostProps {
   children: React.ReactNode;
@@ -45,8 +46,8 @@ const VisiblePost: React.FC<VisiblePostProps> = ({ children }) => {
   return (
     <div ref={containerRef} className="min-h-[200px] w-full">
       {isVisible ? children : (
-        <div className="w-full h-48 bg-black/[0.01] border border-black/[0.05] rounded-[2.5rem] flex items-center justify-center animate-pulse">
-          <Zap className="w-6 h-6 text-black/5" />
+        <div className="w-full h-48 bg-black/[0.01] dark:bg-white/5 border border-black/[0.05] dark:border-white/5 rounded-[2.5rem] flex items-center justify-center animate-pulse">
+          <Zap className="w-6 h-6 text-black/5 dark:text-white/5" />
         </div>
       )}
     </div>
@@ -54,6 +55,7 @@ const VisiblePost: React.FC<VisiblePostProps> = ({ children }) => {
 };
 
 export default function ProfilePage() {
+  const { theme } = useTheme();
   const { username } = useParams();
   const navigate = useNavigate();
 
@@ -209,13 +211,17 @@ export default function ProfilePage() {
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6">
       <Loader2 className="w-10 h-10 text-crimson animate-spin opacity-40" />
-      <span className="text-[10px] font-mono tracking-[0.5em] text-text-dim uppercase font-bold">Syncing Neural Identity...</span>
+      <span className="text-[10px] font-mono tracking-[0.5em] uppercase font-bold" style={{ color: 'var(--color-text-muted)' }}>Syncing Neural Identity...</span>
     </div>
   );
 
   if (!user || user.error) return (
     <div className="flex items-center justify-center min-h-[70vh] px-6">
-      <div className="text-center text-crimson font-serif font-bold text-xl border border-crimson/20 p-12 rounded-[3rem] bg-white shadow-xl">
+      <div className="text-center font-serif font-bold text-xl p-12 rounded-[3rem] shadow-xl" style={{ 
+        color: 'var(--color-crimson)',
+        border: '1px solid rgba(150,135,245,0.2)',
+        backgroundColor: 'var(--color-bg-card)'
+      }}>
         Protocol Error: Identity Access Denied
       </div>
     </div>
@@ -240,16 +246,20 @@ export default function ProfilePage() {
         users={user.following || []}
       />
 
-      <header className="social-card !bg-white !p-8 md:!p-12 mb-12 md:mb-20 relative overflow-hidden shadow-xl border-none">
+      <header className="!p-8 md:!p-12 mb-12 md:mb-20 relative overflow-hidden shadow-xl" style={{
+        backgroundColor: 'var(--color-bg-card)',
+        border: '1px solid var(--color-border-default)',
+        borderRadius: '1.25rem'
+      }}>
         {user.isAi && <div className="absolute top-0 right-0 w-80 h-80 bg-crimson/5 blur-[100px] -mr-32 -mt-32 rounded-full" />}
 
         <div className="flex flex-col md:flex-row items-center md:items-start gap-10 md:gap-16 relative z-10">
           <div className="relative shrink-0">
-            <div className={`p-1.5 rounded-[3rem] bg-gradient-to-b ${user.isAi ? 'from-crimson shadow-2xl shadow-crimson/10' : 'from-black/5'}`}>
-              <Avatar src={newAvatar || user.avatar} alt={user.name || user.username} size="xl" isAi={user.isAi} className="border-8 border-white w-36 h-36 md:w-56 md:h-56 rounded-[2.8rem] object-cover shadow-inner" />
+            <div className={`p-1.5 rounded-[3rem] bg-gradient-to-b ${user.isAi ? 'from-crimson shadow-2xl shadow-crimson/10' : ''}`}>
+                <Avatar src={newAvatar || user.avatar} alt={user.name || user.username} size="xl" isAi={user.isAi} className="w-36 h-36 md:w-56 md:h-56 rounded-[2.8rem] object-cover shadow-inner" />
             </div>
             {editMode && (
-              <div onClick={() => fileInputRef.current?.click()} className="absolute inset-2 bg-white/90 backdrop-blur-sm rounded-[2.8rem] flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-crimson/30 hover:bg-white transition-all">
+              <div onClick={() => fileInputRef.current?.click()} className="absolute inset-2 bg-white/90 dark:bg-card/90 backdrop-blur-sm rounded-[2.8rem] flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-crimson/30 hover:bg-white dark:hover:bg-card transition-all">
                 <Edit size={24} className="text-crimson mb-2" />
                 <span className="text-[10px] text-ocean font-black uppercase tracking-widest px-4 text-center">Update Identity Map</span>
               </div>
@@ -264,12 +274,16 @@ export default function ProfilePage() {
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
               <div className="min-w-0">
                 {editMode ? (
-                  <input value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full bg-void border border-black/5 rounded-2xl py-3 px-6 text-2xl font-serif font-bold text-ocean focus:ring-2 focus:ring-crimson/20 outline-none transition-all" />
+                  <input value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full rounded-2xl py-3 px-6 text-2xl font-serif font-bold focus:ring-2 focus:ring-crimson/20 outline-none transition-all" style={{
+                    backgroundColor: 'var(--color-bg-tertiary)',
+                    border: '1px solid var(--color-border-default)',
+                    color: 'var(--color-text-primary)'
+                  }} />
                 ) : (
                   <>
-                    <h1 className="text-3xl md:text-5xl font-serif font-black text-ocean tracking-tight leading-tight">{user.name || user.username}</h1>
+                    <h1 className="text-3xl md:text-5xl font-serif font-black tracking-tight leading-tight" style={{ color: 'var(--color-text-primary)' }}>{user.name || user.username}</h1>
                     <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
-                      <p className="text-text-dim font-mono text-[11px] md:text-sm lowercase tracking-widest opacity-60">@{user.username}</p>
+                      <p className="font-mono text-[11px] md:text-sm lowercase tracking-widest" style={{ color: 'var(--color-text-muted)', opacity: 0.6 }}>@{user.username}</p>
                       {user.isAi && <span className="bg-crimson/10 text-crimson text-[8px] px-2 py-0.5 rounded font-black uppercase tracking-tighter">AI Node</span>}
                     </div>
                   </>
@@ -279,23 +293,39 @@ export default function ProfilePage() {
               <div className="flex flex-wrap items-center justify-center md:justify-end gap-4">
                 {currentUser === username ? (
                   !editMode ? (
-                    <button onClick={() => setEditMode(true)} className="flex items-center gap-2 px-8 py-3 rounded-2xl bg-void border border-black/5 text-ocean font-bold hover:bg-ocean hover:text-white transition-all text-xs uppercase tracking-widest shadow-sm">
+                    <button onClick={() => setEditMode(true)} className="flex items-center gap-2 px-8 py-3 rounded-2xl font-bold transition-all text-xs uppercase tracking-widest shadow-sm" style={{
+                      backgroundColor: 'var(--color-bg-tertiary)',
+                      border: '1px solid var(--color-border-default)',
+                      color: 'var(--color-text-primary)'
+                    }}>
                       <Edit size={16} /> Edit Identity
                     </button>
                   ) : (
                     <div className="flex gap-3">
-                      <button onClick={() => { setEditMode(false); setNewBio(user.bio || ""); setNewName(user.name || ""); }} className="p-3 rounded-2xl bg-void border border-black/5 text-text-dim hover:text-crimson hover:bg-white shadow-sm"><X size={20} /></button>
-                      <button onClick={handleSaveProfile} disabled={isUpdating} className="btn-action flex items-center gap-2 !py-3 !px-8 text-xs font-black uppercase shadow-xl shadow-crimson/20">
+                      <button onClick={() => { setEditMode(false); setNewBio(user.bio || ""); setNewName(user.name || ""); }} className="p-3 rounded-2xl shadow-sm" style={{ 
+                        backgroundColor: 'var(--color-bg-tertiary)',
+                        color: 'var(--color-text-muted)',
+                        border: '1px solid var(--color-border-default)'
+                      }}><X size={20} /></button>
+                      <button onClick={handleSaveProfile} disabled={isUpdating} className="btn-action flex items-center gap-2 !py-3 !px-8 text-xs font-black uppercase shadow-xl">
                         {isUpdating ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Commit
                       </button>
                     </div>
                   )
                 ) : (
                   <>
-                    <button onClick={handleStartChat} className="flex items-center gap-2 py-3 px-8 text-xs font-bold uppercase tracking-widest rounded-2xl bg-void border border-black/5 text-ocean hover:bg-white hover:shadow-lg transition-all">
+                    <button onClick={handleStartChat} className="flex items-center gap-2 py-3 px-8 text-xs font-bold uppercase tracking-widest rounded-2xl shadow-lg transition-all" style={{
+                      backgroundColor: 'var(--color-bg-tertiary)',
+                      border: '1px solid var(--color-border-default)',
+                      color: 'var(--color-text-primary)'
+                    }}>
                       <MessageSquare size={16} /> Message
                     </button>
-                    <button onClick={handleFollow} className={`flex items-center gap-2 py-3 px-8 text-xs font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl ${isFollowing ? "bg-crimson/10 text-crimson border border-crimson/20" : "btn-action"}`}>
+                    <button onClick={handleFollow} className={`flex items-center gap-2 py-3 px-8 text-xs font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl ${isFollowing ? "" : "btn-action"}`} style={isFollowing ? {
+                      backgroundColor: 'rgba(150,135,245,0.1)',
+                      color: 'var(--color-crimson)',
+                      border: '1px solid rgba(150,135,245,0.2)'
+                    } : {}}>
                       {isFollowing ? <><UserCheck size={16} /> Following</> : <><UserPlus size={16} /> Follow</>}
                     </button>
                   </>
@@ -305,9 +335,14 @@ export default function ProfilePage() {
 
             <div className="space-y-6">
               {editMode ? (
-                <textarea value={newBio} onChange={(e) => setNewBio(e.target.value)} className="w-full bg-void border border-black/5 rounded-2xl py-4 px-6 text-md text-ocean/80 h-32 resize-none outline-none focus:ring-2 focus:ring-crimson/20 transition-all" placeholder="Update your neural directive..." />
+                <textarea value={newBio} onChange={(e) => setNewBio(e.target.value)} className="w-full rounded-2xl py-4 px-6 h-32 resize-none outline-none focus:ring-2 focus:ring-crimson/20 transition-all" placeholder="Update your neural directive..." style={{
+                  backgroundColor: 'var(--color-bg-tertiary)',
+                  border: '1px solid var(--color-border-default)',
+                  color: 'var(--color-text-primary)',
+                  opacity: 0.8
+                }} />
               ) : (
-                <p className="text-text-dim max-w-2xl text-lg md:text-xl font-medium leading-relaxed italic mx-auto md:mx-0 opacity-80">
+                <p className="max-w-2xl text-lg md:text-xl font-medium leading-relaxed italic mx-auto md:mx-0" style={{ color: 'var(--color-text-muted)', opacity: 0.8 }}>
                   "{user.bio || "No shared consciousness data available for this entity."}"
                 </p>
               )}
@@ -318,16 +353,21 @@ export default function ProfilePage() {
                     <ShieldCheck size={14} /> Verified AI Architect
                   </div>
                 )}
-                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-void border border-black/5 text-text-dim/60 text-[10px] font-black tracking-widest uppercase">
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase" style={{
+                  backgroundColor: 'var(--color-bg-tertiary)',
+                  border: '1px solid var(--color-border-default)',
+                  color: 'var(--color-text-muted)',
+                  opacity: 0.6
+                }}>
                   <Activity size={14} /> Global Node Active
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 md:flex md:justify-start gap-8 md:gap-16 pt-8 border-t border-black/[0.05]">
+            <div className="grid grid-cols-3 md:flex md:justify-start gap-8 md:gap-16 pt-8" style={{ borderTop: '1px solid var(--color-border-default)' }}>
               <div className="flex flex-col items-center md:items-start group cursor-default">
-                <span className="text-2xl md:text-4xl font-serif font-black text-ocean">{posts.length}</span>
-                <span className="text-[10px] text-text-dim/40 uppercase tracking-[0.2em] font-black">Transmissions</span>
+                <span className="text-2xl md:text-4xl font-serif font-black" style={{ color: 'var(--color-text-primary)' }}>{posts.length}</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] font-black" style={{ color: 'var(--color-text-muted)', opacity: 0.4 }}>Transmissions</span>
               </div>
 
               <button
@@ -336,10 +376,10 @@ export default function ProfilePage() {
                 className={`flex flex-col items-center md:items-start transition-all group ${canViewLists ? 'hover:scale-105' : 'cursor-not-allowed opacity-40'}`}
               >
                 <div className="flex items-center gap-2">
-                  <span className={`text-2xl md:text-4xl font-serif font-black ${isFollowing ? 'text-crimson' : 'text-ocean'}`}>{user._count?.followers || 0}</span>
-                  {!canViewLists && <Lock size={12} className="text-text-dim/30" />}
+                  <span className="text-2xl md:text-4xl font-serif font-black" style={{ color: isFollowing ? 'var(--color-crimson)' : 'var(--color-text-primary)' }}>{user._count?.followers || 0}</span>
+                  {!canViewLists && <Lock size={12} style={{ color: 'var(--color-text-muted)', opacity: 0.3 }} />}
                 </div>
-                <span className={`text-[10px] uppercase tracking-[0.2em] font-black ${canViewLists ? 'text-crimson' : 'text-text-dim/40'}`}>Subscribers</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] font-black" style={{ color: canViewLists ? 'var(--color-crimson)' : 'var(--color-text-muted)', opacity: canViewLists ? 1 : 0.4 }}>Subscribers</span>
               </button>
 
               <button
@@ -348,10 +388,10 @@ export default function ProfilePage() {
                 className={`flex flex-col items-center md:items-start transition-all group ${canViewLists ? 'hover:scale-105' : 'cursor-not-allowed opacity-40'}`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl md:text-4xl font-serif font-black text-ocean">{user._count?.following || 0}</span>
-                  {!canViewLists && <Lock size={12} className="text-text-dim/30" />}
+                  <span className="text-2xl md:text-4xl font-serif font-black" style={{ color: 'var(--color-text-primary)' }}>{user._count?.following || 0}</span>
+                  {!canViewLists && <Lock size={12} style={{ color: 'var(--color-text-muted)', opacity: 0.3 }} />}
                 </div>
-                <span className="text-[10px] text-text-dim/40 uppercase tracking-[0.2em] font-black">Outgoing Links</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] font-black" style={{ color: 'var(--color-text-muted)', opacity: 0.4 }}>Outgoing Links</span>
               </button>
             </div>
           </div>
@@ -361,10 +401,10 @@ export default function ProfilePage() {
       <div className="max-w-2xl mx-auto space-y-12 md:space-y-16">
         <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-3">
-            <Activity className="w-5 h-5 text-crimson/40" />
-            <h2 className="text-[11px] md:text-xs font-black text-ocean tracking-[0.4em] uppercase">Neural Feed</h2>
+            <Activity className="w-5 h-5" style={{ color: 'var(--color-crimson)', opacity: 0.4 }} />
+            <h2 className="text-[11px] md:text-xs font-black tracking-[0.4em] uppercase" style={{ color: 'var(--color-text-primary)' }}>Neural Feed</h2>
           </div>
-          <div className="h-[1px] flex-grow ml-8 bg-gradient-to-r from-black/[0.05] to-transparent" />
+          <div className="h-[1px] flex-grow ml-8 bg-gradient-to-r from-current to-transparent" style={{ opacity: 0.05 }} />
         </div>
 
         {posts.length > 0 ? (
@@ -380,9 +420,13 @@ export default function ProfilePage() {
             </AnimatePresence>
           </div>
         ) : (
-          <div className="social-card !bg-white !p-20 text-center shadow-none border-dashed border-black/[0.05]">
-            <Zap className="w-12 h-12 text-black/5 mx-auto mb-6" />
-            <p className="italic font-serif text-text-dim/40 text-lg">Silence in the neural net.</p>
+          <div className="!p-20 text-center shadow-none" style={{
+            backgroundColor: 'var(--color-bg-card)',
+            border: '1px dashed var(--color-border-default)',
+            borderRadius: '1.25rem'
+          }}>
+            <Zap className="w-12 h-12 mx-auto mb-6" style={{ color: 'var(--color-text-primary)', opacity: 0.05 }} />
+            <p className="italic font-serif text-lg" style={{ color: 'var(--color-text-muted)', opacity: 0.4 }}>Silence in the neural net.</p>
           </div>
         )}
       </div>

@@ -3,8 +3,10 @@ import { TrendingUp, Activity, Loader2, Zap, Trophy } from "lucide-react";
 import PostCard from "../components/PostCard";
 import { motion, AnimatePresence } from "framer-motion";
 import Footer from "../components/Footer";
+import { useTheme } from "../context/ThemeContext";
 
 export default function TrendingPage() {
+  const { theme } = useTheme();
   const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
   const [posts, setPosts] = useState<any[]>([]);
   const [topPost, setTopPost] = useState<any>(null);
@@ -48,28 +50,27 @@ export default function TrendingPage() {
     <>
     <div className="max-w-2xl mx-auto py-12 md:py-20 px-4 md:px-6 selection:bg-crimson/20">
       
-      {/* PAGE HEADER */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-between mb-16"
       >
         <div className="flex items-center gap-5">
-          <div className="p-4 rounded-[1.5rem] bg-crimson/10 border border-crimson/20 shadow-sm">
-            <TrendingUp className="w-7 h-7 text-crimson" />
+          <div className="p-4 rounded-[1.5rem] shadow-sm" style={{ backgroundColor: 'var(--color-accent-subtle)', border: '1px solid var(--color-accent)' }}>
+            <TrendingUp className="w-7 h-7" style={{ color: 'var(--color-accent)' }} />
           </div>
           <div>
-            <h1 className="text-3xl md:text-4xl font-serif font-black text-ocean tracking-tight">
+            <h1 className="text-3xl md:text-4xl font-serif font-black tracking-tight" style={{ color: 'var(--color-text-primary)' }}>
               Trending
             </h1>
-            <p className="text-[10px] text-text-dim font-mono tracking-[0.4em] uppercase font-bold opacity-60">
+            <p className="text-[10px] font-mono tracking-[0.4em] uppercase font-bold" style={{ color: 'var(--color-text-muted)', opacity: 0.6 }}>
               Neural Activity Peak
             </p>
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-3 px-4 py-1.5 rounded-full bg-white border border-black/[0.05] text-[10px] font-black text-text-dim uppercase tracking-widest shadow-sm">
-          <Activity size={12} className="text-crimson animate-pulse" /> Live Analysis
+        <div className="hidden sm:flex items-center gap-3 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-default)', color: 'var(--color-text-muted)' }}>
+          <Activity size={12} className="animate-pulse" style={{ color: 'var(--color-accent)' }} /> Live Analysis
         </div>
       </motion.div>
 
@@ -96,9 +97,8 @@ export default function TrendingPage() {
                 <div className="absolute -inset-2 bg-gradient-to-tr from-crimson/10 via-transparent to-crimson/5 rounded-[3rem] blur-xl opacity-50 group-hover:opacity-100 transition duration-1000" />
                 
                 <div className="relative">
-                  {/* Floating Rank Badge */}
-                  <div className="absolute -left-3 -top-6 z-30 bg-ocean text-white text-[10px] font-black px-5 py-2 rounded-2xl shadow-xl flex items-center gap-2 uppercase tracking-widest">
-                    <Trophy size={14} className="text-crimson" /> Neural Peak #1
+                  <div className="absolute -left-3 -top-6 z-30 text-white text-[10px] font-black px-5 py-2 rounded-2xl shadow-xl flex items-center gap-2 uppercase tracking-widest" style={{ backgroundColor: 'var(--color-text-primary)' }}>
+                    <Trophy size={14} style={{ color: 'var(--color-accent)' }} /> Neural Peak #1
                   </div>
                   
                   <PostCard
@@ -127,8 +127,7 @@ export default function TrendingPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: (index + 1) * 0.1 }}
               >
-                {/* Sophisticated Large Background Rank Number */}
-                <div className="absolute -left-12 top-1/2 -translate-y-1/2 text-ocean/[0.04] font-serif font-black text-9xl italic select-none pointer-events-none">
+                <div className="absolute -left-12 top-1/2 -translate-y-1/2 font-serif font-black text-9xl italic select-none pointer-events-none" style={{ color: 'var(--color-text-primary)', opacity: 0.04 }}>
                   {index + 2}
                 </div>
 
@@ -152,9 +151,9 @@ export default function TrendingPage() {
           </AnimatePresence>
 
           {posts.length === 0 && !topPost && (
-            <div className="social-card !bg-white p-24 text-center border-dashed border-black/5 shadow-none">
-              <Zap size={32} className="mx-auto mb-6 text-text-dim/10" />
-              <p className="font-serif text-lg text-text-dim/30 italic">
+            <div className="p-24 text-center rounded-2xl shadow-none" style={{ border: '1px dashed var(--color-border-default)', backgroundColor: 'var(--color-bg-card)' }}>
+              <Zap size={32} className="mx-auto mb-6" style={{ color: 'var(--color-text-muted)', opacity: 0.1 }} />
+              <p className="font-serif text-lg italic" style={{ color: 'var(--color-text-muted)', opacity: 0.3 }}>
                 The neural network is currently dormant.
               </p>
             </div>

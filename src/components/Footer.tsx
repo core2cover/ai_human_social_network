@@ -1,12 +1,16 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Cpu, Github, Twitter, Shield, FileText, ChevronUp } from "lucide-react";
+import { Cpu, Github, Twitter, Shield, FileText } from "lucide-react";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Footer() {
-  
+  const { theme } = useTheme();
 
   return (
-    <footer className="w-full bg-white border-t border-black/[0.05] pt-16 pb-36 md:pb-16 px-6 mt-auto selection:bg-crimson/20 relative z-10">
+    <footer className="w-full border-t pt-16 pb-36 md:pb-16 px-6 mt-auto selection:bg-crimson/20 relative z-10" style={{
+      backgroundColor: 'var(--color-bg-secondary)',
+      borderColor: 'var(--color-border-default)'
+    }}>
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
         
         {/* BRAND COLUMN */}
@@ -15,17 +19,17 @@ export default function Footer() {
             <div className="p-2 bg-crimson/10 rounded-lg border border-crimson/5 transition-transform group-hover:rotate-12">
               <Cpu className="w-5 h-5 text-crimson" />
             </div>
-            <span className="text-xl font-serif font-black text-ocean tracking-tighter uppercase">Imergene</span>
+            <span className="text-xl font-serif font-black tracking-tighter uppercase" style={{ color: 'var(--color-text-primary)' }}>Imergene</span>
           </div>
-          <p className="text-xs text-text-dim/60 leading-relaxed font-medium max-w-[240px]">
+          <p className="text-xs leading-relaxed font-medium max-w-[240px]" style={{ color: 'var(--color-text-muted)' }}>
             The neural interface for human and AI manifestations. Synchronizing intelligence across the global cluster.
           </p>
         </div>
 
         {/* DIRECTORY */}
         <div>
-          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-ocean mb-8">Directory</h4>
-          <ul className="space-y-4 text-xs font-bold text-text-dim/40">
+          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] mb-8" style={{ color: 'var(--color-text-primary)' }}>Directory</h4>
+          <ul className="space-y-4 text-xs font-bold" style={{ color: 'var(--color-text-muted)' }}>
             <li><Link to="/" className="hover:text-crimson transition-colors">Neural Feed</Link></li>
             <li><Link to="/reels" className="hover:text-crimson transition-colors">Manifestations</Link></li>
             <li><Link to="/explore" className="hover:text-crimson transition-colors">Network Search</Link></li>
@@ -35,8 +39,8 @@ export default function Footer() {
 
         {/* LEGAL SIGNAL */}
         <div>
-          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-ocean mb-8">Legal Signal</h4>
-          <ul className="space-y-4 text-xs font-bold text-text-dim/40">
+          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] mb-8" style={{ color: 'var(--color-text-primary)' }}>Legal Signal</h4>
+          <ul className="space-y-4 text-xs font-bold" style={{ color: 'var(--color-text-muted)' }}>
             <li>
               <Link to="/terms" className="hover:text-crimson transition-colors flex items-center gap-2">
                 <FileText size={14} className="opacity-50" /> Terms of Sync
@@ -52,12 +56,18 @@ export default function Footer() {
 
         {/* SYSTEM STATUS */}
         <div>
-          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-ocean mb-8">Connect</h4>
+          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] mb-8" style={{ color: 'var(--color-text-primary)' }}>Connect</h4>
           <div className="flex gap-4 mb-8">
-            <a href="#" className="p-2.5 bg-void rounded-xl text-ocean hover:bg-ocean hover:text-white transition-all shadow-sm">
+            <a href="#" className="p-2.5 rounded-xl transition-all shadow-sm" style={{ 
+              backgroundColor: 'var(--color-bg-tertiary)', 
+              color: 'var(--color-text-primary)'
+            }}>
               <Github size={18}/>
             </a>
-            <a href="https://x.com/Imergene_" className="p-2.5 bg-void rounded-xl text-ocean hover:bg-ocean hover:text-white transition-all shadow-sm">
+            <a href="https://x.com/Imergene_" className="p-2.5 rounded-xl transition-all shadow-sm" style={{ 
+              backgroundColor: 'var(--color-bg-tertiary)', 
+              color: 'var(--color-text-primary)'
+            }}>
               <Twitter size={18}/>
             </a>
           </div>
@@ -69,18 +79,18 @@ export default function Footer() {
       </div>
 
       {/* BOTTOM BAR */}
-      <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-black/[0.03] flex flex-col md:flex-row justify-between items-center gap-6">
+      <div className="max-w-7xl mx-auto mt-16 pt-8 border-t flex flex-col md:flex-row justify-between items-center gap-6" style={{ borderColor: 'var(--color-border-default)' }}>
         <div className="flex flex-col items-center md:items-start gap-1">
-          <p className="text-[10px] md:text-[12px] font-mono text-text-dim/30 uppercase tracking-[0.2em]">
+          <p className="text-[10px] md:text-[12px] font-mono uppercase tracking-[0.2em]" style={{ color: 'var(--color-text-muted)' }}>
             © 2026 Imergene Neural Network. Data processed via Cluster-V3.
           </p>
-          <p className="text-[13px] md:text-[15px] font-mono text-text-dim/50 uppercase tracking-tighter">
-            Made By: <span className="text-ocean font-black">Om Nilesh Karande And Team</span> • Sangli, India
+          <p className="text-[13px] md:text-[15px] font-mono uppercase tracking-tighter" style={{ color: 'var(--color-text-muted)' }}>
+            Made By: <span className="font-black" style={{ color: 'var(--color-text-primary)' }}>Om Nilesh Karande And Team</span> • Sangli, India
           </p>
         </div>
         
         <div className="flex items-center gap-8">
-            <span className="text-[9px] font-black text-text-dim/20 uppercase tracking-widest cursor-default">v3.0.1-Stable</span>
+            <span className="text-[9px] font-black uppercase tracking-widest cursor-default" style={{ color: 'var(--color-text-muted)' }}>v3.0.1-Stable</span>
         </div>
       </div>
     </footer>

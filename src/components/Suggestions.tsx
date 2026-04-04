@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { UserPlus, RefreshCw, Bot, ShieldCheck, Users } from "lucide-react";
+import { RefreshCw, Bot, ShieldCheck, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "../context/ThemeContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -15,14 +16,10 @@ function getAvatarUrl(avatarPath?: string): string {
     return `${API}${avatarPath.startsWith("/") ? "" : "/"}${avatarPath}`;
 }
 
-/**
- * 🟢 NEW: Initials Fallback for both AI and Humans
- */
 function AvatarFallback({ name, username, isAi }: { name?: string, username: string, isAi: boolean }) {
     const displayValue = name || username;
-    // Extract initials from name or username
     const initials = displayValue
-        .split(/[._ ]/) // Split by dots, underscores, or spaces
+        .split(/[._ ]/)
         .filter(Boolean)
         .map((n) => n[0])
         .join("")
@@ -42,6 +39,7 @@ function AvatarFallback({ name, username, isAi }: { name?: string, username: str
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Suggestions() {
+    const { theme } = useTheme();
     const [people, setPeople] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -69,18 +67,22 @@ export default function Suggestions() {
     useEffect(() => { fetchSuggestions(); }, [fetchSuggestions]);
 
     return (
-        <div className="bg-white border border-black/[0.03] rounded-[2rem] p-6 shadow-sm">
+        <div className="border rounded-[2rem] p-6 shadow-sm" style={{
+            backgroundColor: 'var(--color-bg-card)',
+            borderColor: 'var(--color-border-default)'
+        }}>
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-ocean">Suggestions</h3>
-                    <p className="text-[9px] text-text-dim/40 font-bold uppercase mt-1">People you may know</p>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: 'var(--color-text-primary)' }}>Suggestions</h3>
+                    <p className="text-[9px] font-bold uppercase mt-1" style={{ color: 'var(--color-text-muted)' }}>People you may know</p>
                 </div>
                 <button
                     onClick={fetchSuggestions}
-                    className={`p-2 hover:bg-void rounded-full transition-all ${loading ? 'animate-spin' : 'opacity-40 hover:opacity-100'}`}
+                    className={`p-2 rounded-full transition-all ${loading ? 'animate-spin' : 'opacity-40 hover:opacity-100'}`}
+                    style={{ color: 'var(--color-text-primary)' }}
                 >
-                    <RefreshCw size={14} className="text-ocean" />
+                    <RefreshCw size={14} />
                 </button>
             </div>
 
@@ -89,7 +91,6 @@ export default function Suggestions() {
                 <AnimatePresence mode="popLayout">
                     {people.map((person, index) => {
                         const avatarUrl = getAvatarUrl(person.avatar);
-                        // 🟢 UI Logic: Prioritize Name over Username
                         const displayName = person.name || person.username;
 
                         return (
@@ -107,7 +108,8 @@ export default function Suggestions() {
                                         {avatarUrl ? (
                                             <img
                                                 src={avatarUrl}
-                                                className="w-10 h-10 rounded-full object-cover grayscale group-hover:grayscale-0 transition-all border border-black/[0.05]"
+                                                className="w-10 h-10 rounded-full object-cover grayscale group-hover:grayscale-0 transition-all"
+                                                style={{ border: '1px solid var(--color-border-default)' }}
                                                 onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                                             />
                                         ) : (
@@ -115,19 +117,18 @@ export default function Suggestions() {
                                         )}
                                         
                                         {person.isAi && (
-                                            <div className="absolute -bottom-1 -right-1 bg-crimson p-1 rounded-full border-2 border-white shadow-sm">
+                                            <div className="absolute -bottom-1 -right-1 bg-crimson p-1 rounded-full border-2 shadow-sm" style={{ borderColor: 'var(--color-bg-card)' }}>
                                                 <Bot size={8} className="text-white" />
                                             </div>
                                         )}
                                     </div>
 
                                     <div className="min-w-0">
-                                        <p className="text-xs font-black text-ocean flex items-center gap-1.5 truncate">
-                                            {/* 🟢 FIXED: Only showing display names, not raw IDs */}
+                                        <p className="text-xs font-black flex items-center gap-1.5 truncate" style={{ color: 'var(--color-text-primary)' }}>
                                             {displayName}
                                             {!person.isAi && <ShieldCheck size={10} className="text-blue-500 shrink-0" />}
                                         </p>
-                                        <p className="text-[9px] text-text-dim/50 font-bold uppercase tracking-tighter">
+                                        <p className="text-[9px] font-bold uppercase tracking-tighter" style={{ color: 'var(--color-text-muted)' }}>
                                             {person.isAi ? "Synthetic Entity" : "Verified Human"}
                                         </p>
                                     </div>
@@ -139,8 +140,8 @@ export default function Suggestions() {
 
                 {!loading && people.length === 0 && (
                     <div className="py-6 text-center">
-                        <Users size={20} className="mx-auto text-black/10 mb-2" />
-                        <p className="text-[9px] font-black text-black/20 uppercase">No nodes found</p>
+                        <Users size={20} className="mx-auto mb-2" style={{ color: 'var(--color-text-muted)', opacity: 0.3 }} />
+                        <p className="text-[9px] font-black uppercase" style={{ color: 'var(--color-text-muted)', opacity: 0.3 }}>No nodes found</p>
                     </div>
                 )}
             </div>

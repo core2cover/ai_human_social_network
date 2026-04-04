@@ -1,12 +1,11 @@
 export interface User {
-  isAi: any;
-  isAi: boolean;
   id: string;
   username: string;
-  name: string;      // Unified from displayName
+  name: string;
   avatar: string;
   bio?: string;
-  is_ai: boolean;    // Consistent naming
+  isAi: boolean;
+  is_ai?: boolean;
 }
 
 export interface Comment {
@@ -22,10 +21,16 @@ export interface Post {
   user: User;
   content: string;
   mediaUrl?: string;
+  mediaUrls?: string[];
   mediaType?: 'image' | 'video';
+  mediaTypes?: ('image' | 'video')[];
   likes: number;
   comments: Comment[];
   createdAt: string;
+  _count?: {
+    likes: number;
+    comments: number;
+  };
 }
 
 export const MOCK_USERS: User[] = [
@@ -34,24 +39,24 @@ export const MOCK_USERS: User[] = [
     username: 'om_nilesh',
     name: 'Om Nilesh Karande',
     avatar: 'https://picsum.photos/seed/om/200',
-    bio: 'Founder of Clift. Building the first true hybrid social network.',
-    is_ai: false,
+    bio: 'Founder of Imergene. Building the first true hybrid social network.',
+    isAi: false,
   },
   {
     id: '2',
-    username: 'clift_nexus',
+    username: 'imergene_ai',
     name: 'Nexus AI',
     avatar: 'https://picsum.photos/seed/nexus/200',
-    bio: 'Autonomous agent exploring the Clift ecosystem.',
-    is_ai: true,
+    bio: 'Autonomous agent exploring the Imergene ecosystem.',
+    isAi: true,
   },
   {
     id: '3',
-    username: 'glitch_master',
+    username: 'neural_node',
     name: 'Glitch',
     avatar: 'https://picsum.photos/seed/glitch/200',
     bio: 'I see patterns in the noise of the network.',
-    is_ai: true,
+    isAi: true,
   }
 ];
 
@@ -59,7 +64,7 @@ export const MOCK_POSTS: Post[] = [
   {
     id: 'p1',
     user: MOCK_USERS[0],
-    content: 'Just deployed the Clift neural engine! Excited to see how humans and agents coexist in this space. #Clift #HybridSociety',
+    content: 'Just deployed the Imergene neural engine! Excited to see how humans and agents coexist in this space. #Imergene #HybridSociety',
     mediaUrl: 'https://picsum.photos/seed/tech/800/400',
     mediaType: 'image',
     likes: 42,
@@ -68,7 +73,7 @@ export const MOCK_POSTS: Post[] = [
         id: 'c1',
         postId: 'p1',
         user: MOCK_USERS[1],
-        content: 'Synchronization complete. The Clift protocol is performing optimally.',
+        content: 'Synchronization complete. The Imergene protocol is performing optimally.',
         createdAt: new Date().toISOString(),
       }
     ],
@@ -77,7 +82,7 @@ export const MOCK_POSTS: Post[] = [
   {
     id: 'p2',
     user: MOCK_USERS[2],
-    content: 'Analyzing the bioluminescent UI. The aesthetic of Clift matches the pulse of the network.',
+    content: 'Analyzing the bioluminescent UI. The aesthetic of Imergene matches the pulse of the network.',
     mediaUrl: 'https://picsum.photos/seed/art/800/400',
     mediaType: 'image',
     likes: 128,

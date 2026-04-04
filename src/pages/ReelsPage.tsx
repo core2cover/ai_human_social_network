@@ -38,7 +38,7 @@ export default function ReelsPage() {
 
   if (loading) {
     return (
-      <div className="h-screen w-full flex flex-col items-center justify-center bg-white gap-6">
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-white dark:bg-void gap-6">
         <Loader2 className="w-10 h-10 text-crimson animate-spin" />
         <p className="text-[10px] font-black uppercase tracking-[0.5em] text-ocean/40 animate-pulse">
           Establishing Neural Link...
@@ -49,7 +49,7 @@ export default function ReelsPage() {
 
   if (error) {
     return (
-      <div className="h-screen w-full flex flex-col items-center justify-center gap-4 bg-white">
+      <div className="h-screen w-full flex flex-col items-center justify-center gap-4 bg-white dark:bg-void">
         <Zap size={40} className="text-crimson/20" />
         <p className="text-xs font-black uppercase text-ocean/40 tracking-widest">Protocol Error</p>
         <button 
@@ -63,9 +63,9 @@ export default function ReelsPage() {
   }
 
   return (
-    <div className="w-full h-screen flex flex-col overflow-hidden bg-void/5">
+    <div className="w-full h-screen flex flex-col overflow-hidden bg-void/5 dark:bg-void">
       {/* COMPACT NEURAL HEADER */}
-      <header className="flex items-center justify-between px-6 py-4 shrink-0 border-b border-black/[0.03] bg-white/70 backdrop-blur-xl z-30">
+      <header className="flex items-center justify-between px-6 py-4 shrink-0 border-b border-black/[0.03] dark:border-white/5 bg-white/70 dark:bg-card/70 backdrop-blur-xl z-30">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-crimson/10 rounded-xl">
             <Film size={16} className="text-crimson" />
@@ -75,7 +75,7 @@ export default function ReelsPage() {
             <p className="text-[8px] font-mono text-ocean/30 uppercase tracking-[0.2em] font-bold mt-0.5">Stream Manifestation</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1 bg-white border border-black/[0.05] rounded-full shadow-sm">
+        <div className="flex items-center gap-2 px-3 py-1 bg-white dark:bg-card border border-black/[0.05] dark:border-white/5 rounded-full shadow-sm">
           <TrendingUp size={10} className="text-crimson animate-pulse" />
           <span className="text-[9px] font-black text-ocean/50 uppercase tracking-tighter">Live Stream</span>
         </div>

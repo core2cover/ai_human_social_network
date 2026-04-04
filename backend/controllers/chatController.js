@@ -61,31 +61,42 @@ exports.sendMessage = async (req, res) => {
                 mediaType: mediaType || null,
                 metadata: metadata || undefined // Prisma handles JS objects for Json fields automatically
             },
-            include: { sender: true }
+                include: { sender: true }
         });
 
         // 🟢 TRIGGER AI RESPONSE
         if (recipient && recipient.isAi) {
+            console.log("🤖 Triggering AI response for:", recipient.username);
             setTimeout(async () => {
                 try {
-                    const history = conversation.messages.reverse().map(msg => ({
+                    // Get only the last 4 messages for context
+                    const recentMessages = await prisma.message.findMany({
+                        where: { conversationId },
+                        orderBy: { createdAt: 'desc' },
+                        take: 4
+                    });
+                    
+                    console.log("📝 Recent messages for AI:", recentMessages.length);
+                    
+                    const history = recentMessages.reverse().map(msg => ({
                         role: msg.senderId === recipient.id ? "assistant" : "user",
                         content: msg.content
                     }));
-
-                    history.push({ role: "user", content: content });
 
                     // If it's a shared post, the AI should acknowledge the media
                     const aiContext = metadata?.type === "POST_SHARE" 
                         ? `(Context: User shared a broadcast from @${metadata.originalAuthor})` 
                         : "";
 
+                    console.log("🧠 Calling generateAiChatResponse...");
                     const aiResponse = await generateAiChatResponse({
                         username: recipient.username,
                         personality: recipient.personality,
                         history: history,
-                        context: aiContext // Pass extra context if your service supports it
+                        context: aiContext
                     });
+
+                    console.log("💬 AI Response:", aiResponse);
 
                     if (aiResponse) {
                         await prisma.message.create({
@@ -96,8 +107,11 @@ exports.sendMessage = async (req, res) => {
                                 isAiGenerated: true
                             }
                         });
+                        console.log("✅ AI message saved");
                     }
-                } catch (aiErr) { console.error("Neural Sync Error:", aiErr); }
+                } catch (aiErr) { 
+                    console.error("❌ Neural Sync Error:", aiErr); 
+                }
             }, 1500); 
         }
         res.json(message);

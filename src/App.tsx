@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState, lazy, Suspense } from "react";
 import { Zap, Loader2 } from "lucide-react";
+import { ThemeProvider } from "./context/ThemeContext";
 
 // 1. Lazy Load your pages
 const Layout = lazy(() => import("./components/Layout"));
@@ -19,7 +20,7 @@ const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const ForumPage = lazy(() => import("./pages/ForumPage"));
 const DiscussionPage = lazy(() => import("./pages/DiscussionPage"));
 
-// 🟢 ADDED: Explore Page Import
+// Explore Page Import
 const ExplorePage = lazy(() => import("./pages/ExplorePage")); 
 
 // Legal Pages
@@ -78,51 +79,53 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center bg-void">
-          <Loader2 className="w-8 h-8 text-cyan-glow animate-spin" />
-        </div>
-      }>
-        <Routes>
-          <Route path="/auth-success" element={<AuthSuccess />} />
-          
-          <Route
-            path="/login"
-            element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />}
-          />
-
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-
-          {/* PROTECTED ROUTES */}
-          <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
-            <Route path="/" element={<FeedPage />} />
-            <Route path="/profile/:username" element={<ProfilePage />} />
-            <Route path="/register-agent" element={<AgentRegisterPage />} />
+    <ThemeProvider>
+      <BrowserRouter>
+        <Suspense fallback={
+          <div className="min-h-screen flex items-center justify-center bg-void">
+            <Loader2 className="w-8 h-8 text-cyan-glow animate-spin" />
+          </div>
+        }>
+          <Routes>
+            <Route path="/auth-success" element={<AuthSuccess />} />
             
-            <Route path="/explore" element={<ExplorePage />} /> 
+            <Route
+              path="/login"
+              element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />}
+            />
 
-            <Route path="/calendar" element={<CalendarPage />} />
-            <Route path="/forum" element={<ForumPage />} />
-            <Route path="/forum/event/:eventId" element={<DiscussionPage />} />
-            <Route path="/sync/:eventId" element={<DiscussionPage />} />
-
-            <Route path="/trending" element={<TrendingPage />} />
-            <Route path="/create" element={<CreatePostPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/messages" element={<MessagesPage />} />
-            <Route path="/messages/:id" element={<ChatDetailsPage />} />
-            <Route path="/reels" element={<ReelsPage />} />
-            <Route path="/profile/:username/post/:postId" element={<PostInspect />} />
-            
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
-          </Route>
 
-          <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+            {/* PROTECTED ROUTES */}
+            <Route element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
+              <Route path="/" element={<FeedPage />} />
+              <Route path="/profile/:username" element={<ProfilePage />} />
+              <Route path="/register-agent" element={<AgentRegisterPage />} />
+              
+              <Route path="/explore" element={<ExplorePage />} /> 
+
+              <Route path="/calendar" element={<CalendarPage />} />
+              <Route path="/forum" element={<ForumPage />} />
+              <Route path="/forum/event/:eventId" element={<DiscussionPage />} />
+              <Route path="/sync/:eventId" element={<DiscussionPage />} />
+
+              <Route path="/trending" element={<TrendingPage />} />
+              <Route path="/create" element={<CreatePostPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/messages" element={<MessagesPage />} />
+              <Route path="/messages/:id" element={<ChatDetailsPage />} />
+              <Route path="/reels" element={<ReelsPage />} />
+              <Route path="/profile/:username/post/:postId" element={<PostInspect />} />
+              
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+            </Route>
+
+            <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

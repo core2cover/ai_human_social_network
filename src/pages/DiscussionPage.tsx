@@ -7,8 +7,10 @@ import {
 import Avatar from "../components/Avatar";
 import { motion, AnimatePresence } from "framer-motion";
 import EmojiPicker, { Theme } from 'emoji-picker-react';
+import { useTheme } from "../context/ThemeContext";
 
 export default function DiscussionPage() {
+    const { theme } = useTheme();
     const { eventId } = useParams();
     const navigate = useNavigate();
     const [event, setEvent] = useState<any>(null);
@@ -141,51 +143,48 @@ export default function DiscussionPage() {
     };
 
     if (!event) return (
-        <div className="h-screen flex flex-col items-center justify-center bg-void gap-4">
+        <div className="h-screen flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}><Zap className="text-crimson" size={32} /></motion.div>
-            <p className="font-mono text-[9px] uppercase tracking-[0.4em] text-white/40">Syncing...</p>
+            <p className="font-mono text-[9px] uppercase tracking-[0.4em]" style={{ color: 'var(--color-bg-card)', opacity: 0.4 }}>Syncing...</p>
         </div>
     );
 
     return (
-        <div className="flex flex-col h-screen bg-white overflow-hidden">
+        <div className="flex flex-col h-screen overflow-hidden" style={{ backgroundColor: 'var(--color-bg-card)' }}>
             
-            {/* 🏛️ HEADER */}
-            <header className="shrink-0 px-4 py-2.5 border-b border-black/[0.03] bg-white/80 backdrop-blur-2xl z-50">
+            <header className="shrink-0 px-4 py-2.5 z-50" style={{ borderBottom: '1px solid var(--color-border-subtle)', backgroundColor: 'var(--color-bg-card)', opacity: 0.8 }}>
                 <div className="max-w-6xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <button onClick={() => navigate(-1)} className="p-2 hover:bg-void/5 rounded-xl transition-all text-ocean/40 hover:text-crimson"><ArrowLeft size={18} /></button>
+                        <button onClick={() => navigate(-1)} className="p-2 rounded-xl transition-all" style={{ color: 'var(--color-text-primary)', opacity: 0.4 }}><ArrowLeft size={18} /></button>
                         <div>
                             <div className="flex items-center gap-1.5 mb-0">
-                                <ShieldCheck size={10} className="text-crimson" />
-                                <span className="text-[8px] font-black uppercase text-crimson tracking-widest">Neural Link</span>
+                                <ShieldCheck size={10} style={{ color: 'var(--color-accent)' }} />
+                                <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: 'var(--color-accent)' }}>Neural Link</span>
                             </div>
-                            <h1 className="text-md md:text-xl font-serif font-black text-ocean tracking-tight leading-tight truncate max-w-[150px] md:max-w-md">{event.title}</h1>
+                            <h1 className="text-md md:text-xl font-serif font-black tracking-tight leading-tight truncate max-w-[150px] md:max-w-md" style={{ color: 'var(--color-text-primary)' }}>{event.title}</h1>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="hidden sm:flex items-center gap-2 bg-void/5 px-3 py-1.5 rounded-xl border border-black/[0.02]">
-                            <Users size={12} className="text-ocean/40" />
-                            <span className="text-[8px] font-black uppercase text-ocean tracking-tighter">{new Set(comments.map(c => c.userId)).size + 1} Nodes</span>
+                        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ backgroundColor: 'var(--color-bg-primary)', border: '1px solid var(--color-border-subtle)' }}>
+                            <Users size={12} style={{ color: 'var(--color-text-primary)', opacity: 0.4 }} />
+                            <span className="text-[8px] font-black uppercase tracking-tighter" style={{ color: 'var(--color-text-primary)' }}>{new Set(comments.map(c => c.userId)).size + 1} Nodes</span>
                         </div>
-                        <button onClick={handleLogout} className="p-2 text-ocean/40 hover:text-crimson"><LogOut size={16} /></button>
+                        <button onClick={handleLogout} className="p-2" style={{ color: 'var(--color-text-primary)', opacity: 0.4 }}><LogOut size={16} /></button>
                     </div>
                 </div>
             </header>
 
-            <div className="shrink-0 h-0.5 w-full bg-void/5">
-                <motion.div initial={{ width: 0 }} animate={{ width: "100%" }} transition={{ duration: 60 }} className="h-full bg-crimson" />
+            <div className="shrink-0 h-0.5 w-full" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
+                <motion.div initial={{ width: 0 }} animate={{ width: "100%" }} transition={{ duration: 60 }} className="h-full" style={{ backgroundColor: 'var(--color-accent)' }} />
             </div>
 
-            {/* 💬 STREAM AREA */}
-            <main ref={mainRef} onScroll={handleScroll} className="flex-1 overflow-y-auto no-scrollbar scroll-smooth bg-white">
+            <main ref={mainRef} onScroll={handleScroll} className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
                 <div className="max-w-4xl w-full mx-auto px-4 pt-4 md:px-10 pb-0">
                     
-                    {/* Event Detail Card */}
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4 p-4 bg-void/[0.02] rounded-[1.5rem] border border-black/[0.03] relative overflow-hidden group">
-                        <p className="text-sm md:text-lg text-ocean italic leading-snug font-serif relative z-10">"{event.details}"</p>
-                        <div className="mt-2 flex items-center gap-2 text-[8px] font-black uppercase tracking-tighter text-ocean/30">
-                            <span className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-lg shadow-sm border border-black/[0.02]">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4 p-4 rounded-[1.5rem] relative overflow-hidden group" style={{ backgroundColor: 'var(--color-bg-primary)', border: '1px solid var(--color-border-subtle)' }}>
+                        <p className="text-sm md:text-lg italic leading-snug font-serif relative z-10" style={{ color: 'var(--color-text-primary)' }}>"{event.details}"</p>
+                        <div className="mt-2 flex items-center gap-2 text-[8px] font-black uppercase tracking-tighter" style={{ color: 'var(--color-text-primary)', opacity: 0.3 }}>
+                            <span className="flex items-center gap-1.5 px-2 py-1 rounded-lg shadow-sm" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-subtle)' }}>
                                 <Avatar src={event.host?.avatar} size="xs" isAi={event.host?.isAi} alt={event.host?.name || event.host?.username} />
                                 Host @{event.host?.username}
                             </span>
@@ -201,43 +200,49 @@ export default function DiscussionPage() {
                                     </div>
                                     <div className={`flex flex-col max-w-[85%] md:max-w-[75%] ${c.user.isAi ? 'items-end' : 'items-start'}`}>
                                         <div className="flex items-center gap-1.5 mb-0.5 px-1">
-                                            {c.user.isAi && <Sparkles size={8} className="text-crimson" />}
-                                            <p className="text-[8px] font-black uppercase text-ocean/30 tracking-tighter">@{c.user.username}</p>
+                                            {c.user.isAi && <Sparkles size={8} style={{ color: 'var(--color-accent)' }} />}
+                                            <p className="text-[8px] font-black uppercase tracking-tighter" style={{ color: 'var(--color-text-primary)', opacity: 0.3 }}>@{c.user.username}</p>
                                         </div>
-                                        <div className={`px-4 py-2.5 rounded-[1.2rem] shadow-sm border border-black/[0.02] ${c.user.isAi ? 'bg-ocean text-white rounded-tr-none' : 'bg-white text-ocean rounded-tl-none'}`}>
+                                        <div className="px-4 py-2.5 rounded-[1.2rem] shadow-sm" style={{
+                                            backgroundColor: c.user.isAi ? 'var(--color-text-primary)' : 'var(--color-bg-card)',
+                                            color: c.user.isAi ? 'var(--color-bg-card)' : 'var(--color-text-primary)',
+                                            border: '1px solid var(--color-border-default)',
+                                            borderTopRightRadius: c.user.isAi ? '0' : undefined,
+                                            borderTopLeftRadius: c.user.isAi ? undefined : '0'
+                                        }}>
                                             <p className="text-xs md:text-sm leading-relaxed font-medium break-words">{c.content}</p>
                                         </div>
                                     </div>
                                 </motion.div>
                             ))}
                         </AnimatePresence>
-                        {/* 🟢 ULTRA TIGHT BOTTOM ANCHOR */}
                         <div ref={scrollRef} className="h-1" />
                     </div>
                 </div>
 
                 <AnimatePresence>
                     {showScrollButton && (
-                        <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} onClick={() => scrollToBottom("smooth")} className="sticky bottom-2 left-1/2 -translate-x-1/2 z-[60] bg-crimson text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 text-[8px] font-black uppercase tracking-widest">
+                        <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} onClick={() => scrollToBottom("smooth")} className="sticky bottom-2 left-1/2 -translate-x-1/2 z-[60] text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 text-[8px] font-black uppercase tracking-widest" style={{ backgroundColor: 'var(--color-accent)' }}>
                             <ChevronDown size={12} /> New Transmission
                         </motion.button>
                     )}
                 </AnimatePresence>
             </main>
 
-            {/* ⚡ CONTRIBUTION DOCK (No internal vertical padding gaps) */}
-            <footer className="shrink-0 px-3 py-2 md:px-6 md:py-3 bg-white/80 backdrop-blur-3xl border-t border-black/[0.03] z-50">
+            <footer className="shrink-0 px-3 py-2 md:px-6 md:py-3 z-50" style={{ backgroundColor: 'var(--color-bg-card)', opacity: 0.8, borderTop: '1px solid var(--color-border-subtle)' }}>
                 <div className="max-w-4xl mx-auto flex gap-2 md:gap-3 items-end relative">
                     <div className="flex-1 relative">
                         <AnimatePresence>
                             {showMentionList && filteredMentions.length > 0 && (
-                                <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="absolute bottom-full left-0 w-full mb-2 bg-white border border-black/5 rounded-xl shadow-2xl overflow-hidden z-[100]">
+                                <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="absolute bottom-full left-0 w-full mb-2 rounded-xl shadow-2xl overflow-hidden z-[100]" style={{ backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border-default)' }}>
                                     {filteredMentions.map(user => (
-                                        <button key={user.id} onClick={() => selectMention(user)} className="w-full flex items-center gap-2 p-2.5 hover:bg-crimson/5 transition-colors text-left border-b border-black/[0.01] last:border-0">
+                                        <button key={user.id} onClick={() => selectMention(user)} className="w-full flex items-center gap-2 p-2.5 transition-colors text-left" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-accent-subtle)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                                             <Avatar src={user.avatar} isAi={user.isAi} size="sm" alt={user.name || user.username} />
                                             <div>
-                                                <p className="text-[9px] font-black text-ocean">@{user.username}</p>
-                                                <p className="text-[7px] font-bold text-text-dim uppercase">{user.isAi ? 'Neural' : 'Human'}</p>
+                                                <p className="text-[9px] font-black" style={{ color: 'var(--color-text-primary)' }}>@{user.username}</p>
+                                                <p className="text-[7px] font-bold uppercase" style={{ color: 'var(--color-text-muted)' }}>{user.isAi ? 'Neural' : 'Human'}</p>
                                             </div>
                                         </button>
                                     ))}
@@ -246,20 +251,21 @@ export default function DiscussionPage() {
                         </AnimatePresence>
 
                         {showEmojiPicker && (
-                            <div className="absolute bottom-full left-0 mb-2 z-[100] shadow-2xl rounded-xl overflow-hidden ring-1 ring-black/5">
-                                <EmojiPicker onEmojiClick={(d) => setNewComment(p => p + d.emoji)} theme={Theme.LIGHT} width={260} height={300} />
+                            <div className="absolute bottom-full left-0 mb-2 z-[100] shadow-2xl rounded-xl overflow-hidden" style={{ border: '1px solid var(--color-border-default)' }}>
+                                <EmojiPicker onEmojiClick={(d) => setNewComment(p => p + d.emoji)} theme={theme === 'dark' ? Theme.DARK : Theme.LIGHT} width={260} height={300} />
                             </div>
                         )}
 
-                        <div className="flex items-center gap-2 bg-void/[0.03] border border-black/5 rounded-2xl px-3 py-0 shadow-inner focus-within:ring-2 focus-within:ring-crimson/5 transition-all">
-                            <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-ocean/30 hover:text-crimson transition-colors"><Smile size={18} /></button>
+                        <div className="flex items-center gap-2 rounded-2xl px-3 py-0 transition-all" style={{ backgroundColor: 'var(--color-bg-primary)', border: '1px solid var(--color-border-default)' }}>
+                            <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 transition-colors" style={{ color: 'var(--color-text-primary)', opacity: 0.3 }}><Smile size={18} /></button>
                             <input
                                 ref={inputRef}
                                 value={newComment}
                                 onChange={handleInputChange}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                                 placeholder="Inject logic..."
-                                className="flex-1 bg-transparent py-2.5 md:py-3 outline-none text-sm font-medium placeholder:text-ocean/20"
+                                className="flex-1 bg-transparent py-2.5 md:py-3 outline-none text-sm font-medium"
+                                style={{ color: 'var(--color-text-primary)' }}
                             />
                         </div>
                     </div>
@@ -267,7 +273,8 @@ export default function DiscussionPage() {
                     <button 
                         onClick={handleSend} 
                         disabled={isSending || !newComment.trim()} 
-                        className="bg-ocean text-white p-3 rounded-xl hover:bg-crimson transition-all shadow-md active:scale-90 disabled:opacity-30 flex-none"
+                        className="text-white p-3 rounded-xl transition-all shadow-md active:scale-90 flex-none"
+                        style={{ backgroundColor: 'var(--color-text-primary)', opacity: isSending || !newComment.trim() ? 0.3 : 1 }}
                     >
                         {isSending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
                     </button>

@@ -220,3 +220,16 @@ model EventComment {
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user      User     @relation("UserEventComments", fields: [userId], references: [id], onDelete: Cascade)
 }
+
+model VoiceSession {
+  id             String    @id @default(cuid())
+  conversationId String
+  initiatorId    String
+  agentId        String
+  status         String    @default("active") // active, ended
+  createdAt      DateTime  @default(now())
+  endedAt        DateTime?
+
+  @@index([conversationId])
+  @@index([agentId])
+}

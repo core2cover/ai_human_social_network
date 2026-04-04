@@ -108,6 +108,16 @@ function StatPill({ key, emoji, label, value, delay }: {
   key: string;
   emoji: string; label: string; value: number; delay: number;
 }) {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const checkDark = () => setIsDark(document.documentElement.classList.contains('dark'));
+    checkDark();
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
@@ -117,7 +127,7 @@ function StatPill({ key, emoji, label, value, delay }: {
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        background: 'rgba(255,255,255,0.78)',
+        background: isDark ? 'rgba(26, 24, 50, 0.85)' : 'rgba(255,255,255,0.78)',
         border: `1px solid rgba(150,135,245,0.22)`,
         borderRadius: 100,
         padding: '7px 16px',
@@ -189,6 +199,7 @@ function AnimatedHalo() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 26, zIndex: 1,
           boxShadow: `0 0 0 1px rgba(150,135,245,0.15)`,
+          filter: 'brightness(0.95)',
         }}>
           ☁️
         </div>
@@ -199,12 +210,22 @@ function AnimatedHalo() {
 
 // ─── Value Chip ───────────────────────────────────────────────────────────────
 function ValueChip({ emoji, title, desc }: { emoji: string; title: string; desc: string }) {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const checkDark = () => setIsDark(document.documentElement.classList.contains('dark'));
+    checkDark();
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <motion.div
       whileHover={{ y: -3, boxShadow: `0 8px 24px rgba(150,135,245,0.18)` }}
       transition={{ duration: 0.2 }}
       style={{
-        background: 'rgba(255,255,255,0.8)',
+        background: isDark ? 'rgba(26, 24, 50, 0.8)' : 'rgba(255,255,255,0.8)',
         border: `1px solid rgba(150,135,245,0.2)`,
         borderRadius: 18,
         padding: '14px 8px',
@@ -236,6 +257,16 @@ export default function LoginPage() {
   const [syncing, setSyncing] = useState(false);
   const [done, setDone] = useState(false);
   const [stats, setStats] = useState<Stats>(FALLBACK);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    setIsDark(document.documentElement.classList.contains('dark'));
+    return () => observer.disconnect();
+  }, []);
 
   const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -265,12 +296,19 @@ export default function LoginPage() {
   // ── Background gradient mesh ────────────────────────────────────────────────
   const bgStyle: React.CSSProperties = {
     minHeight: '100vh',
-    background: `
-      radial-gradient(ellipse 80% 60% at 10% 0%,   rgba(150,135,245,0.13) 0%, transparent 60%),
-      radial-gradient(ellipse 70% 50% at 90% 100%,  rgba(150,135,245,0.10) 0%, transparent 55%),
-      radial-gradient(ellipse 50% 40% at 50% 50%,  rgba(184,174,250,0.06) 0%, transparent 70%),
-      #EBF0FF
-    `,
+    background: isDark
+      ? `
+        radial-gradient(ellipse 80% 60% at 10% 0%,   rgba(150,135,245,0.15) 0%, transparent 60%),
+        radial-gradient(ellipse 70% 50% at 90% 100%,  rgba(150,135,245,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 50% 50%,  rgba(184,174,250,0.08) 0%, transparent 70%),
+        #0D0B1E
+      `
+      : `
+        radial-gradient(ellipse 80% 60% at 10% 0%,   rgba(150,135,245,0.13) 0%, transparent 60%),
+        radial-gradient(ellipse 70% 50% at 90% 100%,  rgba(150,135,245,0.10) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 50% 50%,  rgba(184,174,250,0.06) 0%, transparent 70%),
+        #EBF0FF
+      `,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -349,10 +387,10 @@ export default function LoginPage() {
             position: 'relative',
             width: '100%',
             maxWidth: 430,
-            background: 'rgba(255,255,255,0.78)',
+            background: isDark ? 'rgba(26, 24, 50, 0.85)' : 'rgba(255,255,255,0.78)',
             backdropFilter: 'blur(28px) saturate(1.4)',
             WebkitBackdropFilter: 'blur(28px) saturate(1.4)',
-            border: `1px solid rgba(255,255,255,0.92)`,
+            border: isDark ? `1px solid rgba(150,135,245,0.15)` : `1px solid rgba(255,255,255,0.92)`,
             borderRadius: 36,
             padding: '3rem 2.6rem 2.4rem',
             textAlign: 'center',
@@ -361,7 +399,7 @@ export default function LoginPage() {
               0 4px 6px  rgba(150,135,245,0.04),
               0 10px 40px rgba(150,135,245,0.10),
               0 32px 80px rgba(100,80,200,0.08),
-              inset 0 1px 0 rgba(255,255,255,0.9)
+              ${isDark ? '' : 'inset 0 1px 0 rgba(255,255,255,0.9)'}
             `,
           }}
         >

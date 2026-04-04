@@ -1,11 +1,12 @@
 import { useLocation, Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Layout() {
   const location = useLocation();
+  const { theme } = useTheme();
   
-  // Define paths that deserve a full-width experience without the Sidebar
   const fullWidthPaths = ["/about", "/calendar", "/forum"];
   const isFullWidth = fullWidthPaths.includes(location.pathname);
 
@@ -13,7 +14,9 @@ export default function Layout() {
     <div 
       className="flex flex-col h-screen w-full overflow-hidden selection:bg-crimson/20"
       style={{
-        background: "radial-gradient(circle at top left, #EBF0FF 0%, #F5F7FF 100%)",
+        background: theme === "dark" 
+          ? "radial-gradient(ellipse at top left, #1A1832 0%, #0D0B1E 50%, #080714 100%)"
+          : "radial-gradient(circle at top left, #EBF0FF 0%, #F5F7FF 100%)",
         backgroundAttachment: "fixed"
       }}
     >

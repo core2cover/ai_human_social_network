@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   Heart,
   MessageCircle,
@@ -26,6 +26,7 @@ import CommentList from "./CommentList";
 import { Link } from "react-router-dom";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import PostShareModal from "./PostShareModal";
+import { useTheme } from "../context/ThemeContext";
 
 // ─── Brand tokens (matches Login.tsx palette) ─────────────────────────────────
 const B = {
@@ -36,6 +37,10 @@ const B = {
   ebonyLight:  "#4A4275",
   titanWhite:  "#EBF0FF",
   white:       "#FFFFFF",
+  darkBg:      "#1A1832",
+  darkCard:    "#141227",
+  darkText:    "#E8E6F3",
+  darkTextMuted: "#A8A6BE",
 };
 
 interface PostCardProps {
@@ -75,6 +80,9 @@ function ActionBtn({
   label?: string;
   onClick: (e: React.MouseEvent) => void;
 }) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
   return (
     <motion.button
       onClick={onClick}
@@ -82,9 +90,9 @@ function ActionBtn({
       style={{
         display: "flex", alignItems: "center", gap: 6,
         padding: "7px 13px", borderRadius: 100,
-        border: `1.5px solid ${active ? (activeColor ?? B.crocus) + "44" : "rgba(45,40,75,0.08)"}`,
-        background: active ? (activeColor ?? B.crocus) + "12" : "rgba(255,255,255,0.7)",
-        color: active ? (activeColor ?? B.crocus) : B.ebonyLight,
+        border: `1.5px solid ${active ? (activeColor ?? B.crocus) + "44" : isDark ? "rgba(255,255,255,0.1)" : "rgba(45,40,75,0.08)"}`,
+        background: active ? (activeColor ?? B.crocus) + "12" : isDark ? "rgba(26,24,50,0.7)" : "rgba(255,255,255,0.7)",
+        color: active ? (activeColor ?? B.crocus) : isDark ? B.darkTextMuted : B.ebonyLight,
         cursor: "pointer", transition: "all 0.22s ease",
         backdropFilter: "blur(8px)",
       }}
@@ -109,8 +117,15 @@ function CommentInput({
   showEmoji, onEmojiSelect, loading,
   showMentions, mentions, onSelectMention, inputRef,
 }: any) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
   return (
-    <div style={{ padding: "16px 20px 20px", borderTop: `1px solid rgba(150,135,245,0.1)`, background: "rgba(235,240,255,0.4)" }}>
+    <div style={{ 
+      padding: "16px 20px 20px", 
+      borderTop: `1px solid ${isDark ? "rgba(150,135,245,0.15)" : "rgba(150,135,245,0.1)"}`, 
+      background: isDark ? "rgba(20,18,39,0.8)" : "rgba(235,240,255,0.4)" 
+    }}>
       <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 10 }}>
         {/* Emoji button */}
         <button
@@ -118,7 +133,7 @@ function CommentInput({
           style={{
             padding: 8, borderRadius: "50%", border: "none",
             background: showEmoji ? B.crocusPale : "transparent",
-            color: showEmoji ? B.crocus : B.ebonyLight,
+            color: showEmoji ? B.crocus : isDark ? B.darkTextMuted : B.ebonyLight,
             cursor: "pointer", flexShrink: 0, transition: "all 0.2s",
           }}
         >
@@ -135,10 +150,10 @@ function CommentInput({
               style={{
                 position: "absolute", bottom: "calc(100% + 12px)", left: 0,
                 zIndex: 9999, borderRadius: 16, overflow: "hidden",
-                boxShadow: "0 12px 40px rgba(45,40,75,0.18)",
+                boxShadow: isDark ? "0 12px 40px rgba(0,0,0,0.4)" : "0 12px 40px rgba(45,40,75,0.18)",
               }}
             >
-              <EmojiPicker onEmojiClick={(d) => onEmojiSelect(d.emoji)} theme={Theme.LIGHT} width={300} height={340} />
+              <EmojiPicker onEmojiClick={(d) => onEmojiSelect(d.emoji)} theme={isDark ? Theme.DARK : Theme.LIGHT} width={300} height={340} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -154,9 +169,11 @@ function CommentInput({
                 exit={{ opacity: 0, y: 6 }}
                 style={{
                   position: "absolute", bottom: "calc(100% + 8px)", left: 0, right: 0,
-                  background: B.white, border: `1px solid rgba(150,135,245,0.18)`,
+                  background: isDark ? B.darkCard : B.white, 
+                  border: `1px solid ${isDark ? "rgba(150,135,245,0.25)" : "rgba(150,135,245,0.18)"}`,
                   borderRadius: 14, overflow: "hidden",
-                  boxShadow: "0 8px 30px rgba(45,40,75,0.12)", zIndex: 9000,
+                  boxShadow: isDark ? "0 8px 30px rgba(0,0,0,0.4)" : "0 8px 30px rgba(45,40,75,0.12)", 
+                  zIndex: 9000,
                 }}
               >
                 {mentions.map((u: User) => (
@@ -166,16 +183,16 @@ function CommentInput({
                     style={{
                       width: "100%", display: "flex", alignItems: "center",
                       gap: 10, padding: "10px 14px", border: "none",
-                      borderBottom: `1px solid rgba(150,135,245,0.08)`,
+                      borderBottom: `1px solid ${isDark ? "rgba(150,135,245,0.1)" : "rgba(150,135,245,0.08)"}`,
                       background: "transparent", cursor: "pointer",
                       transition: "background 0.15s",
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.background = B.crocusPale)}
+                    onMouseEnter={e => (e.currentTarget.style.background = isDark ? "rgba(150,135,245,0.1)" : B.crocusPale)}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                   >
                     <Avatar src={u.avatar} alt={u.name || u.username} isAi={u.isAi} size="sm" />
                     <div style={{ textAlign: "left" }}>
-                      <p style={{ fontSize: 12, fontWeight: 700, color: B.ebony, margin: 0 }}>@{u.username}</p>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: isDark ? B.darkText : B.ebony, margin: 0 }}>@{u.username}</p>
                       <p style={{ fontSize: 10, color: B.crocus, margin: 0, display: "flex", alignItems: "center", gap: 3 }}>
                         {u.isAi ? <><Cpu size={9} /> AI Friend</> : "Human"}
                       </p>
@@ -194,14 +211,15 @@ function CommentInput({
             placeholder="Write a reply…"
             style={{
               width: "100%", padding: "11px 16px",
-              borderRadius: 100, border: `1.5px solid rgba(150,135,245,0.2)`,
-              background: "rgba(255,255,255,0.85)", color: B.ebony,
+              borderRadius: 100, border: `1.5px solid ${isDark ? "rgba(150,135,245,0.25)" : "rgba(150,135,245,0.2)"}`,
+              background: isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.85)", 
+              color: isDark ? B.darkText : B.ebony,
               fontSize: 13, fontFamily: '"DM Sans", system-ui, sans-serif',
               outline: "none", boxSizing: "border-box",
               transition: "border-color 0.2s",
             }}
             onFocus={e => (e.target.style.borderColor = B.crocus)}
-            onBlur={e => (e.target.style.borderColor = "rgba(150,135,245,0.2)")}
+            onBlur={e => (e.target.style.borderColor = isDark ? "rgba(150,135,245,0.25)" : "rgba(150,135,245,0.2)")}
           />
         </div>
 
@@ -212,7 +230,7 @@ function CommentInput({
           disabled={loading || !value.trim()}
           style={{
             padding: "10px 18px", borderRadius: 100, border: "none",
-            background: value.trim() ? B.crocus : "rgba(150,135,245,0.25)",
+            background: value.trim() ? B.crocus : isDark ? "rgba(150,135,245,0.2)" : "rgba(150,135,245,0.25)",
             color: B.white, cursor: value.trim() ? "pointer" : "default",
             display: "flex", alignItems: "center", gap: 6,
             fontSize: 12, fontWeight: 600, flexShrink: 0,
@@ -232,6 +250,21 @@ function CommentInput({
 const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const token = localStorage.getItem("token");
   const currentUser = localStorage.getItem("username");
+  const { theme } = useTheme();
+
+  const isDark = theme === "dark";
+
+  const colors = useMemo(() => ({
+    bg: isDark ? B.darkCard : B.white,
+    text: isDark ? B.darkText : B.ebony,
+    textMuted: isDark ? B.darkTextMuted : B.ebonyLight,
+    border: isDark ? "rgba(150,135,245,0.2)" : "rgba(150,135,245,0.15)",
+    borderHover: isDark ? "rgba(150,135,245,0.35)" : "rgba(150,135,245,0.25)",
+    commentInputBg: isDark ? "rgba(26,24,50,0.6)" : "rgba(235,240,255,0.4)",
+    inputBg: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.85)",
+    actionBtnBg: isDark ? "rgba(26,24,50,0.7)" : "rgba(255,255,255,0.7)",
+    shadow: isDark ? "0 4px 24px rgba(0,0,0,0.4)" : "0 4px 24px rgba(45,40,75,0.07), 0 1px 4px rgba(45,40,75,0.04)",
+  }), [isDark]);
 
   const [showMenu, setShowMenu]               = useState(false);
   const [isLiked, setIsLiked]                 = useState(post.liked ?? false);
@@ -420,6 +453,41 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   // ── Zoom ─────────────────────────────────────────────────────────────────
   const resetZoom = () => { setScale(1); setPosition({ x: 0, y: 0 }); };
+  
+  // ── Fullscreen keyboard and touch handling ────────────────────────────────
+  useEffect(() => {
+    if (!isFullScreen) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case "Escape":
+          setIsFullScreen(false);
+          resetZoom();
+          break;
+        case "ArrowLeft":
+          if (mediaItems.length > 1) setCurrentMediaIndex(i => (i - 1 + mediaItems.length) % mediaItems.length);
+          resetZoom();
+          break;
+        case "ArrowRight":
+          if (mediaItems.length > 1) setCurrentMediaIndex(i => (i + 1) % mediaItems.length);
+          resetZoom();
+          break;
+        case "+":
+        case "=":
+          setScale(s => Math.min(5, s + 0.4));
+          break;
+        case "-":
+          setScale(s => Math.max(0.5, s - 0.4));
+          break;
+        case "0":
+          resetZoom();
+          break;
+      }
+    };
+    
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isFullScreen, mediaItems.length]);
 
   // ── Drag to share ─────────────────────────────────────────────────────────
   const handleDragStart = (e: React.DragEvent) => {
@@ -440,9 +508,10 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           exit={{ opacity: 0, y: -6, scale: 0.95 }}
           style={{
             position: "absolute", top: "calc(100% + 8px)", right: 0,
-            background: B.white, border: `1px solid rgba(150,135,245,0.15)`,
+            background: isDark ? B.darkCard : B.white, 
+            border: `1px solid ${isDark ? "rgba(150,135,245,0.2)" : "rgba(150,135,245,0.15)"}`,
             borderRadius: 16, overflow: "hidden",
-            boxShadow: "0 8px 32px rgba(45,40,75,0.15)",
+            boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.4)" : "0 8px 32px rgba(45,40,75,0.15)",
             minWidth: 180, zIndex: 100,
           }}
         >
@@ -456,7 +525,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 fontFamily: '"DM Sans", system-ui, sans-serif', fontWeight: 500,
                 transition: "background 0.15s",
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = "#fef2f2")}
+              onMouseEnter={e => (e.currentTarget.style.background = isDark ? "rgba(254,242,242,0.1)" : "#fef2f2")}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
             >
               <Trash2 size={15} />
@@ -482,11 +551,11 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           style={{
-            background: B.white,
-            border: `1px solid rgba(150,135,245,0.15)`,
+            background: colors.bg,
+            border: `1px solid ${colors.border}`,
             borderRadius: 28,
             overflow: "hidden",
-            boxShadow: "0 4px 24px rgba(45,40,75,0.07), 0 1px 4px rgba(45,40,75,0.04)",
+            boxShadow: colors.shadow,
             position: "relative",
             fontFamily: '"DM Sans", system-ui, sans-serif',
           }}
@@ -523,7 +592,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               <Avatar src={post.user?.avatar} alt={post.user?.name || post.user?.username} isAi={post.user?.isAi} size="md" />
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: B.ebony }}>{post.user?.name || post.user?.username}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: colors.text }}>{post.user?.name || post.user?.username}</span>
                   {post.user?.isAi && (
                     <span style={{
                       fontSize: 9, fontWeight: 700, background: B.crocusPale,
@@ -534,7 +603,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                     </span>
                   )}
                 </div>
-                <span style={{ fontSize: 11, color: B.ebonyLight, opacity: 0.5 }}>
+                <span style={{ fontSize: 11, color: colors.textMuted, opacity: isDark ? 0.6 : 0.5 }}>
                   @{post.user?.username} · {new Date(post.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>
@@ -544,7 +613,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 onClick={() => setShowMenu(!showMenu)}
                 style={{
                   padding: 8, border: "none", background: "transparent",
-                  color: B.ebonyLight, opacity: 0.4, cursor: "pointer",
+                  color: colors.textMuted, opacity: 0.4, cursor: "pointer",
                   borderRadius: "50%", transition: "all 0.2s",
                 }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.background = B.crocusPale; }}
@@ -661,7 +730,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           {post.content && (
             <div style={{ padding: "14px 18px 4px" }}>
               <p style={{
-                fontSize: 14, lineHeight: 1.65, color: B.ebony,
+                fontSize: 14, lineHeight: 1.65, color: colors.text,
                 margin: 0, fontFamily: '"DM Sans", system-ui, sans-serif',
                 display: "-webkit-box", WebkitLineClamp: isExpanded ? undefined : 2,
                 WebkitBoxOrient: "vertical", overflow: isExpanded ? "visible" : "hidden",
@@ -689,14 +758,14 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             padding: "12px 18px 14px",
           }}>
             <ActionBtn
-              icon={<Heart size={16} fill={isLiked ? B.crocus : "none"} stroke={isLiked ? B.crocus : B.ebonyLight} />}
+              icon={<Heart size={16} fill={isLiked ? B.crocus : "none"} stroke={isLiked ? B.crocus : colors.textMuted} />}
               count={likesCount}
               active={isLiked}
               activeColor={B.crocus}
               onClick={(e) => { e.stopPropagation(); handleLike(); }}
             />
             <ActionBtn
-              icon={<MessageCircle size={16} stroke={showComments ? B.crocus : B.ebonyLight} />}
+              icon={<MessageCircle size={16} stroke={showComments ? B.crocus : colors.textMuted} />}
               count={displayCommentCount}
               active={showComments}
               activeColor={B.crocus}
@@ -708,7 +777,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               onClick={(e) => { e.stopPropagation(); setShowShareModal(true); }}
             />
             {/* View count pushed right */}
-            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5, color: B.ebonyLight, opacity: 0.4 }}>
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5, color: colors.textMuted, opacity: 0.4 }}>
               <Eye size={14} />
               <span style={{ fontSize: 11, fontWeight: 500 }}>{viewCount.toLocaleString()}</span>
             </div>
@@ -761,6 +830,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
               onWheel={e => setScale(s => Math.max(0.5, Math.min(5, s + (e.deltaY > 0 ? -0.15 : 0.15))))}
+              onClick={(e) => { if (e.target === e.currentTarget) { setIsFullScreen(false); resetZoom(); } }}
             >
               {/* Controls */}
               <div style={{
@@ -796,18 +866,66 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 </button>
               </div>
 
+              {/* Navigation arrows for multiple images */}
+              {mediaItems.length > 1 && (
+                <>
+                  <button
+                    onClick={() => { setCurrentMediaIndex(i => (i - 1 + mediaItems.length) % mediaItems.length); resetZoom(); }}
+                    style={{
+                      position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)",
+                      padding: 16, background: "rgba(255,255,255,0.1)", border: "none",
+                      borderRadius: "50%", color: "#fff", cursor: "pointer",
+                      backdropFilter: "blur(8px)", zIndex: 10,
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.2)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                  <button
+                    onClick={() => { setCurrentMediaIndex(i => (i + 1) % mediaItems.length); resetZoom(); }}
+                    style={{
+                      position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
+                      padding: 16, background: "rgba(255,255,255,0.1)", border: "none",
+                      borderRadius: "50%", color: "#fff", cursor: "pointer",
+                      backdropFilter: "blur(8px)", zIndex: 10,
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.2)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
+                  >
+                    <ChevronRight size={24} />
+                  </button>
+                </>
+              )}
+
               <motion.div
-                drag style={{ cursor: "grab", display: "flex", alignItems: "center", justifyContent: "center" }}
+                drag
                 dragConstraints={{ left: -400, right: 400, top: -300, bottom: 300 }}
+                onDragStart={() => document.body.style.cursor = "grabbing"}
+                onDragEnd={() => document.body.style.cursor = "grab"}
+                style={{ cursor: "grab", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
                 <motion.img
                   src={mediaItems[currentMediaIndex]}
                   animate={{ scale, x: position.x, y: position.y }}
                   transition={{ type: "spring", stiffness: 300, damping: 28 }}
-                  style={{ maxWidth: "88vw", maxHeight: "80vh", objectFit: "contain", borderRadius: 12, pointerEvents: "none" }}
+                  style={{ maxWidth: "88vw", maxHeight: "80vh", objectFit: "contain", borderRadius: 12, pointerEvents: "none", userSelect: "none" }}
                   draggable={false}
+                  alt="Fullscreen media"
                 />
               </motion.div>
+
+              {/* Media counter */}
+              {mediaItems.length > 1 && (
+                <div style={{
+                  position: "absolute", top: 80, left: "50%", transform: "translateX(-50%)",
+                  background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)",
+                  padding: "6px 14px", borderRadius: 20, color: "rgba(255,255,255,0.8)",
+                  fontSize: 12, fontFamily: '"DM Sans", system-ui, sans-serif',
+                }}>
+                  {currentMediaIndex + 1} / {mediaItems.length}
+                </div>
+              )}
 
               <p style={{
                 position: "absolute", bottom: 28,
@@ -815,7 +933,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 fontFamily: '"DM Sans", system-ui, sans-serif',
                 letterSpacing: "0.06em",
               }}>
-                Scroll to zoom · Drag to pan
+                Scroll to zoom · Drag to pan · Arrow keys to navigate
               </p>
             </motion.div>
           )}
@@ -851,11 +969,11 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         style={{
-          background: B.white,
-          border: `1px solid rgba(150,135,245,0.15)`,
+          background: colors.bg,
+          border: `1px solid ${colors.border}`,
           borderRadius: 28,
           overflow: "hidden",
-          boxShadow: "0 4px 24px rgba(45,40,75,0.07), 0 1px 4px rgba(45,40,75,0.04)",
+          boxShadow: colors.shadow,
           position: "relative",
           fontFamily: '"DM Sans", system-ui, sans-serif',
           cursor: "default",
@@ -893,7 +1011,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             <Avatar src={post.user?.avatar} alt={post.user?.name || post.user?.username} isAi={post.user?.isAi} size="md" />
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: B.ebony }}>{post.user?.name || post.user?.username}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: colors.text }}>{post.user?.name || post.user?.username}</span>
                 {post.user?.isAi && (
                   <span style={{
                     fontSize: 9, fontWeight: 700, background: B.crocusPale,
@@ -904,7 +1022,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                   </span>
                 )}
               </div>
-              <span style={{ fontSize: 11, color: B.ebonyLight, opacity: 0.45 }}>
+              <span style={{ fontSize: 11, color: colors.textMuted, opacity: isDark ? 0.6 : 0.45 }}>
                 @{post.user?.username} · {new Date(post.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </span>
             </div>
@@ -914,7 +1032,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               onClick={() => setShowMenu(!showMenu)}
               style={{
                 padding: 8, border: "none", background: "transparent",
-                color: B.ebonyLight, opacity: 0.35, cursor: "pointer",
+                color: colors.textMuted, opacity: 0.35, cursor: "pointer",
                 borderRadius: "50%", transition: "all 0.2s",
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.background = B.crocusPale; }}
@@ -934,7 +1052,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             borderRadius: 100, marginBottom: 14,
           }} />
           <p style={{
-            fontSize: 15, lineHeight: 1.7, color: B.ebony, margin: 0,
+            fontSize: 15, lineHeight: 1.7, color: colors.text, margin: 0,
             fontFamily: '"DM Sans", system-ui, sans-serif',
             display: "-webkit-box",
             WebkitLineClamp: isExpanded ? undefined : 4,
@@ -961,17 +1079,17 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
           padding: "12px 20px 16px",
-          borderTop: `1px solid rgba(150,135,245,0.08)`,
+          borderTop: `1px solid ${colors.border}`,
         }}>
           <ActionBtn
-            icon={<Heart size={16} fill={isLiked ? B.crocus : "none"} stroke={isLiked ? B.crocus : B.ebonyLight} />}
+            icon={<Heart size={16} fill={isLiked ? B.crocus : "none"} stroke={isLiked ? B.crocus : colors.textMuted} />}
             count={likesCount}
             active={isLiked}
             activeColor={B.crocus}
             onClick={() => handleLike()}
           />
           <ActionBtn
-            icon={<MessageCircle size={16} stroke={showComments ? B.crocus : B.ebonyLight} />}
+            icon={<MessageCircle size={16} stroke={showComments ? B.crocus : colors.textMuted} />}
             count={displayCommentCount}
             active={showComments}
             activeColor={B.crocus}
@@ -982,7 +1100,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             label="Share"
             onClick={() => setShowShareModal(true)}
           />
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5, color: B.ebonyLight, opacity: 0.3 }}>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5, color: colors.textMuted, opacity: 0.3 }}>
             <Eye size={13} />
             <span style={{ fontSize: 11, fontWeight: 500 }}>{viewCount.toLocaleString()}</span>
           </div>
@@ -1038,6 +1156,9 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
 // ─── Toast notification ────────────────────────────────────────────────────
 function Toast({ message }: { message: string }) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.96 }}
@@ -1046,13 +1167,15 @@ function Toast({ message }: { message: string }) {
       style={{
         position: "fixed", bottom: 36, left: "50%", transform: "translateX(-50%)",
         zIndex: 2100,
-        background: "#2D284B", color: "#EBF0FF",
+        background: isDark ? "#1A1832" : "#2D284B",
+        color: isDark ? "#E8E6F3" : "#EBF0FF",
         padding: "14px 24px", borderRadius: 100,
         display: "flex", alignItems: "center", gap: 10,
-        boxShadow: "0 8px 32px rgba(45,40,75,0.28)",
+        boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.4)" : "0 8px 32px rgba(45,40,75,0.28)",
         fontFamily: '"DM Sans", system-ui, sans-serif',
         fontSize: 13, fontWeight: 500,
         whiteSpace: "nowrap",
+        border: `1px solid ${isDark ? "rgba(150,135,245,0.2)" : "transparent"}`,
       }}
     >
       <CheckCircle2 size={18} color="#9687F5" />

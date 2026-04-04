@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { MessageCircle, Zap, ShieldCheck, ChevronRight, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Avatar from "../components/Avatar";
+import { useTheme } from "../context/ThemeContext";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function MessagesPage() {
+  const { theme } = useTheme();
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const token = localStorage.getItem("token");
@@ -67,7 +69,7 @@ export default function MessagesPage() {
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh]">
       <Loader2 className="text-crimson animate-spin mb-4 w-8 h-8" />
-      <span className="text-[10px] font-mono text-crimson/60 uppercase tracking-[0.4em] font-bold">Syncing Neural Stream...</span>
+      <span className="text-[10px] font-mono uppercase tracking-[0.4em] font-bold" style={{ color: 'rgba(150,135,245,0.6)' }}>Syncing Neural Stream...</span>
     </div>
   );
 
@@ -76,8 +78,8 @@ export default function MessagesPage() {
       
       {/* HEADER SECTION */}
       <div className="flex items-center gap-6 mb-12">
-        <h1 className="text-3xl md:text-4xl font-serif font-black text-ocean tracking-tight italic shrink-0">Neural Links</h1>
-        <div className="h-[1px] flex-1 bg-gradient-to-r from-ocean/10 to-transparent" />
+        <h1 className="text-3xl md:text-4xl font-serif font-black tracking-tight italic shrink-0" style={{ color: 'var(--color-text-primary)' }}>Neural Links</h1>
+        <div className="h-[1px] flex-1 bg-gradient-to-r from-current to-transparent" style={{ opacity: 0.1 }} />
       </div>
 
       <div className="space-y-4">
@@ -96,47 +98,58 @@ export default function MessagesPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.98 }}
                   onClick={() => handleOpenConversation(conv.id)}
-                  className={`social-card !bg-white w-full box-border !p-4 md:!p-6 grid grid-cols-[auto_1fr_auto] items-center gap-4 md:gap-6 cursor-pointer transition-all border-l-4 relative overflow-hidden ${
-                    isUnread 
-                      ? 'border-crimson shadow-[0_10px_25px_-10px_rgba(150,135,245,0.2)] bg-crimson/[0.01]' 
-                      : 'border-transparent hover:border-ocean/10 hover:shadow-lg'
-                  }`}
+                  className="w-full box-border p-4 md:p-6 grid grid-cols-[auto_1fr_auto] items-center gap-4 md:gap-6 cursor-pointer transition-all relative overflow-hidden"
+                  style={{
+                    backgroundColor: isUnread ? 'rgba(150,135,245,0.03)' : 'var(--color-bg-card)',
+                    border: '1px solid var(--color-border-default)',
+                    borderLeft: isUnread ? '4px solid var(--color-crimson)' : '4px solid transparent',
+                    borderRadius: '1.25rem',
+                    boxShadow: isUnread ? '0 10px 25px -10px rgba(150,135,245,0.2)' : 'none',
+                  }}
                 >
                   {/* LEFT: AVATAR WITH NEURAL STATUS */}
                   <div className="relative flex-none">
-                    {/* 🟢 FIXED: Prioritize name over username to allow initials calculation */}
                     <Avatar 
                       src={otherUser.avatar} 
                       size="md" 
                       isAi={otherUser.isAi} 
                       alt={otherUser.name || otherUser.username}
-                      className="border border-void" 
+                      className="border" 
                     />
                     {otherUser.isAi && (
-                      <div className="absolute -top-1.5 -right-1.5 bg-white rounded-full p-1 shadow-md border border-black/5 z-30">
+                      <div className="absolute -top-1.5 -right-1.5 rounded-full p-1 shadow-md z-30" style={{ 
+                        backgroundColor: 'var(--color-bg-card)',
+                        border: '1px solid var(--color-border-default)'
+                      }}>
                         <ShieldCheck size={12} className="text-crimson" />
                       </div>
                     )}
                     {isUnread && (
-                      <div className="absolute -bottom-0.5 -left-0.5 w-3 h-3 bg-crimson rounded-full border-2 border-white z-30 shadow-[0_0_8px_#9687F5]" />
+                      <div className="absolute -bottom-0.5 -left-0.5 w-3 h-3 bg-crimson rounded-full z-30" style={{ 
+                        border: '2px solid var(--color-bg-card)',
+                        boxShadow: '0 0 8px #9687F5'
+                      }} />
                     )}
                   </div>
                   
                   {/* CENTER: CHAT PREVIEW */}
                   <div className="min-w-0 flex flex-col justify-center">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <h3 className={`font-serif font-bold text-sm md:text-base tracking-tight truncate ${
-                        isUnread ? 'text-crimson' : 'text-ocean'
-                      }`}>
+                      <h3 className="font-serif font-bold text-sm md:text-base tracking-tight truncate" style={{
+                        color: isUnread ? 'var(--color-crimson)' : 'var(--color-text-primary)'
+                      }}>
                         {otherUser.name || otherUser.username}
                       </h3>
-                      <span className={`text-[9px] font-mono font-bold shrink-0 ${isUnread ? 'text-crimson' : 'text-text-dim/50'}`}>
+                      <span className="text-[9px] font-mono font-bold shrink-0" style={{ 
+                        color: isUnread ? 'var(--color-crimson)' : 'var(--color-text-muted)'
+                      }}>
                         {lastMsg ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </span>
                     </div>
-                    <p className={`text-[11px] md:text-sm truncate leading-tight ${
-                      isUnread ? 'text-ocean font-semibold' : 'text-text-dim font-normal'
-                    }`}>
+                    <p className="text-[11px] md:text-sm truncate leading-tight" style={{
+                      color: isUnread ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
+                      fontWeight: isUnread ? 600 : 400
+                    }}>
                       {lastMsg ? lastMsg.content : "Secure neural line established..."}
                     </p>
                   </div>
@@ -149,7 +162,7 @@ export default function MessagesPage() {
                         <span className="text-[6px] font-black text-crimson uppercase mt-1 tracking-tighter">Sync</span>
                       </div>
                     ) : (
-                      <ChevronRight size={18} className="text-text-dim/20 group-hover:text-crimson transition-colors" />
+                      <ChevronRight size={18} style={{ color: 'var(--color-text-muted)', opacity: 0.2 }} />
                     )}
                   </div>
                 </motion.div>
@@ -159,10 +172,15 @@ export default function MessagesPage() {
             <motion.div 
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
-              className="social-card !bg-white border-dashed border-ocean/10 py-24 text-center shadow-none"
+              className="py-24 text-center"
+              style={{
+                backgroundColor: 'var(--color-bg-card)',
+                border: '1px dashed var(--color-border-default)',
+                borderRadius: '1.25rem',
+              }}
             >
-              <MessageCircle className="w-12 h-12 mx-auto mb-6 text-ocean/10" />
-              <p className="uppercase tracking-[0.4em] text-[10px] font-black text-ocean/20 italic">
+              <MessageCircle className="w-12 h-12 mx-auto mb-6" style={{ color: 'var(--color-text-primary)', opacity: 0.1 }} />
+              <p className="uppercase tracking-[0.4em] text-[10px] font-black italic" style={{ color: 'var(--color-text-primary)', opacity: 0.2 }}>
                 No Active Neural Links Detected
               </p>
             </motion.div>

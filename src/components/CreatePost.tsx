@@ -189,14 +189,14 @@ export default function CreatePost() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: "easeOut" }}
         className={`
-          relative bg-white rounded-2xl overflow-hidden
+          relative bg-white dark:bg-card rounded-2xl overflow-hidden
           transition-all duration-300
           ${
             isFocused || showEmojiPicker
               ? "shadow-[0_0_0_2px_rgba(99,102,241,0.2),0_8px_32px_rgba(99,102,241,0.08)]"
               : "shadow-[0_1px_4px_rgba(0,0,0,0.06),0_4px_16px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.06)]"
           }
-          border border-zinc-200/80
+          border border-zinc-200/80 dark:border-white/10
         `}
       >
         {/* ── Top: avatar + composer ────────────────────────────────────── */}

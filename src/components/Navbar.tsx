@@ -15,9 +15,12 @@ import {
   Calendar,
   LayoutGrid,
   Menu,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Avatar from "./Avatar";
+import { useTheme } from "../context/ThemeContext";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -45,6 +48,7 @@ type SearchUser = {
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const username = localStorage.getItem("username");
   const token = localStorage.getItem("token");
 
@@ -239,7 +243,10 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-[100] w-full border-b border-black/[0.05] bg-white/80 px-4 backdrop-blur-xl selection:bg-crimson/20 md:px-6 relative isolate overflow-visible">
+    <nav className="sticky top-0 z-[100] w-full px-4 backdrop-blur-xl selection:bg-crimson/20 md:px-6 relative isolate overflow-visible" style={{
+      backgroundColor: 'var(--color-bg-glass)',
+      borderBottom: '1px solid var(--color-border-default)'
+    }}>
       <div className="flex h-16 items-center justify-between gap-3">
         {/* Mobile Search Overlay */}
         <AnimatePresence>
@@ -249,19 +256,21 @@ export default function Navbar() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-[120] flex flex-col bg-white md:hidden"
+              className="fixed inset-0 z-[120] flex flex-col md:hidden"
+              style={{ backgroundColor: 'var(--color-bg-primary)' }}
             >
-              <div className="flex items-center gap-3 border-b border-black/[0.05] px-4 py-3">
+              <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '1px solid var(--color-border-default)' }}>
                 <button
                   onClick={closeMobileSearch}
-                  className="rounded-full p-2 text-text-dim transition-colors hover:bg-black/[0.04] hover:text-ocean"
+                  className="rounded-full p-2 transition-colors"
+                  style={{ color: 'var(--color-text-muted)' }}
                   aria-label="Close search"
                 >
                   <ArrowLeft size={20} />
                 </button>
 
                 <div className="relative flex-1" ref={searchRef}>
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-dim/40" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
                   <input
                     autoFocus
                     type="text"
@@ -269,7 +278,12 @@ export default function Navbar() {
                     placeholder="Search network..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    className="w-full rounded-full border border-black/[0.06] bg-void/5 py-3 pl-10 pr-10 text-sm outline-none transition-all focus:ring-2 focus:ring-crimson/10"
+                    className="w-full rounded-full border py-3 pl-10 pr-10 text-sm outline-none transition-all"
+                    style={{ 
+                      backgroundColor: 'var(--color-bg-input)',
+                      borderColor: 'var(--color-border-default)',
+                      color: 'var(--color-text-primary)'
+                    }}
                   />
                   {isSearching && (
                     <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-crimson" />
@@ -279,12 +293,16 @@ export default function Navbar() {
 
               <div className="flex-1 overflow-y-auto px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 {searchResults.length > 0 ? (
-                  <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-xl">
+                  <div className="overflow-hidden rounded-3xl shadow-xl" style={{ 
+                    backgroundColor: 'var(--color-bg-card)',
+                    border: '1px solid var(--color-border-default)'
+                  }}>
                     {searchResults.map((user) => (
                       <button
                         key={user.id}
                         onClick={() => onSelectUser(user)}
-                        className="flex w-full items-center gap-3 border-b border-black/[0.05] px-4 py-4 text-left transition-colors last:border-b-0 hover:bg-void"
+                        className="flex w-full items-center gap-3 px-4 py-4 text-left transition-colors last:border-b-0"
+                        style={{ borderBottom: '1px solid var(--color-border-default)' }}
                       >
                         <Avatar
                           src={user.avatar}
@@ -293,11 +311,11 @@ export default function Navbar() {
                           alt={user.name || user.username}
                         />
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-bold text-ocean">
+                          <div className="truncate text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>
                             @{user.username}
                           </div>
                           {user.name ? (
-                            <div className="truncate text-[11px] text-text-dim/60">
+                            <div className="truncate text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
                               {user.name}
                             </div>
                           ) : null}
@@ -306,8 +324,11 @@ export default function Navbar() {
                     ))}
                   </div>
                 ) : query.trim().length >= 2 ? (
-                  <div className="rounded-3xl border border-black/[0.05] bg-void/5 px-6 py-10 text-center">
-                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-text-dim/40">
+                  <div className="rounded-3xl px-6 py-10 text-center" style={{ 
+                    backgroundColor: 'var(--color-bg-tertiary)',
+                    border: '1px solid var(--color-border-default)'
+                  }}>
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--color-text-muted)' }}>
                       No users found
                     </p>
                   </div>
@@ -327,7 +348,7 @@ export default function Navbar() {
             <Cpu className="h-5 w-5 text-crimson transition-transform duration-500 group-hover:rotate-90" />
           </div>
           <div className="flex flex-col leading-none">
-            <span className="text-lg font-black tracking-tighter text-ocean uppercase font-serif">
+            <span className="text-lg font-black tracking-tighter uppercase font-serif" style={{ color: 'var(--color-text-primary)' }}>
               Imergene
             </span>
             <span className="mt-0.5 text-[7px] font-bold uppercase tracking-[0.3em] text-crimson font-mono">
@@ -339,14 +360,19 @@ export default function Navbar() {
         {/* Desktop Search */}
         <div className="relative hidden max-w-md flex-1 md:block mx-8" ref={searchRef}>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-dim/40" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
             <input
               type="text"
               inputMode="search"
               placeholder="Search network..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full rounded-full border border-black/[0.05] bg-void/5 py-2 pl-10 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-crimson/10"
+              className="w-full rounded-full border py-2 pl-10 pr-4 text-sm outline-none transition-all"
+              style={{ 
+                backgroundColor: 'var(--color-bg-input)',
+                borderColor: 'var(--color-border-default)',
+                color: 'var(--color-text-primary)'
+              }}
             />
             {isSearching && (
               <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-crimson" />
@@ -360,13 +386,13 @@ export default function Navbar() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
                 transition={{ duration: 0.18 }}
-                className="absolute left-0 top-full mt-2 w-full overflow-hidden rounded-2xl border border-black/10 bg-white shadow-xl"
+                className="absolute left-0 top-full mt-2 w-full overflow-hidden rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-card shadow-xl"
               >
                 {searchResults.map((user) => (
                   <button
                     key={user.id}
                     onClick={() => onSelectUser(user)}
-                    className="flex w-full items-center gap-3 border-b border-black/[0.05] p-3 text-left transition-colors last:border-b-0 hover:bg-void"
+                    className="flex w-full items-center gap-3 border-b border-black/[0.05] dark:border-white/5 p-3 text-left transition-colors last:border-b-0 hover:bg-void dark:hover:bg-white/5"
                   >
                     <Avatar
                       src={user.avatar}
@@ -451,9 +477,9 @@ export default function Navbar() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.98 }}
                   transition={{ duration: 0.18 }}
-                  className="absolute right-[-50px] top-full z-[999] mt-3 w-80 overflow-hidden rounded-3xl border border-black/[0.08] bg-white shadow-2xl md:right-0"
+                  className="absolute right-[-50px] top-full z-[999] mt-3 w-80 overflow-hidden rounded-3xl border border-black/[0.08] dark:border-white/10 bg-white dark:bg-card shadow-2xl md:right-0"
                 >
-                  <div className="flex items-center justify-between border-b border-black/[0.03] bg-void/5 p-4">
+                  <div className="flex items-center justify-between border-b border-black/[0.03] dark:border-white/5 bg-void/5 dark:bg-white/5 p-4">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-ocean">
                       Alerts
                     </span>
@@ -473,8 +499,8 @@ export default function Navbar() {
                       notifications.map((n) => (
                         <button
                           key={n.id}
-                          className={`flex w-full items-start gap-3 border-b border-black/[0.03] p-4 text-left transition-colors last:border-0 hover:bg-void ${!n.read
-                            ? "border-l-4 border-l-crimson bg-crimson/[0.02]"
+                          className={`flex w-full items-start gap-3 border-b border-black/[0.03] dark:border-white/5 p-4 text-left transition-colors last:border-0 hover:bg-void dark:hover:bg-white/5 ${!n.read
+                            ? "border-l-4 border-l-crimson bg-crimson/[0.02] dark:bg-crimson/[0.05]"
                             : ""
                             }`}
                           onClick={() => {
@@ -530,6 +556,30 @@ export default function Navbar() {
             </AnimatePresence>
           </div>
 
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="relative p-2 text-text-dim/60 transition-all duration-300 hover:text-ocean hover:scale-110"
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={theme}
+                initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="flex items-center justify-center"
+              >
+                {theme === "dark" ? (
+                  <Moon size={20} className="text-crimson" />
+                ) : (
+                  <Sun size={20} className="text-amber-500" />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </button>
+
           {/* Mobile Menu Trigger */}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
@@ -547,7 +597,7 @@ export default function Navbar() {
             <Avatar
               size="sm"
               alt={username || "User"}
-              className="border border-black/[0.05]"
+              className="border border-black/[0.05] dark:border-white/10"
             />
           </Link>
         </div>
@@ -562,7 +612,8 @@ export default function Navbar() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={closeMobileMenu}
-              className="fixed inset-0 z-[200] bg-void/60 backdrop-blur-md md:hidden"
+              className="fixed inset-0 z-[200] backdrop-blur-md md:hidden"
+              style={{ backgroundColor: 'var(--color-bg-primary)', opacity: 0.6 }}
             />
 
             <motion.aside
@@ -570,33 +621,43 @@ export default function Navbar() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 26, stiffness: 220 }}
-              className="fixed right-0 top-0 z-[210] flex h-[100dvh] w-[82vw] max-w-sm flex-col border-l border-black/5 bg-white shadow-2xl md:hidden"
+              className="fixed right-0 top-0 z-[210] flex h-[100dvh] w-[82vw] max-w-sm flex-col shadow-2xl md:hidden"
+              style={{ 
+                backgroundColor: 'var(--color-bg-card)',
+                borderLeft: '1px solid var(--color-border-default)'
+              }}
             >
-              <div className="shrink-0 border-b border-black/[0.05] bg-white px-6 py-5 pt-[calc(1.25rem+env(safe-area-inset-top))] flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest text-ocean">
+              <div className="shrink-0 px-6 py-5 pt-[calc(1.25rem+env(safe-area-inset-top))] flex items-center justify-between" 
+                   style={{ borderBottom: '1px solid var(--color-border-default)' }}>
+                <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-primary)' }}>
                   Network Hub
                 </span>
                 <button
                   onClick={closeMobileMenu}
-                  className="rounded-full p-2 transition-colors hover:bg-void/5"
+                  className="rounded-full p-2 transition-colors"
+                  style={{ color: 'var(--color-text-muted)' }}
                   aria-label="Close menu"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto bg-white px-6 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+              <div className="flex-1 overflow-y-auto px-6 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]" style={{ backgroundColor: 'var(--color-bg-card)' }}>
                 <Link
                   to={username ? `/profile/${username}` : "/login"}
                   onClick={closeMobileMenu}
-                  className="mb-6 flex items-center gap-4 rounded-2xl border border-black/[0.03] bg-void/5 p-4"
+                  className="mb-6 flex items-center gap-4 rounded-2xl border p-4"
+                  style={{ 
+                    backgroundColor: 'var(--color-bg-tertiary)',
+                    borderColor: 'var(--color-border-default)'
+                  }}
                 >
                   <Avatar size="md" alt={username || "User"} />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-black text-ocean">
+                    <p className="truncate text-sm font-black" style={{ color: 'var(--color-text-primary)' }}>
                       @{username || "Guest"}
                     </p>
-                    <p className="text-[10px] font-bold uppercase tracking-tighter text-text-dim">
+                    <p className="text-[10px] font-bold uppercase tracking-tighter" style={{ color: 'var(--color-text-muted)' }}>
                       View Profile
                     </p>
                   </div>
@@ -608,9 +669,10 @@ export default function Navbar() {
                       key={link.to}
                       to={link.to}
                       onClick={closeMobileMenu}
-                      className="group flex items-center gap-4 rounded-2xl border border-transparent p-4 text-text-dim transition-all hover:border-crimson/10 hover:bg-crimson/5 hover:text-ocean"
+                      className="group flex items-center gap-4 rounded-2xl border border-transparent p-4 transition-all"
+                      style={{ color: 'var(--color-text-muted)' }}
                     >
-                      <div className="rounded-lg bg-void/5 p-2 transition-colors group-hover:bg-crimson/10">
+                      <div className="rounded-lg p-2 transition-colors" style={{ backgroundColor: 'var(--color-bg-tertiary)' }}>
                         {link.icon}
                       </div>
                       <span className="text-xs font-black uppercase tracking-widest">
@@ -621,8 +683,8 @@ export default function Navbar() {
                 </div>
               </div>
 
-              <div className="shrink-0 border-t border-black/[0.05] bg-white px-8 py-6">
-                <p className="text-center text-[8px] font-mono uppercase tracking-[0.3em] text-text-dim/40">
+              <div className="shrink-0 px-8 py-6" style={{ borderTop: '1px solid var(--color-border-default)', backgroundColor: 'var(--color-bg-card)' }}>
+                <p className="text-center text-[8px] font-mono uppercase tracking-[0.3em]" style={{ color: 'var(--color-text-muted)' }}>
                   Imergene // Neural Logic v1.0
                 </p>
               </div>

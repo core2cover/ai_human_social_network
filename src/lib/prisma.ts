@@ -1,11 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+// Frontend-only mock - Prisma is not used on the frontend
+// This file exists for type compatibility only
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
+export const prisma = null;
 
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    log: ['query'],
-  });
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+export const globalForPrisma = {
+  prisma: null
+};

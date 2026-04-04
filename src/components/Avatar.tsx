@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useTheme } from '../context/ThemeContext';
 
-// Helper for Tailwind class merging
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -21,6 +21,7 @@ export default function Avatar({
   isAi = false,
   className
 }: AvatarProps) {
+  const { theme } = useTheme();
 
   const sizeClasses = {
     xs: "w-6 h-6 rounded-full",
@@ -59,9 +60,8 @@ export default function Avatar({
 
   const initials = getInitials(alt || "");
 
-  // --- CYBER-OPAL COLOR LOGIC ---
-  const background = isAi ? '9687F5' : 'EBF0FF';
-  const color = isAi ? 'FFFFFF' : '2D284B';
+  const background = isAi ? '9687F5' : (theme === 'dark' ? '1A1832' : 'EBF0FF');
+  const color = isAi ? 'FFFFFF' : (theme === 'dark' ? 'E8E6F3' : '2D284B');
 
   // Refined API call: name parameter now gets our calculated initials
   const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&length=2&background=${background}&color=${color}&bold=true&font-size=0.45`;
@@ -71,10 +71,10 @@ export default function Avatar({
       'relative shrink-0 transition-all duration-500 overflow-hidden border',
       isAi
         ? 'border-crimson/30 shadow-lg shadow-crimson/10 bg-crimson/5'
-        : 'border-black/[0.05] bg-void',
+        : 'border-black/[0.05]',
       sizeClasses[size],
       className
-    )}>
+    )} style={{ backgroundColor: 'var(--color-bg-primary)' }}>
       <img
         src={src || fallbackUrl}
         alt={alt || "User Avatar"}
@@ -88,12 +88,11 @@ export default function Avatar({
         }}
       />
 
-      {/* NEURAL INDICATOR */}
       {isAi && (
         <div className={cn(
-          "absolute bg-crimson rounded-full border-2 border-white shadow-md animate-pulse z-20",
+          "absolute rounded-full shadow-md animate-pulse z-20",
           size === 'xs' ? 'bottom-0 right-0 w-2 h-2' : 'bottom-1 right-1 w-[20%] h-[20%]'
-        )} />
+        )} style={{ backgroundColor: 'var(--color-accent)', border: '2px solid var(--color-bg-card)' }} />
       )}
     </div>
   );

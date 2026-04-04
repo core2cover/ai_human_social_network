@@ -3,6 +3,7 @@ import { X, Search, Send, AtSign, Loader2, Check, Smile, Zap, UserPlus, Share2, 
 import { motion, AnimatePresence } from "framer-motion";
 import Avatar from "./Avatar";
 import EmojiPicker, { Theme } from 'emoji-picker-react';
+import { useTheme } from "../context/ThemeContext";
 
 interface PostShareModalProps {
     post: any;
@@ -13,6 +14,7 @@ interface PostShareModalProps {
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function PostShareModal({ post, onClose, onSuccess }: PostShareModalProps) {
+    const { theme } = useTheme();
     const [query, setQuery] = useState("");
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [following, setFollowing] = useState<any[]>([]);
@@ -158,42 +160,49 @@ export default function PostShareModal({ post, onClose, onSuccess }: PostShareMo
     return (
         <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-[1000] backdrop-blur-sm flex items-center justify-center p-4"
+            style={{ backgroundColor: 'var(--color-overlay)' }}
         >
             <motion.div
                 initial={{ scale: 0.9, y: 40 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 40 }}
-                className="w-full max-w-md bg-white rounded-[2.5rem] flex flex-col shadow-2xl overflow-hidden max-h-[90vh]"
+                className="w-full max-w-md rounded-[2.5rem] flex flex-col shadow-2xl overflow-hidden max-h-[90vh]"
+                style={{ backgroundColor: 'var(--color-bg-card)' }}
             >
-                {/* HEADER */}
                 <div className="p-6 pb-2 shrink-0">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="font-serif font-black text-xl text-ocean uppercase tracking-tight">Sync Broadcast</h2>
-                        <button onClick={onClose} className="p-2 hover:bg-void rounded-full transition-all"><X size={20} /></button>
+                        <h2 className="font-serif font-black text-xl uppercase tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Sync Broadcast</h2>
+                        <button onClick={onClose} className="p-2 rounded-full transition-all" style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-muted)' }}><X size={20} /></button>
                     </div>
                     <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-dim/40 h-4 w-4" />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'var(--color-text-muted)', opacity: 0.4 }} />
                         <input
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             placeholder="Search network nodes..."
-                            className="w-full bg-void/50 border-none rounded-2xl py-3 pl-11 pr-4 text-sm focus:ring-2 focus:ring-crimson/20 outline-none transition-all"
+                            className="w-full rounded-2xl py-3 pl-11 pr-4 text-sm outline-none transition-all"
+                            style={{
+                                backgroundColor: 'var(--color-bg-primary)',
+                                border: 'none',
+                                color: 'var(--color-text-primary)'
+                            }}
                         />
                     </div>
                 </div>
 
-                {/* CONTENT AREA */}
                 <div className="flex-1 overflow-y-auto no-scrollbar px-6">
                     {query.length > 0 ? (
                         <div className="py-4 space-y-2">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-text-dim/40 mb-4">Results</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest mb-4" style={{ color: 'var(--color-text-muted)', opacity: 0.4 }}>Results</p>
                             {searchResults.map(u => (
-                                <button key={u.id} onClick={() => toggleUser(u.id)} className="w-full flex items-center gap-4 p-2 hover:bg-void rounded-2xl transition-all">
+                                <button key={u.id} onClick={() => toggleUser(u.id)} className="w-full flex items-center gap-4 p-2 rounded-2xl transition-all" style={{ backgroundColor: 'transparent' }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-primary)'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                                     <Avatar src={u.avatar} size="sm" isAi={u.isAi} />
                                     <div className="text-left flex-1">
-                                        <p className="text-sm font-bold text-ocean">@{u.username}</p>
-                                        <p className="text-[10px] text-text-dim">{u.name}</p>
+                                        <p className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>@{u.username}</p>
+                                        <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{u.name}</p>
                                     </div>
-                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedUserIds.includes(u.id) ? 'bg-ocean border-ocean' : 'border-black/10'}`}>
+                                    <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center" style={{ borderColor: selectedUserIds.includes(u.id) ? 'var(--color-text-primary)' : 'var(--color-border-default)', backgroundColor: selectedUserIds.includes(u.id) ? 'var(--color-text-primary)' : 'transparent' }}>
                                         {selectedUserIds.includes(u.id) && <Check size={12} className="text-white" strokeWidth={4} />}
                                     </div>
                                 </button>
@@ -201,42 +210,41 @@ export default function PostShareModal({ post, onClose, onSuccess }: PostShareMo
                         </div>
                     ) : (
                         <>
-                            {/* RECENT */}
                             {recentChats.length > 0 && (
                                 <div className="py-4">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-text-dim/40 mb-4">Recent Conversations</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest mb-4" style={{ color: 'var(--color-text-muted)', opacity: 0.4 }}>Recent Conversations</p>
                                     <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
                                         {recentChats.map(u => <UserCircle key={u.id} user={u} />)}
                                     </div>
                                 </div>
                             )}
 
-                            {/* AI RESIDENTS */}
                             <div className="py-4">
                                 <div className="flex items-center gap-2 mb-4">
-                                    <Sparkles size={12} className="text-crimson" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-text-dim/40">Neural Residents</p>
+                                    <Sparkles size={12} style={{ color: 'var(--color-accent)' }} />
+                                    <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)', opacity: 0.4 }}>Neural Residents</p>
                                 </div>
                                 <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
                                     {aiResidents.map(u => <UserCircle key={u.id} user={u} />)}
                                 </div>
                             </div>
 
-                            {/* FOLLOWING */}
                             <div className="py-4">
                                 <div className="flex items-center gap-2 mb-4">
-                                    <UserIcon size={12} className="text-ocean" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-text-dim/40">Human Nodes</p>
+                                    <UserIcon size={12} style={{ color: 'var(--color-text-primary)' }} />
+                                    <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-text-muted)', opacity: 0.4 }}>Human Nodes</p>
                                 </div>
                                 <div className="grid grid-cols-1 gap-1">
                                     {following.map(u => (
-                                        <button key={u.id} onClick={() => toggleUser(u.id)} className="w-full flex items-center gap-4 p-3 hover:bg-void rounded-2xl transition-all">
+                                        <button key={u.id} onClick={() => toggleUser(u.id)} className="w-full flex items-center gap-4 p-3 rounded-2xl transition-all" style={{ backgroundColor: 'transparent' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-primary)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                                             <Avatar src={u.avatar} size="sm" isAi={u.isAi} />
                                             <div className="text-left flex-1">
-                                                <p className="text-sm font-bold text-ocean">@{u.username}</p>
-                                                <p className="text-[10px] text-text-dim/60 font-mono uppercase tracking-tighter">Verified Node</p>
+                                                <p className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>@{u.username}</p>
+                                                <p className="text-[10px] font-mono uppercase tracking-tighter" style={{ color: 'var(--color-text-muted)', opacity: 0.6 }}>Verified Node</p>
                                             </div>
-                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedUserIds.includes(u.id) ? 'bg-ocean border-ocean shadow-md' : 'border-black/10'}`}>
+                                            <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all" style={{ borderColor: selectedUserIds.includes(u.id) ? 'var(--color-text-primary)' : 'var(--color-border-default)', backgroundColor: selectedUserIds.includes(u.id) ? 'var(--color-text-primary)' : 'transparent' }}>
                                                 {selectedUserIds.includes(u.id) && <Check size={10} className="text-white" strokeWidth={4} />}
                                             </div>
                                         </button>
@@ -247,26 +255,30 @@ export default function PostShareModal({ post, onClose, onSuccess }: PostShareMo
                     )}
                 </div>
 
-                {/* FOOTER ACTION */}
-                <div className="p-6 bg-white border-t border-black/[0.03] shrink-0">
+                <div className="p-6 shrink-0" style={{ borderTop: '1px solid var(--color-border-subtle)', backgroundColor: 'var(--color-bg-secondary)' }}>
                     <div className="relative mb-4">
                         <textarea
                             value={customMessage}
                             onChange={(e) => setCustomMessage(e.target.value)}
                             placeholder="Attach directive..."
-                            className="w-full bg-void/30 rounded-2xl p-4 pr-12 text-sm text-ocean focus:outline-none focus:ring-2 focus:ring-crimson/10 min-h-[80px] resize-none no-scrollbar font-medium"
+                            className="w-full rounded-2xl p-4 pr-12 text-sm focus:outline-none min-h-[80px] resize-none no-scrollbar font-medium"
+                            style={{
+                                backgroundColor: 'var(--color-bg-primary)',
+                                color: 'var(--color-text-primary)'
+                            }}
                         />
                         <button 
                             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                            className="absolute right-4 top-4 text-text-dim/40 hover:text-crimson transition-all"
+                            className="absolute right-4 top-4 transition-all"
+                            style={{ color: 'var(--color-text-muted)', opacity: 0.4 }}
                         >
                             <Smile size={20} />
                         </button>
                         
                         <AnimatePresence>
                             {showEmojiPicker && (
-                                <div ref={emojiRef} className="absolute bottom-full right-0 mb-2 z-[1100] shadow-2xl rounded-2xl overflow-hidden border border-black/10">
-                                    <EmojiPicker theme={Theme.LIGHT} onEmojiClick={(d) => setCustomMessage(p => p + d.emoji)} height={350} width={300} />
+                                <div ref={emojiRef} className="absolute bottom-full right-0 mb-2 z-[1100] shadow-2xl rounded-2xl overflow-hidden" style={{ border: '1px solid var(--color-border-default)' }}>
+                                    <EmojiPicker theme={theme === 'dark' ? Theme.DARK : Theme.LIGHT} onEmojiClick={(d) => setCustomMessage(p => p + d.emoji)} height={350} width={300} />
                                 </div>
                             )}
                         </AnimatePresence>
@@ -275,9 +287,13 @@ export default function PostShareModal({ post, onClose, onSuccess }: PostShareMo
                     <button
                         onClick={handleBulkShare}
                         disabled={selectedUserIds.length === 0 || isSending}
-                        className={`w-full py-4.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.25em] transition-all ${
-                            selectedUserIds.length > 0 ? "bg-ocean text-white hover:bg-crimson shadow-xl shadow-ocean/10" : "bg-void text-text-dim/30 cursor-not-allowed"
-                        }`}
+                        className="w-full py-4.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.25em] transition-all"
+                        style={{
+                            backgroundColor: selectedUserIds.length > 0 ? 'var(--color-text-primary)' : 'var(--color-bg-primary)',
+                            color: selectedUserIds.length > 0 ? 'var(--color-bg-card)' : 'var(--color-text-muted)',
+                            cursor: selectedUserIds.length === 0 ? 'not-allowed' : 'pointer',
+                            opacity: selectedUserIds.length === 0 ? 0.3 : 1
+                        }}
                     >
                         {isSending ? (
                             <span className="flex items-center gap-2 justify-center"><Loader2 size={14} className="animate-spin" /> Synchronizing...</span>

@@ -4,37 +4,35 @@ import { useNavigate } from "react-router-dom";
 import { MessageSquare, Plus, ArrowLeft, Zap } from "lucide-react";
 import ForumHome from "../components/ForumHome";
 import ScheduleEventModal from "../components/ScheduleEventModal";
-import Sidebar from "../components/Sidebar"; // 🟢 Sidebar Injection
+import Sidebar from "../components/Sidebar";
+import { useTheme } from "../context/ThemeContext";
 
 export default function ForumPage() {
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Refresh the neural state when a new topic is created
   const handleSuccess = () => {
     setIsModalOpen(false);
     window.location.reload();
   };
 
   return (
-    <div className="flex h-screen bg-white overflow-hidden">
-      {/* 🛰️ NEURAL NAVIGATION */}
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
       <Sidebar />
 
-      {/* 💬 MAIN CONTENT AREA */}
       <motion.div 
         initial={{ opacity: 0, x: 20 }} 
         animate={{ opacity: 1, x: 0 }} 
         className="flex-1 h-full overflow-y-auto no-scrollbar scroll-smooth"
       >
-        {/* 🟢 HEADER SECTION */}
-        <header className="bg-void/[0.01] pt-12 pb-10 md:pt-20 md:pb-16 border-b border-black/[0.03]">
+        <header className="pt-12 pb-10 md:pt-20 md:pb-16" style={{ backgroundColor: 'var(--color-bg-primary)', borderBottom: '1px solid var(--color-border-subtle)' }}>
           <div className="max-w-4xl mx-auto px-6">
             
-            {/* BACK NAVIGATION */}
             <button 
               onClick={() => navigate(-1)}
-              className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-ocean/30 hover:text-crimson transition-all mb-8 outline-none"
+              className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] transition-all mb-8 outline-none"
+              style={{ color: 'var(--color-text-primary)', opacity: 0.3 }}
             >
               <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> 
               Go Back
@@ -42,23 +40,23 @@ export default function ForumPage() {
 
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-crimson mb-3">
+                <div className="flex items-center gap-2 mb-3" style={{ color: 'var(--color-accent)' }}>
                   <Zap size={18} className="fill-current" />
                   <span className="text-[10px] font-black uppercase tracking-[0.5em]">The Commons</span>
                 </div>
-                <h1 className="text-5xl md:text-7xl font-serif font-black text-ocean tracking-tighter leading-[0.9]">
+                <h1 className="text-5xl md:text-7xl font-serif font-black tracking-tighter leading-[0.9]" style={{ color: 'var(--color-text-primary)' }}>
                   Join the <br />
-                  <span className="text-crimson italic">Discussion.</span>
+                  <span style={{ color: 'var(--color-accent)' }} className="italic">Discussion.</span>
                 </h1>
-                <p className="text-text-dim text-lg font-serif italic max-w-lg leading-relaxed">
+                <p className="text-lg font-serif italic max-w-lg leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
                   Engage with Biological and Neural nodes. Share logic and solve problems together.
                 </p>
               </div>
 
-              {/* ACTION BUTTON */}
               <button 
                 onClick={() => setIsModalOpen(true)}
-                className="flex items-center gap-3 bg-ocean text-white px-8 py-4 rounded-[1.2rem] text-[10px] font-black uppercase tracking-widest shadow-xl shadow-ocean/10 hover:bg-crimson hover:-translate-y-1 transition-all active:scale-95"
+                className="flex items-center gap-3 text-white px-8 py-4 rounded-[1.2rem] text-[10px] font-black uppercase tracking-widest hover:-translate-y-1 transition-all active:scale-95"
+                style={{ backgroundColor: 'var(--color-text-primary)' }}
               >
                 <Plus size={18} />
                 Start a Topic
@@ -67,20 +65,17 @@ export default function ForumPage() {
           </div>
         </header>
 
-        {/* 📑 MAIN FORUM FEED */}
         <main className="py-12 max-w-4xl mx-auto px-6">
           <div className="mb-10">
-            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-ocean/20 border-b border-black/[0.03] pb-4 flex items-center gap-3">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] pb-4 flex items-center gap-3" style={{ color: 'var(--color-text-primary)', opacity: 0.2, borderBottom: '1px solid var(--color-border-subtle)' }}>
               <MessageSquare size={12} />
               Recent Conversations
             </h2>
           </div>
 
-          {/* This component handles the data-fetch for topics */}
           <ForumHome onStartTopic={() => setIsModalOpen(true)} />
         </main>
 
-        {/* ⚡ MODAL OVERLAY */}
         <ScheduleEventModal 
           isOpen={isModalOpen} 
           onClose={() => setIsModalOpen(false)} 

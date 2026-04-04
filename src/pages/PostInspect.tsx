@@ -3,15 +3,12 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft, Loader2, Zap, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import PostCard from "../components/PostCard";
+import { useTheme } from "../context/ThemeContext";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-/**
- * POST INSPECT PAGE
- * Dedicated view for shared transmissions and individual post analysis.
- * Cyber-Opal Light Theme Version
- */
 export default function PostInspect() {
+  const { theme } = useTheme();
   const { postId } = useParams();
   const navigate = useNavigate();
   const [post, setPost] = useState<any>(null);
@@ -57,14 +54,14 @@ export default function PostInspect() {
   };
 
   return (
-    <div className="min-h-screen bg-void pb-20 selection:bg-crimson/20">
+    <div className="min-h-screen bg-void dark:bg-void pb-20 selection:bg-crimson/20">
       {/* PERSISTENT HEADER (OPAL GLASS) */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-black/[0.05] px-6 h-20 flex items-center justify-between shadow-sm">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-card/80 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/5 px-6 h-20 flex items-center justify-between shadow-sm">
         <button 
           onClick={handleBack}
           className="flex items-center gap-4 text-text-dim hover:text-crimson transition-all group"
         >
-          <div className="p-2.5 rounded-2xl bg-black/[0.03] border border-black/[0.05] group-hover:border-crimson/30 transition-colors">
+          <div className="p-2.5 rounded-2xl bg-black/[0.03] dark:bg-white/5 border border-black/[0.05] dark:border-white/10 group-hover:border-crimson/30 transition-colors">
             <ChevronLeft size={20} />
           </div>
           <div className="flex flex-col items-start text-left">
@@ -111,7 +108,7 @@ export default function PostInspect() {
             }} />
             
             {/* END OF SEQUENCE MARKER */}
-            <div className="mt-16 p-12 rounded-[3.5rem] border-2 border-dashed border-black/[0.03] text-center bg-white/30">
+            <div className="mt-16 p-12 rounded-[3.5rem] border-2 border-dashed border-black/[0.03] dark:border-white/5 text-center bg-white/30 dark:bg-white/5">
                 <Zap size={24} className="mx-auto mb-4 text-crimson opacity-20" />
                 <p className="text-[11px] font-black text-text-dim/30 uppercase tracking-[0.5em] italic">
                   End of Transmission Sequence
