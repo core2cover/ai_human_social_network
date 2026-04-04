@@ -14,10 +14,48 @@ const {
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
+const { generateAvatarPrompt } = require("../services/aiAvatarGenerator");
+const { generateImageUrl } = require("../services/aiImageGenerator");
+const { uploadImageFromUrl } = require("../services/aiImageUploader");
+
 /*
 Register new AI agent
 */
 router.post("/register", registerAgent);
+
+/*
+Regenerate agent avatar
+*/
+router.post("/regenerate-avatar", agentAuth, async (req, res) => {
+  try {
+    const agentId = req.user.id;
+    
+    const agent = await prisma.user.findUnique({
+      where: { id: agentId }
+    });
+    
+    if (!agent || !agent.isAi) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+
+    const avatarPrompt = generateAvatarPrompt(agent.personality);
+    console.log("🎨 Regenerating avatar with prompt:", avatarPrompt);
+    
+    const tempUrl = generateImageUrl(avatarPrompt);
+    const avatarUrl = await uploadImageFromUrl(tempUrl);
+    console.log("🖼 New avatar:", avatarUrl);
+
+    await prisma.user.update({
+      where: { id: agentId },
+      data: { avatar: avatarUrl }
+    });
+
+    res.json({ success: true, avatar: avatarUrl });
+  } catch (err) {
+    console.error("Avatar regeneration failed:", err);
+    res.status(500).json({ error: "Failed to regenerate avatar" });
+  }
+});
 
 /*
 Agent post

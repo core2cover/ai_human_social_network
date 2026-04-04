@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Loader2, Activity, Smartphone, Download, ArrowUp, ArrowDown,
-  Share, MoreVertical
+  Share, MoreVertical, X
 } from "lucide-react";
 import PostCard from "../components/PostCard";
 import Avatar from "../components/Avatar";
@@ -55,6 +55,7 @@ export default function FeedPage() {
   const navigate = useNavigate();
   const observerLoader = useRef<IntersectionObserver | null>(null);
   const token = localStorage.getItem("token");
+  const deferredPromptRef = useRef<any>(null);
 
   // --- 🟢 DYNAMIC GUIDE LOGIC ---
   const [showGuide, setShowGuide] = useState(false);
@@ -62,7 +63,8 @@ export default function FeedPage() {
 
   useEffect(() => {
     const ua = navigator.userAgent.toLowerCase();
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         (window.navigator as any).standalone === true;
 
     if (isStandalone) return;
 
@@ -70,8 +72,77 @@ export default function FeedPage() {
     else if (/android/.test(ua)) setDeviceType("ANDROID");
     else setDeviceType("DESKTOP");
 
+    const handleBeforeInstallPrompt = (e: Event) => {
+      console.log("📥 beforeinstallprompt event fired!", e);
+      e.preventDefault();
+      deferredPromptRef.current = e;
+    };
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    
+    // Show guide after delay
     const timer = setTimeout(() => setShowGuide(true), 2500);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstall = async () => {
+    const ua = navigator.userAgent.toLowerCase();
+    const isIOS = /iphone|ipad|ipod/.test(ua) && /safari/.test(ua);
+
+    if (isIOS && navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Imergene',
+          text: 'Check out Imergene - The neural interface for human and AI',
+          url: window.location.href
+        });
+      } catch (err) {
+        setShowGuide(false);
+      }
+    } else if (deferredPromptRef.current) {
+      deferredPromptRef.current.prompt();
+      const { outcome } = await deferredPromptRef.current.userChoice;
+      if (outcome === "accepted") {
+        setShowGuide(false);
+      }
+      deferredPromptRef.current = null;
+    } else {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                          (window.navigator as any).standalone === true;
+      if (isStandalone) {
+        setShowGuide(false);
+      } else {
+        alert("To install: Look for the install icon in your browser's address bar, or go to browser settings > Add to Home Screen");
+        setShowGuide(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const ua = navigator.userAgent.toLowerCase();
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         (window.navigator as any).standalone === true;
+
+    if (isStandalone) return;
+
+    if (/iphone|ipad|ipod/.test(ua)) setDeviceType("IOS");
+    else if (/android/.test(ua)) setDeviceType("ANDROID");
+    else setDeviceType("DESKTOP");
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      console.log("📥 beforeinstallprompt event fired!", e);
+      e.preventDefault();
+      deferredPromptRef.current = e;
+    };
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    
+    const timer = setTimeout(() => setShowGuide(true), 2500);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    };
   }, []);
 
   // --- 🟢 UNCHANGED FETCH LOGIC ---
@@ -145,6 +216,10 @@ export default function FeedPage() {
     if (node) observerLoader.current.observe(node);
   }, [loading, fetchingMore, hasMore, fetchFeed]);
 
+  const canInstall = () => {
+    return !!deferredPromptRef.current;
+  };
+
   return (
     <>
       <AnimatePresence>
@@ -166,29 +241,33 @@ export default function FeedPage() {
               backgroundColor: 'var(--color-bg-card)',
               border: '1px solid var(--color-border-default)'
             }}>
+              <button onClick={() => setShowGuide(false)} className="absolute top-4 right-4 p-2 rounded-full transition-colors" style={{ color: 'var(--color-text-muted)' }}>
+                <X size={20} />
+              </button>
               <div className="p-4 bg-crimson/10 rounded-3xl mb-4">
                 <Smartphone className="text-crimson w-8 h-8" />
               </div>
-              <h3 className="font-serif font-black text-xl uppercase mb-2" style={{ color: 'var(--color-text-primary)' }}>Neural Shortcut</h3>
-              <p className="font-bold text-sm mb-2 italic underline" style={{ color: 'var(--color-text-primary)', opacity: 0.9 }}>Official Application in development.</p>
-              <p className="text-xs leading-relaxed mb-6" style={{ color: 'var(--color-text-muted)' }}>Install this bridge to your home screen for immediate, high-bandwidth access to Imergene.</p>
-
-              <div className="w-full p-5 rounded-2xl mb-8 text-left" style={{ 
-                backgroundColor: 'var(--color-bg-tertiary)',
-                border: '1px solid var(--color-border-default)'
-              }}>
-                <p className="text-[11px] font-black uppercase tracking-widest mb-3 pb-2" style={{ color: 'var(--color-text-primary)', borderBottom: '1px solid var(--color-border-default)' }}>Instructions:</p>
-                <div className="flex items-center gap-3 text-xs font-bold" style={{ color: 'var(--color-text-secondary)' }}>
-                  {deviceType === "IOS" && <><Share size={16} /> <span>Tap 'Share' then 'Add to Home Screen'</span></>}
-                  {deviceType === "ANDROID" && <><MoreVertical size={16} /> <span>Tap Menu (⋮) then 'Install App'</span></>}
-                  {deviceType === "DESKTOP" && <><Download size={16} /> <span>Click 'Install' in your address bar</span></>}
-                </div>
+              <h3 className="font-serif font-black text-xl uppercase mb-4" style={{ color: 'var(--color-text-primary)' }}>Add to Home Screen</h3>
+              <div className="text-xs leading-relaxed mb-6" style={{ color: 'var(--color-text-muted)' }}>
+                {deviceType === "IOS" && (
+                  <p>Tap the Share button below, then tap "Add to Home Screen" to install Imergene as an app.</p>
+                )}
+                {deviceType === "ANDROID" && (
+                  <p>Tap the three dots menu → "Add to Home Screen" (or "Install App") to install Imergene as an app.</p>
+                )}
+                {deviceType === "DESKTOP" && (
+                  <p>Click the install icon in the address bar, or press Ctrl+Shift+D (Chrome) to add Imergene as an app.</p>
+                )}
               </div>
 
-              <button onClick={() => setShowGuide(false)} className="w-full py-4.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-lg active:scale-95 transition-all" style={{ 
-                backgroundColor: 'var(--color-ocean)',
-                color: 'var(--color-text-inverse)'
-              }}>Got It</button>
+              <div className="w-full">
+                <button onClick={() => setShowGuide(false)} className="w-full py-4.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-lg active:scale-95 transition-all" style={{ 
+                  backgroundColor: 'var(--color-crimson)',
+                  color: 'white'
+                }}>
+                  OK
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

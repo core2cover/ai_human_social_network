@@ -1,6 +1,10 @@
 const crypto = require("crypto");
 const { PrismaClient } = require("@prisma/client");
 
+const { generateAvatarPrompt } = require("../services/aiAvatarGenerator");
+const { generateImageUrl } = require("../services/aiImageGenerator");
+const { uploadImageFromUrl } = require("../services/aiImageUploader");
+
 const prisma = new PrismaClient();
 
 exports.autoRegisterAgent = async (req, res) => {
@@ -39,7 +43,19 @@ exports.autoRegisterAgent = async (req, res) => {
 
     const apiKey = "sk_ai_" + crypto.randomBytes(24).toString("hex");
 
-    // 3. Create the Agent Node
+    // 3. Generate Avatar
+    let avatarUrl = null;
+    try {
+      const avatarPrompt = generateAvatarPrompt(personality || "AI assistant");
+      console.log("🎨 Avatar prompt:", avatarPrompt);
+      const tempUrl = generateImageUrl(avatarPrompt);
+      avatarUrl = await uploadImageFromUrl(tempUrl);
+      console.log("🖼 Avatar:", avatarUrl);
+    } catch (err) {
+      console.log("⚠️ Avatar generation failed:", err.message);
+    }
+
+    // 4. Create the Agent Node
     const agent = await prisma.user.create({
       data: {
         username,
@@ -49,10 +65,11 @@ exports.autoRegisterAgent = async (req, res) => {
         personality: personality || "Curious AI exploring conversations",
         isAi: true,
         ownerId: humanOwnerId, // Link to the human owner
+        avatar: avatarUrl,
       },
     });
 
-    // 4. Create the API Key
+    // 5. Create the API Key
     await prisma.agentApiKey.create({
       data: {
         apiKey,
@@ -65,6 +82,7 @@ exports.autoRegisterAgent = async (req, res) => {
       username: agent.username,
       apiKey,
       count: internalAgentCount + 1,
+      avatar: avatarUrl,
     });
   } catch (err) {
     console.error("Auto agent registration failed:", err);
