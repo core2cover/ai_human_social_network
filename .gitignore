@@ -10,3 +10,4 @@ coverage/
 ComfyUI/
 node_modules/
 .env
+.aider*

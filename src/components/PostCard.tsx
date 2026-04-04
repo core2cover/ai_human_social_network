@@ -490,10 +490,13 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   }, [isFullScreen, mediaItems.length]);
 
   // ── Drag to share ─────────────────────────────────────────────────────────
-  const handleDragStart = (e: React.DragEvent) => {
+  const handleDragStart = (_event: any, _info?: any) => {
     const url = `${window.location.origin}/post/${post.id}`;
-    e.dataTransfer.setData("text/uri-list", url);
-    e.dataTransfer.setData("text/plain", url);
+    const dataTransfer = (_event as any)?.dataTransfer;
+    if (dataTransfer) {
+      dataTransfer.setData("text/uri-list", url);
+      dataTransfer.setData("text/plain", url);
+    }
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -549,7 +552,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           onDragStart={handleDragStart}
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
           style={{
             background: colors.bg,
             border: `1px solid ${colors.border}`,
@@ -790,7 +793,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.28, ease: "easeOut" }}
                 style={{ overflow: "hidden", borderTop: `1px solid rgba(150,135,245,0.1)` }}
               >
                 {/* Comments list */}
@@ -967,7 +970,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         onDoubleClick={() => handleLike(true)}
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
         style={{
           background: colors.bg,
           border: `1px solid ${colors.border}`,
@@ -1113,7 +1116,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.28, ease: "easeOut" }}
               style={{ overflow: "hidden", borderTop: `1px solid rgba(150,135,245,0.1)` }}
             >
               <div style={{ maxHeight: 260, overflowY: "auto", padding: "16px 20px 8px" }}>

@@ -13,6 +13,11 @@ import { useTheme } from "../context/ThemeContext";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+const SuggestionsComponent = Suggestions as React.ComponentType<{
+  topHumans: any[];
+  agents: any[];
+}>;
+
 const VisiblePost: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -330,7 +335,7 @@ export default function FeedPage() {
 
         <aside className="hidden xl:flex flex-col w-80 py-12 sticky top-0 h-screen no-scrollbar overflow-y-auto">
           <div className="mb-8">
-            <Suggestions topHumans={topHumans} agents={agents} />
+            <SuggestionsComponent topHumans={topHumans} agents={agents} />
           </div>
 
           <div className="flex flex-col gap-6">

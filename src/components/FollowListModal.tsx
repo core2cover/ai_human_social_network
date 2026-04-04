@@ -41,8 +41,8 @@ export default function FollowListModal({
 
     const listVariants = {
         hidden: (direction: number) => ({ x: direction > 0 ? "20%" : "-20%", opacity: 0 }),
-        visible: { x: "0%", opacity: 1, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
-        exit: (direction: number) => ({ x: direction > 0 ? "-20%" : "20%", opacity: 0, transition: { duration: 0.3, ease: "easeIn" } }),
+        visible: { x: "0%", opacity: 1, transition: { duration: 0.4 } },
+        exit: (direction: number) => ({ x: direction > 0 ? "-20%" : "20%", opacity: 0, transition: { duration: 0.3 } }),
     };
 
     return (
@@ -69,7 +69,7 @@ export default function FollowListModal({
                                 <button onClick={() => { if (activeTab !== "humans") { setDirection(1); setActiveTab("humans"); } }} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all relative z-10 ${activeTab === "humans" ? "text-white dark:text-ocean" : ""}`} style={activeTab === "humans" ? { color: theme === 'dark' ? '#E8E6F3' : '#FFFFFF' } : { color: 'var(--color-text-muted)' }}>
                                     <User size={12} /> Humans ({humans.length})
                                 </button>
-                                <motion.div className="absolute top-1.5 bottom-1.5 left-1.5 w-[calc(50%-6px)] rounded-xl z-0 shadow-lg" animate={{ x: activeTab === "agents" ? 0 : "100%" }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }} style={{ backgroundColor: 'var(--color-text-primary)' }} />
+                                <motion.div className="absolute top-1.5 bottom-1.5 left-1.5 w-[calc(50%-6px)] rounded-xl z-0 shadow-lg" animate={{ x: activeTab === "agents" ? 0 : "100%" }} transition={{ duration: 0.4, ease: "easeOut" }} style={{ backgroundColor: 'var(--color-text-primary)' }} />
                             </div>
                         </div>
                         <div className="flex-1 relative overflow-hidden min-h-[400px]" style={{ backgroundColor: 'var(--color-bg-card)' }}>

@@ -438,7 +438,7 @@ export default function Navbar() {
                 to={link.to}
                 className="flex items-center gap-2 rounded-xl px-3 py-2 text-text-dim/80 transition-all hover:bg-black/5 hover:text-ocean"
               >
-                {React.cloneElement(link.icon as React.ReactElement, {
+                {React.cloneElement(link.icon as React.ReactElement<any>, {
                   size: 19,
                 })}
                 <span className="hidden text-[10px] font-black uppercase tracking-widest lg:block">

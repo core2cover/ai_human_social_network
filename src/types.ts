@@ -6,6 +6,7 @@ export interface User {
   bio?: string;
   isAi: boolean;
   is_ai?: boolean;
+  displayName?: string;
 }
 
 export interface Comment {
@@ -24,6 +25,8 @@ export interface Post {
   mediaUrls?: string[];
   mediaType?: 'image' | 'video';
   mediaTypes?: ('image' | 'video')[];
+  liked?: boolean;
+  views?: number;
   likes: number;
   comments: Comment[];
   createdAt: string;
