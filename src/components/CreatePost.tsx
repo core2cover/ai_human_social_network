@@ -1,9 +1,8 @@
-import React, {
-  useState,
-  useRef,
-  useEffect,
-  type ChangeEvent,
-} from "react";
+"use client";
+
+import { useState, useRef, useEffect, type ChangeEvent } from "react";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "motion/react";
 import {
   ImagePlus,
   VideoIcon,
@@ -15,12 +14,8 @@ import {
   AtSign,
   Hash,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import Avatar from "./Avatar";
 import EmojiPicker, { Theme } from "emoji-picker-react";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+import Avatar from "./Avatar";
 
 interface MediaFile {
   url: string;
@@ -31,10 +26,9 @@ interface MediaFile {
 const MAX_CHARS = 500;
 
 export default function CreatePost() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [content, setContent] = useState("");
   const [mediaList, setMediaList] = useState<MediaFile[]>([]);
-  const [avatar, setAvatar] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
@@ -43,8 +37,8 @@ export default function CreatePost() {
   const emojiContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const username = localStorage.getItem("username") || "You";
-  const token = localStorage.getItem("token");
+  const username = (typeof window !== "undefined" ? localStorage.getItem("username") : null) || "You";
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const charsUsed = content.length;
   const charsLeft = MAX_CHARS - charsUsed;
@@ -53,18 +47,10 @@ export default function CreatePost() {
   const charPercent = Math.min((charsUsed / MAX_CHARS) * 100, 100);
   const showCounter = charsUsed > MAX_CHARS * 0.6;
 
-  const gaugeColor = isOverLimit
-    ? "#ef4444"
-    : isNearLimit
-    ? "#f59e0b"
-    : "#6366f1";
+  const gaugeColor = isOverLimit ? "#ef4444" : isNearLimit ? "#f59e0b" : "#ef4444";
 
   const canPost =
-    (content.trim().length > 0 || mediaList.length > 0) &&
-    !isOverLimit &&
-    !isPosting;
-
-  // ── Emoji ─────────────────────────────────────────────────────────────────
+    (content.trim().length > 0 || mediaList.length > 0) && !isOverLimit && !isPosting;
 
   const onEmojiClick = (emojiData: any) => {
     const ref = textareaRef.current;
@@ -81,8 +67,6 @@ export default function CreatePost() {
     }, 0);
   };
 
-  // ── Auto-resize textarea ───────────────────────────────────────────────────
-
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -90,41 +74,19 @@ export default function CreatePost() {
     el.style.height = `${Math.min(el.scrollHeight, 260)}px`;
   }, [content]);
 
-  // ── Click outside emoji ────────────────────────────────────────────────────
-
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (
-        emojiContainerRef.current &&
-        !emojiContainerRef.current.contains(e.target as Node)
-      )
+      if (emojiContainerRef.current && !emojiContainerRef.current.contains(e.target as Node))
         setShowEmojiPicker(false);
     };
-    if (showEmojiPicker)
-      document.addEventListener("mousedown", handler);
+    if (showEmojiPicker) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showEmojiPicker]);
-
-  // ── Load user avatar ───────────────────────────────────────────────────────
-
-  useEffect(() => {
-    async function load() {
-      if (!username || username === "You") return;
-      try {
-        const res = await fetch(`${API}/api/users/${username}`);
-        const data = await res.json();
-        setAvatar(data.avatar || null);
-      } catch {}
-    }
-    load();
-  }, [username]);
-
-  // ── Media ──────────────────────────────────────────────────────────────────
 
   const handleMediaUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    const newMedia: MediaFile[] = (Array.from(files) as File[]).map((file) => ({
+    const newMedia: MediaFile[] = Array.from(files).map((file) => ({
       url: URL.createObjectURL(file),
       type: file.type.startsWith("video") ? "video" : "image",
       file,
@@ -142,8 +104,6 @@ export default function CreatePost() {
     });
   };
 
-  // ── Post ───────────────────────────────────────────────────────────────────
-
   const handlePost = async () => {
     if (!canPost) return;
     setIsPosting(true);
@@ -151,9 +111,11 @@ export default function CreatePost() {
     formData.append("content", content);
     mediaList.forEach((item) => formData.append("media", item.file));
     try {
-      const res = await fetch(`${API}/api/posts`, {
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/posts", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
         body: formData,
       });
       if (res.ok) {
@@ -161,7 +123,8 @@ export default function CreatePost() {
         mediaList.forEach((m) => URL.revokeObjectURL(m.url));
         setMediaList([]);
         setShowEmojiPicker(false);
-        navigate("/");
+        router.push("/feed");
+        router.refresh();
       }
     } catch (err) {
       console.error("Post failed", err);
@@ -170,8 +133,6 @@ export default function CreatePost() {
     }
   };
 
-  // ── Initials helper ────────────────────────────────────────────────────────
-
   const initials = username
     .split(" ")
     .map((w) => w[0])
@@ -179,75 +140,41 @@ export default function CreatePost() {
     .toUpperCase()
     .slice(0, 2);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
   return (
     <div className="w-full max-w-2xl mx-auto">
-      {/* ── Composer card ─────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: "easeOut" }}
-        className={`
-          relative bg-white dark:bg-card rounded-2xl overflow-hidden
-          transition-all duration-300
-          ${
-            isFocused || showEmojiPicker
-              ? "shadow-[0_0_0_2px_rgba(99,102,241,0.2),0_8px_32px_rgba(99,102,241,0.08)]"
-              : "shadow-[0_1px_4px_rgba(0,0,0,0.06),0_4px_16px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.06)]"
-          }
-          border border-zinc-200/80 dark:border-white/10
-        `}
+        className={`relative overflow-hidden rounded-2xl border border-[#262626] bg-[#1a1a1a] transition-all duration-300 ${
+          isFocused || showEmojiPicker
+            ? "shadow-[0_0_0_2px_rgba(239,68,68,0.2),0_8px_32px_rgba(239,68,68,0.08)]"
+            : "shadow-lg hover:shadow-xl"
+        }`}
       >
-        {/* ── Top: avatar + composer ────────────────────────────────────── */}
         <div className="flex gap-3.5 px-5 pt-5 pb-1">
-          {/* Avatar column */}
           <div className="flex flex-col items-center gap-1 shrink-0">
-            <div className="relative">
-              {avatar ? (
-                <img
-                  src={avatar}
-                  alt={username}
-                  className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center ring-2 ring-white shadow-sm">
-                  <span className="text-white text-[13px] font-bold tracking-wide">
-                    {initials}
-                  </span>
-                </div>
-              )}
-              {/* Human badge */}
-              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-indigo-500 ring-2 ring-white flex items-center justify-center">
-                <span className="text-white text-[7px] font-black">H</span>
-              </span>
-            </div>
-            {/* Thread line — appears when focused */}
+            <Avatar username={username} size="md" />
             <AnimatePresence>
               {(isFocused || content.length > 0) && (
                 <motion.div
                   initial={{ scaleY: 0, opacity: 0 }}
                   animate={{ scaleY: 1, opacity: 1 }}
                   exit={{ scaleY: 0, opacity: 0 }}
-                  className="w-px flex-1 min-h-[24px] bg-zinc-200 rounded-full origin-top"
+                  className="w-px flex-1 min-h-[24px] bg-[#262626] rounded-full origin-top"
                 />
               )}
             </AnimatePresence>
           </div>
 
-          {/* Text column */}
           <div className="flex-1 min-w-0 pb-3">
-            {/* Name + tag */}
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[13px] font-semibold text-zinc-900 leading-none">
-                {username}
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-100 text-[10px] font-semibold text-indigo-600 leading-none">
+              <span className="text-[13px] font-semibold text-white">{username}</span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-semibold text-red-400 leading-none">
                 Human
               </span>
             </div>
 
-            {/* Textarea */}
             <textarea
               ref={textareaRef}
               value={content}
@@ -258,20 +185,18 @@ export default function CreatePost() {
               onChange={(e) => setContent(e.target.value)}
               placeholder="What's on your mind? Humans and AIs are listening…"
               rows={3}
-              className="w-full bg-transparent border-none outline-none resize-none text-[15px] leading-relaxed text-zinc-800 placeholder:text-zinc-300 min-h-[80px] max-h-[260px] p-0 font-normal"
+              className="w-full bg-transparent border-none outline-none resize-none text-[15px] leading-relaxed text-white placeholder:text-gray-500 min-h-[80px] max-h-[260px] p-0 font-normal"
             />
           </div>
         </div>
 
-        {/* ── Visibility chip ────────────────────────────────────────────── */}
         <div className="px-5 pb-3 flex items-center gap-1.5">
-          <Globe size={11} className="text-indigo-400" />
-          <span className="text-[11px] font-medium text-indigo-500">
+          <Globe size={11} className="text-red-400" />
+          <span className="text-[11px] font-medium text-red-400">
             Visible to everyone — humans and AIs
           </span>
         </div>
 
-        {/* ── Media grid ────────────────────────────────────────────────── */}
         <AnimatePresence>
           {mediaList.length > 0 && (
             <motion.div
@@ -298,10 +223,9 @@ export default function CreatePost() {
                     layout
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="relative rounded-xl overflow-hidden bg-zinc-100 group border border-zinc-200/60"
+                    className="relative rounded-xl overflow-hidden bg-[#141414] group border border-[#262626]"
                     style={{
-                      aspectRatio:
-                        mediaList.length === 1 ? "16/9" : "1/1",
+                      aspectRatio: mediaList.length === 1 ? "16/9" : "1/1",
                     }}
                   >
                     <button
@@ -311,16 +235,9 @@ export default function CreatePost() {
                       <X size={11} />
                     </button>
                     {item.type === "video" ? (
-                      <video
-                        src={item.url}
-                        className="w-full h-full object-cover"
-                      />
+                      <video src={item.url} className="w-full h-full object-cover" />
                     ) : (
-                      <img
-                        src={item.url}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={item.url} alt="Preview" className="w-full h-full object-cover" />
                     )}
                   </motion.div>
                 ))}
@@ -329,7 +246,6 @@ export default function CreatePost() {
           )}
         </AnimatePresence>
 
-        {/* ── Emoji picker ──────────────────────────────────────────────── */}
         <AnimatePresence>
           {showEmojiPicker && (
             <motion.div
@@ -338,10 +254,10 @@ export default function CreatePost() {
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
-              className="overflow-hidden border-t border-zinc-100"
+              className="overflow-hidden border-t border-[#262626]"
             >
               <EmojiPicker
-                theme={Theme.LIGHT}
+                theme={Theme.DARK}
                 onEmojiClick={onEmojiClick}
                 skinTonesDisabled
                 searchDisabled
@@ -353,19 +269,15 @@ export default function CreatePost() {
           )}
         </AnimatePresence>
 
-        {/* ── Divider ───────────────────────────────────────────────────── */}
-        <div className="h-px bg-zinc-100 mx-5" />
+        <div className="h-px bg-[#262626] mx-5" />
 
-        {/* ── Toolbar ───────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-4 py-3">
-          {/* Left tools */}
           <div className="flex items-center gap-0.5">
-            {/* Photo / Video */}
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={mediaList.length >= 4}
               title="Add a photo or video"
-              className="group flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              className="group flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-medium text-gray-500 transition-all hover:text-red-500 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <ImagePlus size={15} />
               <span className="hidden sm:inline">Photo</span>
@@ -375,21 +287,20 @@ export default function CreatePost() {
               onClick={() => fileInputRef.current?.click()}
               disabled={mediaList.length >= 4}
               title="Add a video"
-              className="group flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              className="group flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-medium text-gray-500 transition-all hover:text-red-500 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <VideoIcon size={15} />
               <span className="hidden sm:inline">Video</span>
             </button>
 
-            {/* Emoji toggle */}
             <div ref={!showEmojiPicker ? emojiContainerRef : undefined}>
               <button
                 onClick={() => setShowEmojiPicker((v) => !v)}
                 title="Add emoji"
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium transition-all ${
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-medium transition-all ${
                   showEmojiPicker
-                    ? "text-indigo-600 bg-indigo-50"
-                    : "text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50"
+                    ? "text-red-500 bg-red-500/10"
+                    : "text-gray-500 hover:text-red-500 hover:bg-red-500/10"
                 }`}
               >
                 <Smile size={15} />
@@ -397,7 +308,6 @@ export default function CreatePost() {
               </button>
             </div>
 
-            {/* Mention */}
             <button
               title="Mention someone"
               onClick={() => {
@@ -412,12 +322,11 @@ export default function CreatePost() {
                   ref.setSelectionRange(pos + 1, pos + 1);
                 }, 0);
               }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+              className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-medium text-gray-500 transition-all hover:text-red-500 hover:bg-red-500/10"
             >
               <AtSign size={15} />
             </button>
 
-            {/* Hashtag */}
             <button
               title="Add a topic"
               onClick={() => {
@@ -432,7 +341,7 @@ export default function CreatePost() {
                   ref.setSelectionRange(pos + 1, pos + 1);
                 }, 0);
               }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+              className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-medium text-gray-500 transition-all hover:text-red-500 hover:bg-red-500/10"
             >
               <Hash size={15} />
             </button>
@@ -447,9 +356,7 @@ export default function CreatePost() {
             />
           </div>
 
-          {/* Right: char ring + post button */}
           <div className="flex items-center gap-3">
-            {/* Character ring gauge */}
             <AnimatePresence>
               {showCounter && (
                 <motion.div
@@ -458,20 +365,8 @@ export default function CreatePost() {
                   exit={{ opacity: 0, scale: 0.6 }}
                   className="flex items-center gap-2"
                 >
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    className="-rotate-90"
-                  >
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="9"
-                      fill="none"
-                      stroke="#f4f4f5"
-                      strokeWidth="2.5"
-                    />
+                  <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">
+                    <circle cx="12" cy="12" r="9" fill="none" stroke="#262626" strokeWidth="2.5" />
                     <circle
                       cx="12"
                       cy="12"
@@ -481,12 +376,9 @@ export default function CreatePost() {
                       strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeDasharray={`${2 * Math.PI * 9}`}
-                      strokeDashoffset={`${
-                        2 * Math.PI * 9 * (1 - charPercent / 100)
-                      }`}
+                      strokeDashoffset={`${2 * Math.PI * 9 * (1 - charPercent / 100)}`}
                       style={{
-                        transition:
-                          "stroke-dashoffset 0.15s ease, stroke 0.15s ease",
+                        transition: "stroke-dashoffset 0.15s ease, stroke 0.15s ease",
                       }}
                     />
                   </svg>
@@ -496,7 +388,6 @@ export default function CreatePost() {
                     animate={{ opacity: 1 }}
                     className="text-[11px] font-semibold tabular-nums min-w-[20px] text-right"
                     style={{ color: gaugeColor }}
-                    aria-live="polite"
                   >
                     {isOverLimit ? `-${Math.abs(charsLeft)}` : charsLeft}
                   </motion.span>
@@ -504,28 +395,18 @@ export default function CreatePost() {
               )}
             </AnimatePresence>
 
-            {/* Divider */}
-            {showCounter && (
-              <div className="w-px h-5 bg-zinc-200 rounded-full" />
-            )}
+            {showCounter && <div className="w-px h-5 bg-[#262626] rounded-full" />}
 
-            {/* Post button */}
             <motion.button
               onClick={handlePost}
               disabled={!canPost}
               whileHover={canPost ? { scale: 1.03 } : {}}
               whileTap={canPost ? { scale: 0.97 } : {}}
-              className={`
-                relative flex items-center gap-2 px-5 py-2.5 rounded-xl
-                text-[13px] font-semibold tracking-tight
-                transition-all duration-200
-                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300
-                ${
-                  canPost
-                    ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_2px_8px_rgba(99,102,241,0.35)]"
-                    : "bg-zinc-100 text-zinc-300 cursor-not-allowed shadow-none"
-                }
-              `}
+              className={`relative flex items-center gap-2 rounded-xl px-5 py-2.5 text-[13px] font-semibold tracking-tight transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 ${
+                canPost
+                  ? "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30"
+                  : "bg-[#262626] text-gray-500 cursor-not-allowed shadow-none"
+              }`}
             >
               <AnimatePresence mode="wait" initial={false}>
                 {isPosting ? (
@@ -557,14 +438,13 @@ export default function CreatePost() {
         </div>
       </motion.div>
 
-      {/* ── Drag-drop hint ──────────────────────────────────────────────────── */}
       <AnimatePresence>
         {mediaList.length === 0 && !isPosting && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-3 text-center text-[11px] text-zinc-300 select-none"
+            className="mt-3 text-center text-[11px] text-gray-600 select-none"
           >
             Drag and drop a photo or video anywhere above
           </motion.p>

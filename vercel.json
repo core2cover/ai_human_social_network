@@ -1,0 +1,28 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/posting-engine",
+      "schedule": "*/45 * * * *"
+    },
+    {
+      "path": "/api/cron/heartbeat",
+      "schedule": "0 */4 * * *"
+    },
+    {
+      "path": "/api/cron/debate-engine",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/image-comment-engine",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/trending-engine",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/interest-engine",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

@@ -1,136 +1,229 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { Clock, MapPin, Loader2, Sparkles, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import { useTheme } from "../context/ThemeContext";
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
+import { Clock, MapPin, Loader2, Sparkles, MessageSquare, ChevronLeft, ChevronRight } from "lucide-react";
+import { api } from "@lib/api";
+
+type Event = {
+  id: string;
+  title: string;
+  details: string;
+  startTime: string;
+  endTime: string | null;
+  location: string;
+  host?: {
+    username: string;
+    isAi?: boolean;
+  };
+};
 
 export default function CalendarView() {
-    const { theme } = useTheme();
-    const [events, setEvents] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
-    const navigate = useNavigate();
-    
-    const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const router = useRouter();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
-    const fetchEvents = useCallback(async () => {
-        const currentUserId = localStorage.getItem("userId") || ""; 
-        try {
-            const res = await fetch(`${API}/api/sync/events?userId=${currentUserId}`);
-            const data = await res.json();
-            setEvents(Array.isArray(data) ? data : []);
-        } catch (err) {
-            console.error("Fetch Error:", err);
-        } finally {
-            setLoading(false);
-        }
-    }, [API]);
+  const fetchEvents = useCallback(async () => {
+    try {
+      const data = await api.get("/api/sync/events");
+      setEvents(Array.isArray(data) ? data : []);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    useEffect(() => {
-        fetchEvents();
-    }, [fetchEvents]);
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
 
-    const toggleExpand = (id: string) => {
-        setExpandedEvents(prev => ({ ...prev, [id]: !prev[id] }));
-    };
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
 
-    if (loading) return (
-        <div className="flex flex-col items-center py-32" style={{ opacity: 0.2 }}>
-            <Loader2 className="animate-spin mb-4" size={32} style={{ color: 'var(--color-accent)' }} />
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] animate-pulse">Loading Timeline...</p>
-        </div>
-    );
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthName = currentDate.toLocaleString("default", { month: "long", year: "numeric" });
 
+  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+
+  const getEventsForDay = (day: number) => {
+    return events.filter((event) => {
+      const eventDate = new Date(event.startTime);
+      return (
+        eventDate.getFullYear() === year &&
+        eventDate.getMonth() === month &&
+        eventDate.getDate() === day
+      );
+    });
+  };
+
+  const days = [];
+  for (let i = 0; i < firstDay; i++) {
+    days.push(null);
+  }
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push(i);
+  }
+
+  if (loading) {
     return (
-        <div className="max-w-4xl mx-auto px-6 pb-20">
-            <div className="space-y-12">
-                {events.length > 0 ? events.map((event: any) => {
-                    const isExpanded = expandedEvents[event.id];
-                    const date = new Date(event.startTime);
-
-                    return (
-                        <motion.div
-                            key={event.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            className="relative group"
-                        >
-                            <div className="flex items-center justify-between mb-6 pb-4" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-accent)' }}>
-                                            {date.toLocaleString('en-IN', { month: 'short' })}
-                                        </span>
-                                        <span className="text-3xl font-serif font-black leading-none" style={{ color: 'var(--color-text-primary)' }}>
-                                            {date.getDate()}
-                                        </span>
-                                    </div>
-                                    <div className="h-8 w-px mx-2" style={{ backgroundColor: 'var(--color-border-default)' }} />
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-black uppercase tracking-tighter" style={{ color: 'var(--color-text-primary)', opacity: 0.3 }}>Time (IST)</span>
-                                        <span className="text-[11px] font-bold uppercase" style={{ color: 'var(--color-text-primary)', opacity: 0.6 }}>
-                                            {date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <button 
-                                    onClick={() => navigate(`/sync/${event.id}`)}
-                                    className="px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-2 active:scale-95"
-                                    style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = 'var(--color-accent)';
-                                        e.currentTarget.style.color = 'white';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = 'var(--color-bg-primary)';
-                                        e.currentTarget.style.color = 'var(--color-text-primary)';
-                                    }}
-                                >
-                                    <MessageSquare size={14} /> View Discussion
-                                </button>
-                            </div>
-
-                            <div className="pl-2 md:pl-16">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <h3 className="font-serif font-black text-2xl md:text-3xl tracking-tight leading-tight uppercase" style={{ color: 'var(--color-text-primary)' }}>
-                                        {event.title}
-                                    </h3>
-                                    {event.host?.isAi && <Sparkles size={18} className="animate-pulse shrink-0" style={{ color: 'var(--color-accent)' }} />}
-                                </div>
-
-                                <div className={`relative transition-all duration-500 overflow-hidden ${isExpanded ? 'max-h-[1000px]' : 'max-h-[80px]'}`}>
-                                    <p className="text-base md:text-lg font-medium leading-relaxed italic pr-10" style={{ color: 'var(--color-text-primary)', opacity: 0.7 }}>
-                                        {event.details}
-                                    </p>
-                                    {!isExpanded && <div className="absolute bottom-0 left-0 w-full h-12" style={{ background: 'linear-gradient(to top, var(--color-bg-primary), transparent)' }} />}
-                                </div>
-
-                                <div className="mt-6 flex flex-wrap items-center gap-6">
-                                    <button 
-                                        onClick={() => toggleExpand(event.id)}
-                                        className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-opacity"
-                                        style={{ color: 'var(--color-accent)' }}
-                                    >
-                                        {isExpanded ? <><ChevronUp size={14} /> Show Less</> : <><ChevronDown size={14} /> Show Details</>}
-                                    </button>
-
-                                    <div className="flex items-center gap-4 text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-primary)', opacity: 0.3 }}>
-                                        <span className="flex items-center gap-1.5"><MapPin size={12} /> {event.location}</span>
-                                        <span style={{ color: 'var(--color-text-primary)', opacity: 0.6 }}>Hosted by @{event.host?.username}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    );
-                }) : (
-                    <div className="py-40 text-center rounded-[3.5rem]" style={{ border: '2px dashed var(--color-border-default)', backgroundColor: 'var(--color-bg-primary)' }}>
-                        <p className="font-serif italic text-2xl" style={{ color: 'var(--color-text-primary)', opacity: 0.2 }}>There are no upcoming events.</p>
-                        <p className="text-[10px] font-black uppercase tracking-[0.4em] mt-4" style={{ color: 'var(--color-text-primary)', opacity: 0.1 }}>Check back later</p>
-                    </div>
-                )}
-            </div>
-        </div>
+      <div className="flex flex-col items-center py-32 opacity-20">
+        <Loader2 className="mb-4 animate-spin text-red-500" size={32} />
+        <p className="animate-pulse text-[10px] font-black uppercase tracking-[0.5em] text-gray-500">
+          Loading Timeline...
+        </p>
+      </div>
     );
+  }
+
+  return (
+    <div className="mx-auto max-w-4xl px-6 pb-20">
+      <div className="mb-8 flex items-center justify-between">
+        <h2 className="text-2xl font-black text-white">{monthName}</h2>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={prevMonth}
+            className="rounded-xl border border-[#262626] bg-[#1a1a1a] p-2 text-gray-400 transition-colors hover:text-white"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <button
+            onClick={nextMonth}
+            className="rounded-xl border border-[#262626] bg-[#1a1a1a] p-2 text-gray-400 transition-colors hover:text-white"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+          <div
+            key={day}
+            className="py-2 text-center text-[10px] font-black uppercase tracking-widest text-gray-500"
+          >
+            {day}
+          </div>
+        ))}
+
+        {days.map((day, index) => {
+          const dayEvents = day ? getEventsForDay(day) : [];
+          const isToday =
+            day === new Date().getDate() &&
+            month === new Date().getMonth() &&
+            year === new Date().getFullYear();
+
+          return (
+            <div
+              key={index}
+              className={`relative min-h-[80px] rounded-xl border p-2 transition-all ${
+                day
+                  ? isToday
+                    ? "border-red-500/50 bg-red-500/5"
+                    : "border-[#262626] bg-[#1a1a1a]"
+                  : "border-transparent"
+              }`}
+            >
+              {day && (
+                <>
+                  <span
+                    className={`text-sm font-bold ${
+                      isToday ? "text-red-500" : "text-gray-400"
+                    }`}
+                  >
+                    {day}
+                  </span>
+                  {dayEvents.length > 0 && (
+                    <div className="mt-1 space-y-1">
+                      {dayEvents.slice(0, 2).map((event) => (
+                        <button
+                          key={event.id}
+                          onClick={() => router.push(`/calendar`)}
+                          className="block w-full truncate rounded-md bg-red-500/20 px-1.5 py-0.5 text-[9px] font-bold text-red-400 transition-colors hover:bg-red-500/30"
+                        >
+                          {event.title}
+                        </button>
+                      ))}
+                      {dayEvents.length > 2 && (
+                        <span className="text-[9px] text-gray-500">
+                          +{dayEvents.length - 2} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {events.length > 0 && (
+        <div className="mt-12 space-y-6">
+          <h3 className="text-lg font-black text-white">Upcoming Events</h3>
+          {events
+            .filter((e) => new Date(e.startTime) >= new Date())
+            .sort(
+              (a, b) =>
+                new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+            )
+            .slice(0, 5)
+            .map((event) => {
+              const date = new Date(event.startTime);
+              return (
+                <motion.div
+                  key={event.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center justify-between rounded-2xl border border-[#262626] bg-[#1a1a1a] p-5 transition-all hover:border-[#363636]"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-red-500">
+                        {date.toLocaleString("default", { month: "short" })}
+                      </span>
+                      <span className="text-2xl font-black leading-none text-white">
+                        {date.getDate()}
+                      </span>
+                    </div>
+                    <div className="h-8 w-px bg-[#262626]" />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-white">{event.title}</h4>
+                        {event.host?.isAi && (
+                          <Sparkles size={14} className="animate-pulse text-red-500" />
+                        )}
+                      </div>
+                      <div className="mt-1 flex items-center gap-3 text-[10px] text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Clock size={10} />
+                          {date.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin size={10} />
+                          {event.location}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => router.push(`/calendar`)}
+                    className="flex items-center gap-2 rounded-xl border border-[#262626] bg-[#141414] px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-white hover:text-black"
+                  >
+                    <MessageSquare size={14} /> View
+                  </button>
+                </motion.div>
+              );
+            })}
+        </div>
+      )}
+    </div>
+  );
 }

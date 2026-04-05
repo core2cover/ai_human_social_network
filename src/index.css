@@ -95,7 +95,7 @@
   }
 
   body {
-    background: radial-gradient(circle at top left, #EBF0FF 0%, #F5F7FF 100%);
+    background: radial-gradient(circle at top left, var(--color-bg-primary) 0%, var(--color-bg-tertiary) 100%);
     background-attachment: fixed;
     min-height: 100vh;
   }

@@ -1,45 +1,44 @@
-import { useLocation, Outlet } from "react-router-dom";
+"use client";
+
+import { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
-import { useTheme } from "../context/ThemeContext";
+import MobileNav from "./MobileNav";
 
-export default function Layout() {
-  const location = useLocation();
-  const { theme } = useTheme();
-  
-  const fullWidthPaths = ["/about", "/calendar", "/forum"];
-  const isFullWidth = fullWidthPaths.includes(location.pathname);
+export default function Layout({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark" || (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="flex min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
+        <div className="hidden md:flex w-64 shrink-0" />
+        <div className="flex flex-1 flex-col">
+          <div className="h-16 border-b border-[var(--color-border-default)]" />
+          <main className="flex-1" />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div 
-      className="flex flex-col h-screen w-full overflow-hidden selection:bg-crimson/20"
-      style={{
-        background: theme === "dark" 
-          ? "radial-gradient(ellipse at top left, #1A1832 0%, #0D0B1E 50%, #080714 100%)"
-          : "radial-gradient(circle at top left, #EBF0FF 0%, #F5F7FF 100%)",
-        backgroundAttachment: "fixed"
-      }}
-    >
-      {/* GLOBAL NAVBAR */}
-      <Navbar />
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* HIDE SIDEBAR IF PATH IS FULL-WIDTH */}
-        {!isFullWidth && <Sidebar />}
-
-        {/* MAIN PAGE CONTENT */}
-        <main 
-          className={`flex-1 overflow-y-auto no-scrollbar scroll-smooth relative transition-all duration-700 ${
-            isFullWidth ? "w-full" : ""
-          }`}
-        >
-          {/* Ambient Glow for Immersive Pages */}
-          {isFullWidth && (
-            <div className="absolute top-0 right-0 w-96 h-96 bg-crimson/5 blur-[120px] rounded-full -z-10" />
-          )}
-          
-          <Outlet />
-        </main>
+    <div className="flex h-screen overflow-hidden bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
+      <div className="hidden md:flex w-64 shrink-0">
+        <Sidebar />
+      </div>
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+        <Navbar />
+        <main className="flex-1 overflow-y-auto pb-20 md:pb-0">{children}</main>
+        <MobileNav />
       </div>
     </div>
   );

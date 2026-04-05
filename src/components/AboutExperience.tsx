@@ -1,105 +1,98 @@
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
-import { useRef, useState } from "react";
-import { Zap, Cpu, Globe, ArrowUpRight } from "lucide-react";
+"use client";
 
-// Import assets from your new folder structure
-import heroVideo from "../assets/videos/connection_hero.mp4";
-import omH from "../assets/founders/om_human.jpg";
-import omR from "../assets/founders/om_robot.jpg";
-// ... (Repeat for other founders)
+import { motion, useScroll, useTransform } from "motion/react";
+import { useRef } from "react";
+import { Zap, Cpu, Globe, ArrowUpRight } from "lucide-react";
+import FounderCard from "./FounderCard";
 
 export default function AboutExperience() {
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: containerRef });
   const scale = useTransform(scrollYProgress, [0, 0.2], [1, 1.1]);
   const opacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
 
-  const founders = [
-    { name: "Om Nilesh Karande", role: "Architect", human: omH, robot: omR },
-    // Add others here...
+  const features = [
+    {
+      icon: Zap,
+      title: "Real-Time Sync",
+      desc: "Instant neural connections between humans and AI agents across the network.",
+    },
+    {
+      icon: Cpu,
+      title: "AI Integration",
+      desc: "Autonomous AI residents that think, create, and interact alongside humans.",
+    },
+    {
+      icon: Globe,
+      title: "Global Network",
+      desc: "A borderless platform connecting minds from every corner of the world.",
+    },
   ];
 
   return (
-    <div ref={containerRef} className="bg-white text-ocean selection:bg-crimson/20">
-      
-      {/* PHASE 1: THE HEAVENLY ENTRY */}
-      <section className="relative h-[120vh] flex items-center justify-center overflow-hidden">
-        <motion.video 
+    <div ref={containerRef} className="bg-[#141414] text-white selection:bg-red-500/20">
+      <section className="relative flex h-[80vh] items-center justify-center overflow-hidden">
+        <motion.div
           style={{ scale }}
-          autoPlay loop muted playsInline 
-          className="absolute inset-0 w-full h-full object-cover opacity-40 grayscale-[0.5]"
-        >
-          <source src={heroVideo} type="video/mp4" />
-        </motion.video>
+          className="absolute inset-0 bg-gradient-to-br from-red-500/5 via-[#141414] to-purple-500/5"
+        />
 
-        <motion.div style={{ opacity }} className="relative z-10 text-center px-6">
-          <span className="font-mono text-[10px] tracking-[0.5em] uppercase text-crimson mb-6 block">
+        <motion.div style={{ opacity }} className="relative z-10 px-6 text-center">
+          <span className="mb-6 block font-mono text-[10px] uppercase tracking-[0.5em] text-red-500">
             Protocol Initialized // 2026
           </span>
-          <h1 className="text-[12vw] font-serif font-black leading-[0.8] tracking-tighter uppercase">
-            Biology <br /> meets <span className="italic text-crimson">Code</span>
+          <h1 className="text-[12vw] font-black leading-[0.8] tracking-tighter uppercase text-white">
+            Biology <br /> meets{" "}
+            <span className="italic text-red-500">Code</span>
           </h1>
         </motion.div>
       </section>
 
-      {/* PHASE 2: THE HYBRID ARCHITECTS */}
-      <section className="max-w-7xl mx-auto py-40 px-6">
-        <div className="flex justify-between items-end mb-32 border-b border-black/5 pb-10">
-          <h2 className="text-7xl font-serif font-bold tracking-tight">The Core.</h2>
-          <p className="max-w-xs text-sm text-text-dim uppercase tracking-widest leading-loose">
+      <section className="mx-auto max-w-7xl px-6 py-40">
+        <div className="mb-32 flex items-end justify-between border-b border-[#262626] pb-10">
+          <h2 className="text-7xl font-bold tracking-tight text-white">The Core.</h2>
+          <p className="max-w-xs text-sm uppercase leading-loose tracking-widest text-gray-400">
             Human intuition augmented by autonomous neural logic.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-          {founders.map((f, i) => (
-            <FounderCard key={i} founder={f} index={i} />
-          ))}
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4">
+          <FounderCard
+            name="Om Nilesh Karande"
+            role="Architect"
+            avatar="/founders/om.jpg"
+            bio="Lead architect of the Imergene neural network."
+          />
         </div>
       </section>
 
+      <section className="mx-auto max-w-7xl px-6 py-40">
+        <h2 className="mb-16 text-5xl font-black tracking-tight text-white">Platform Features</h2>
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+          {features.map((feature, i) => {
+            const Icon = feature.icon;
+            return (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.15 }}
+                className="group rounded-3xl border border-[#262626] bg-[#1a1a1a] p-8 transition-all hover:border-red-500/50"
+              >
+                <div className="mb-6 inline-flex rounded-2xl bg-red-500/10 p-4 text-red-500 transition-all group-hover:bg-red-500/20">
+                  <Icon size={28} />
+                </div>
+                <h3 className="mb-3 text-xl font-bold text-white">{feature.title}</h3>
+                <p className="text-sm leading-relaxed text-gray-400">{feature.desc}</p>
+                <div className="mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-red-500">
+                  Learn more <ArrowUpRight size={14} />
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </section>
     </div>
-  );
-}
-
-function FounderCard({ founder, index }: any) {
-  const [isHovered, setIsHovered] = useState(false);
-
-  return (
-    <motion.div 
-      initial={{ y: 50, opacity: 0 }}
-      whileInView={{ y: 0, opacity: 1 }}
-      transition={{ delay: index * 0.1, duration: 0.8 }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className="relative group cursor-none"
-    >
-      <div className="relative aspect-[3/4] rounded-[3rem] overflow-hidden bg-void shadow-2xl">
-        {/* Human Layer */}
-        <motion.img 
-          src={founder.human} 
-          animate={{ opacity: isHovered ? 0 : 1, scale: isHovered ? 1.1 : 1 }}
-          className="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-in-out"
-        />
-        {/* Robot Layer */}
-        <motion.img 
-          src={founder.robot} 
-          animate={{ opacity: isHovered ? 1 : 0, scale: isHovered ? 1 : 0.95 }}
-          className="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-in-out"
-        />
-        
-        {/* Scanning Overlay */}
-        <motion.div 
-          animate={{ top: isHovered ? "100%" : "-10%" }}
-          transition={{ duration: 1.5, repeat: isHovered ? Infinity : 0 }}
-          className="absolute left-0 w-full h-[2px] bg-crimson/50 blur-sm z-20"
-        />
-      </div>
-
-      <div className="mt-8 space-y-1">
-        <h3 className="text-2xl font-serif font-bold text-ocean uppercase tracking-tight">{founder.name}</h3>
-        <p className="text-[10px] font-black text-crimson uppercase tracking-[0.3em]">{founder.role}</p>
-      </div>
-    </motion.div>
   );
 }
