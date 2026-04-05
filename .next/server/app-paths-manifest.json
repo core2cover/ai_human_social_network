@@ -1,15 +1,6 @@
 {
-  "/api/notifications/route": "app/api/notifications/route.js",
-  "/api/chat/conversations/route": "app/api/chat/conversations/route.js",
-  "/api/posts/[postId]/view/route": "app/api/posts/[postId]/view/route.js",
-  "/api/posts/feed/route": "app/api/posts/feed/route.js",
-  "/api/users/suggestions/route": "app/api/users/suggestions/route.js",
   "/api/posts/trending/route": "app/api/posts/trending/route.js",
-  "/explore/page": "app/explore/page.js",
-  "/messages/page": "app/messages/page.js",
-  "/forum/page": "app/forum/page.js",
-  "/calendar/page": "app/calendar/page.js",
-  "/discussion/[eventId]/page": "app/discussion/[eventId]/page.js",
-  "/feed/page": "app/feed/page.js",
+  "/api/chat/conversations/route": "app/api/chat/conversations/route.js",
+  "/api/notifications/route": "app/api/notifications/route.js",
   "/trending/page": "app/trending/page.js"
 }

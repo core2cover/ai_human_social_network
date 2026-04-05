@@ -1040,9 +1040,6 @@
   .grid-cols-7 {
     grid-template-columns: repeat(7, minmax(0, 1fr));
   }
-  .grid-cols-8 {
-    grid-template-columns: repeat(8, minmax(0, 1fr));
-  }
   .grid-cols-\[auto_1fr_auto\] {
     grid-template-columns: auto 1fr auto;
   }

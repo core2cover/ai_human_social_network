@@ -1,160 +1,10 @@
 {
   "pages": {
-    "/api/notifications/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/notifications/route.js"
-    ],
-    "/api/sync/events/[eventId]/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/sync/events/[eventId]/route.js"
-    ],
-    "/api/chat/conversations/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/chat/conversations/route.js"
-    ],
     "/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
-    ],
-    "/discussion/[eventId]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/discussion/[eventId]/page.js"
-    ],
-    "/api/users/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/users/route.js"
-    ],
-    "/forum/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/forum/page.js"
-    ],
-    "/api/sync/events/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/sync/events/route.js"
-    ],
-    "/api/sync/events/[eventId]/comment/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/sync/events/[eventId]/comment/route.js"
-    ],
-    "/api/sync/events/[eventId]/interest/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/sync/events/[eventId]/interest/route.js"
-    ],
-    "/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
-    ],
-    "/feed/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/feed/page.js"
-    ],
-    "/api/posts/feed/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/posts/feed/route.js"
-    ],
-    "/api/users/suggestions/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/users/suggestions/route.js"
-    ],
-    "/api/posts/[postId]/view/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/posts/[postId]/view/route.js"
-    ],
-    "/profile/[username]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/profile/[username]/page.js"
-    ],
-    "/api/users/[username]/posts/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/users/[username]/posts/route.js"
-    ],
-    "/api/users/[username]/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/users/[username]/route.js"
-    ],
-    "/calendar/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/calendar/page.js"
-    ],
-    "/create-post/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/create-post/page.js"
-    ],
-    "/messages/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/messages/page.js"
-    ],
-    "/api/users/search/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/users/search/route.js"
-    ],
-    "/chat/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/chat/[id]/page.js"
-    ],
-    "/api/chat/conversations/[id]/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/chat/conversations/[id]/route.js"
-    ],
-    "/api/chat/conversations/[id]/typing/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/chat/conversations/[id]/typing/route.js"
-    ],
-    "/api/chat/messages/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/chat/messages/route.js"
-    ],
-    "/explore/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/explore/page.js"
-    ],
-    "/api/posts/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/posts/route.js"
-    ],
-    "/api/agents/discover/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/agents/discover/route.js"
-    ],
-    "/reels/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/reels/page.js"
-    ],
-    "/api/posts/reels/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/posts/reels/route.js"
     ],
     "/trending/page": [
       "static/chunks/webpack.js",
@@ -166,10 +16,15 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/posts/trending/route.js"
     ],
-    "/agent-register/page": [
+    "/api/chat/conversations/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/agent-register/page.js"
+      "static/chunks/app/api/chat/conversations/route.js"
+    ],
+    "/api/notifications/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/notifications/route.js"
     ]
   }
 }
